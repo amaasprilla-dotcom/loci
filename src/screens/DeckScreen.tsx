@@ -2,6 +2,7 @@ import { useState } from "react";
 import { formatInterval, isDue, State } from "../scheduler";
 import type { AppActions } from "../useAppData";
 import { MathText } from "../components/MathText";
+import { useNow } from "../useNow";
 
 type Props = {
   app: AppActions;
@@ -13,6 +14,7 @@ type Props = {
 export function DeckScreen({ app, deckId, onBack, onStudy }: Props) {
   const [front, setFront] = useState("");
   const [back, setBack] = useState("");
+  const now = useNow();
 
   const deck = app.data.decks.find((d) => d.id === deckId);
   if (!deck) {
@@ -24,8 +26,8 @@ export function DeckScreen({ app, deckId, onBack, onStudy }: Props) {
     );
   }
 
-  const dueCount = app.dueCardIds([deck.id]).length;
-  const now = new Date();
+  const dueCount = app.dueCardIds([deck.id], now).length;
+  const nextDue = app.nextDueDate([deck.id]);
 
   function handleAddCard(event: React.FormEvent) {
     event.preventDefault();
@@ -59,6 +61,9 @@ export function DeckScreen({ app, deckId, onBack, onStudy }: Props) {
       <button className="primary big" disabled={dueCount === 0} onClick={() => onStudy([deck.id])}>
         {dueCount === 0 ? "Nothing due" : `Study · ${dueCount} due`}
       </button>
+      {dueCount === 0 && nextDue && (
+        <p className="muted center">Next card due in {formatInterval(now, nextDue)}.</p>
+      )}
 
       <h2>Add flashcard</h2>
       <form className="card-form" onSubmit={handleAddCard}>
@@ -88,7 +93,9 @@ export function DeckScreen({ app, deckId, onBack, onStudy }: Props) {
       </form>
 
       <h2>Cards ({deck.cardIds.length})</h2>
-      {deck.cardIds.length === 0 && <p className="muted">No cards yet.</p>}
+      {deck.cardIds.length === 0 && (
+        <p className="muted">No cards yet. Add your first one with the form above.</p>
+      )}
       <ul className="list">
         {deck.cardIds.map((cardId) => {
           const card = app.data.cards[cardId];

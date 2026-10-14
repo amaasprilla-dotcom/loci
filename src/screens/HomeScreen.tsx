@@ -3,6 +3,7 @@ import { PackList } from "../components/PackList";
 import { formatInterval } from "../scheduler";
 import { currentStreak } from "../streak";
 import type { AppActions } from "../useAppData";
+import { useNow } from "../useNow";
 
 type Props = {
   app: AppActions;
@@ -15,14 +16,14 @@ export function HomeScreen({ app, onOpenDeck, onStudy }: Props) {
   const decks = app.data.decks;
   const allDeckIds = decks.map((d) => d.id);
 
-  const now = new Date();
+  const now = useNow();
   const endOfToday = new Date(now);
   endOfToday.setHours(23, 59, 59, 999);
 
   const dueNow = app.dueCardIds(allDeckIds, now).length;
   const dueToday = app.dueCardIds(allDeckIds, endOfToday).length;
   const streak = currentStreak(app.data.reviewDays, now);
-  const nextDue = nextDueDate(app, allDeckIds);
+  const nextDue = app.nextDueDate(allDeckIds);
 
   function handleAddDeck(event: React.FormEvent) {
     event.preventDefault();
@@ -46,7 +47,11 @@ export function HomeScreen({ app, onOpenDeck, onStudy }: Props) {
       </div>
 
       <button className="primary big" disabled={dueNow === 0} onClick={() => onStudy(allDeckIds)}>
-        {dueNow > 0 ? `Study · ${dueNow} ${dueNow === 1 ? "card" : "cards"}` : "All caught up"}
+        {dueNow > 0
+          ? `Study · ${dueNow} ${dueNow === 1 ? "card" : "cards"}`
+          : nextDue
+            ? "All caught up"
+            : "No cards yet"}
       </button>
       {dueNow === 0 && nextDue && (
         <p className="muted center">Next card due in {formatInterval(now, nextDue)}.</p>
@@ -95,13 +100,3 @@ export function HomeScreen({ app, onOpenDeck, onStudy }: Props) {
   );
 }
 
-// The earliest due date of any card, or undefined if there are no cards.
-function nextDueDate(app: AppActions, deckIds: string[]): Date | undefined {
-  const dates = app.data.decks
-    .filter((deck) => deckIds.includes(deck.id))
-    .flatMap((deck) => deck.cardIds)
-    .map((id) => app.data.schedules[id]?.due)
-    .filter((due): due is Date => due !== undefined);
-  if (dates.length === 0) return undefined;
-  return new Date(Math.min(...dates.map((d) => d.getTime())));
-}

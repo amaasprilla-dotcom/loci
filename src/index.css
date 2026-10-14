@@ -480,3 +480,63 @@ textarea {
   border-radius: 10px;
   background: color-mix(in srgb, var(--accent) 12%, var(--surface));
 }
+
+/* ---------- Study progress ---------- */
+
+.progress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.progress div {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s;
+}
+
+/* ---------- Phones ---------- */
+
+/* Comfortable tap targets, and no grey flash when tapping on mobile. */
+button {
+  min-height: 44px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button.small,
+button.link {
+  min-height: 0;
+}
+
+@media (max-width: 480px) {
+  .app {
+    padding: 12px 12px calc(24px + env(safe-area-inset-bottom));
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  .card-face {
+    min-height: 180px;
+    padding: 18px 14px;
+    font-size: 1.15rem;
+  }
+
+  /* Card list: put the delete button under the text instead of beside it. */
+  .card-row {
+    flex-direction: column;
+  }
+
+  .card-row-side {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .pack {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

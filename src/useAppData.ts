@@ -112,6 +112,16 @@ export function useAppData() {
       .filter((id) => data.schedules[id] && isDue(data.schedules[id], now));
   }
 
+  // The earliest due date among the cards in these decks (undefined if no cards).
+  function nextDueDate(deckIds: string[]): Date | undefined {
+    const times = data.decks
+      .filter((deck) => deckIds.includes(deck.id))
+      .flatMap((deck) => deck.cardIds)
+      .map((id) => data.schedules[id]?.due.getTime())
+      .filter((time) => time !== undefined);
+    return times.length > 0 ? new Date(Math.min(...times)) : undefined;
+  }
+
   return {
     data,
     addDeck,
@@ -123,6 +133,7 @@ export function useAppData() {
     replaceData,
     resetData,
     dueCardIds,
+    nextDueDate,
   };
 }
 

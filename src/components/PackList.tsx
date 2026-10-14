@@ -15,7 +15,8 @@ export function PackList({ app }: { app: AppActions }) {
               <strong>{pack.name}</strong>
               <p className="muted">{pack.description}</p>
               <small className="muted">
-                {pack.cards.length} cards · {problemCount} problem templates
+                {pack.cards.length} cards · {problemCount} problem{" "}
+                {problemCount === 1 ? "template" : "templates"}
               </small>
             </div>
             <button className={added ? "" : "primary"} disabled={added} onClick={() => app.addPack(pack)}>

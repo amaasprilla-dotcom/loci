@@ -19,6 +19,8 @@ type Props = {
 export function StudyScreen({ app, deckIds, onExit }: Props) {
   // The cards still to show, in order. Shuffled so decks and topics mix.
   const [queue, setQueue] = useState<string[]>(() => shuffle(app.dueCardIds(deckIds)));
+  // When the current card was shown. Used to label the rating buttons.
+  const [shownAt, setShownAt] = useState(() => new Date());
   const [counts, setCounts] = useState<Record<Grade, number>>({
     [Rating.Again]: 0,
     [Rating.Hard]: 0,
@@ -38,6 +40,7 @@ export function StudyScreen({ app, deckIds, onExit }: Props) {
     const learnAheadLimit = Date.now() + LEARN_AHEAD_MINUTES * 60_000;
     const comesBackSoon = next.due.getTime() <= learnAheadLimit;
     setQueue((q) => (comesBackSoon ? [...q.slice(1), cardId] : q.slice(1)));
+    setShownAt(new Date());
   }
 
   if (!card) {
@@ -67,9 +70,9 @@ export function StudyScreen({ app, deckIds, onExit }: Props) {
     );
   }
 
-  const now = new Date();
-  const dueDates = previewDueDates(app.data.schedules[card.id], now);
-  const reviewProps = { dueDates, now, onRate: handleRate };
+  const dueDates = previewDueDates(app.data.schedules[card.id], shownAt);
+  const reviewProps = { dueDates, now: shownAt, onRate: handleRate };
+  const progress = reviewedCount / (reviewedCount + queue.length);
 
   return (
     <div className="screen study">
@@ -80,6 +83,9 @@ export function StudyScreen({ app, deckIds, onExit }: Props) {
         <span className="muted">
           {reviewedCount} done · {queue.length} left
         </span>
+      </div>
+      <div className="progress" aria-hidden="true">
+        <div style={{ width: `${progress * 100}%` }} />
       </div>
 
       {/* A new key after every rating makes React start the card fresh
