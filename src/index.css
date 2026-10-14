@@ -272,3 +272,55 @@ textarea {
   border-radius: 50%;
   border: 5px solid;
 }
+
+/* ---------- Math, problems, previews ---------- */
+
+.preview {
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.answer-form {
+  display: flex;
+  gap: 8px;
+}
+
+.answer-form input {
+  font-size: 1.2rem;
+}
+
+.answer-form button {
+  flex-shrink: 0;
+}
+
+.feedback {
+  margin: 0;
+  font-weight: 600;
+}
+
+.feedback.correct {
+  color: var(--good);
+}
+
+.feedback.wrong {
+  color: var(--again);
+}
+
+.solution {
+  font-size: 1rem;
+  color: var(--muted);
+}
+
+/* The rating the app suggests after a typed answer. */
+.grade.selected {
+  background: color-mix(in srgb, currentColor 8%, var(--surface));
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { AppActions } from "../useAppData";
+import { PACKS } from "../packs";
 
 type Props = {
   app: AppActions;
@@ -58,6 +59,14 @@ export function HomeScreen({ app, onOpenDeck, onStudy }: Props) {
           Add deck
         </button>
       </form>
+
+      {/* Temporary: milestone 4 replaces this with a proper Packs screen. */}
+      <h2>Sample decks</h2>
+      {PACKS.map((pack) => (
+        <button key={pack.name} onClick={() => app.addPack(pack)}>
+          + Add “{pack.name}” ({pack.cards.length} cards)
+        </button>
+      ))}
     </div>
   );
 }

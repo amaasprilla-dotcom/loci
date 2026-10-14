@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { formatInterval, isDue, State } from "../scheduler";
 import type { AppActions } from "../useAppData";
+import { MathText } from "../components/MathText";
 
 type Props = {
   app: AppActions;
@@ -69,6 +70,18 @@ export function DeckScreen({ app, deckId, onBack, onStudy }: Props) {
           Back
           <textarea value={back} onChange={(e) => setBack(e.target.value)} rows={2} />
         </label>
+        {(front.includes("$") || back.includes("$")) && (
+          <div className="preview">
+            <small className="muted">Preview</small>
+            <div className="card-text">
+              <MathText text={front} />
+            </div>
+            <div className="card-text muted">
+              <MathText text={back} />
+            </div>
+          </div>
+        )}
+        <p className="muted hint">Tip: put math between dollar signs, e.g. {"$v = \\frac{d}{t}$"}</p>
         <button type="submit" disabled={!front.trim() || !back.trim()}>
           Add card
         </button>
@@ -82,8 +95,22 @@ export function DeckScreen({ app, deckId, onBack, onStudy }: Props) {
           return (
             <li key={cardId} className="card-row">
               <div className="card-row-text">
-                <div>{card.front}</div>
-                <div className="muted">{card.back}</div>
+                {card.type === "flashcard" && (
+                  <>
+                    <div>
+                      <MathText text={card.front} />
+                    </div>
+                    <div className="muted">
+                      <MathText text={card.back} />
+                    </div>
+                  </>
+                )}
+                {card.type === "formula" && (
+                  <>
+                    <div>{card.prompt}</div>
+                    <div className="muted">Formula problem · answer = {card.answer}</div>
+                  </>
+                )}
               </div>
               <div className="card-row-side">
                 <small className="muted">{dueLabel(cardId)}</small>

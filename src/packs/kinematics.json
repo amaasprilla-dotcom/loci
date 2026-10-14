@@ -1,0 +1,89 @@
+{
+  "name": "Kinematics",
+  "cards": [
+    {
+      "type": "formula",
+      "prompt": "A car travels {d} km in {t} h. What is its average speed in km/h?",
+      "vars": { "d": { "min": 40, "max": 300, "step": 10 }, "t": { "min": 1, "max": 5, "step": 0.5 } },
+      "answer": "d / t",
+      "solution": "$v = d / t =\\frac{{d}}{{t}} = {answer}$ km/h"
+    },
+    {
+      "type": "formula",
+      "prompt": "A cyclist speeds up from {u} m/s to {v} m/s in {t} s. What is the acceleration in m/s²?",
+      "vars": {
+        "u": { "min": 0, "max": 8, "step": 1 },
+        "v": { "min": 10, "max": 20, "step": 1 },
+        "t": { "min": 2, "max": 8, "step": 1 }
+      },
+      "answer": "(v - u) / t",
+      "solution": "$a = \\Delta v / t = \\frac{{v} - {u}}{{t}} = {answer}$ m/s²"
+    },
+    {
+      "type": "formula",
+      "prompt": "A car braking at constant rate goes from {u} m/s to a stop in {t} s. What is the size of its deceleration in m/s²?",
+      "vars": { "u": { "min": 10, "max": 30, "step": 2 }, "t": { "min": 2, "max": 8, "step": 1 } },
+      "answer": "u / t",
+      "solution": "$a = \\Delta v / t = \\frac{{u} - 0}{{t}} = {answer}$ m/s²"
+    },
+    {
+      "type": "formula",
+      "prompt": "A ball moving at {u} m/s accelerates at {a} m/s² for {t} s. What is its final speed in m/s?",
+      "vars": {
+        "u": { "min": 0, "max": 10, "step": 1 },
+        "a": { "min": 0.5, "max": 4, "step": 0.5 },
+        "t": { "min": 2, "max": 10, "step": 1 }
+      },
+      "answer": "u + a * t",
+      "solution": "$v = u + at = {u} + {a} \\times {t} = {answer}$ m/s"
+    },
+    {
+      "type": "formula",
+      "prompt": "A car starts from rest and accelerates at {a} m/s² for {t} s. How far does it travel, in m?",
+      "vars": { "a": { "min": 1, "max": 5, "step": 0.5 }, "t": { "min": 2, "max": 10, "step": 1 } },
+      "answer": "0.5 * a * t^2",
+      "solution": "$s = ut + \\tfrac{1}{2}at^2 = 0 + \\tfrac{1}{2} \\times {a} \\times {t}^2 = {answer}$ m"
+    },
+    {
+      "type": "formula",
+      "prompt": "An object moving at {u} m/s accelerates at {a} m/s² over {s} m. What is its final speed in m/s?",
+      "vars": {
+        "u": { "min": 0, "max": 10, "step": 1 },
+        "a": { "min": 1, "max": 4, "step": 0.5 },
+        "s": { "min": 5, "max": 50, "step": 5 }
+      },
+      "answer": "sqrt(u^2 + 2 * a * s)",
+      "solution": "$v = \\sqrt{u^2 + 2as} = \\sqrt{{u}^2 + 2 \\times {a} \\times {s}} = {answer}$ m/s"
+    },
+    {
+      "type": "flashcard",
+      "front": "What is displacement?",
+      "back": "The change in position of an object: distance in a given direction (a vector), measured in m."
+    },
+    {
+      "type": "flashcard",
+      "front": "Speed vs. velocity: what's the difference?",
+      "back": "Speed is how fast (a scalar). Velocity is how fast and in which direction (a vector)."
+    },
+    {
+      "type": "flashcard",
+      "front": "What is acceleration?",
+      "back": "The rate of change of velocity: $a = \\frac{\\Delta v}{t}$, measured in m/s²."
+    },
+    {
+      "type": "flashcard",
+      "front": "In the suvat equations, what do $s, u, v, a, t$ stand for?",
+      "back": "$s$ displacement, $u$ initial velocity, $v$ final velocity, $a$ acceleration, $t$ time."
+    },
+    {
+      "type": "flashcard",
+      "front": "Which suvat equation has no $s$ (displacement)?",
+      "back": "$v = u + at$"
+    },
+    {
+      "type": "flashcard",
+      "front": "Which suvat equation has no $t$ (time)?",
+      "back": "$v^2 = u^2 + 2as$"
+    }
+  ]
+}

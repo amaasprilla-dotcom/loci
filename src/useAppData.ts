@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { loadData, makeId, saveData, type AppData } from "./storage";
 import { isDue, newSchedule, rate, type Grade, type Schedule } from "./scheduler";
 import type { Card } from "./types";
+import type { Pack } from "./packs";
 
 export function useAppData() {
   const [data, setData] = useState<AppData>(loadData);
@@ -43,6 +44,22 @@ export function useAppData() {
     }));
   }
 
+  // Adds a built-in pack as a new deck, giving each card a fresh id.
+  function addPack(pack: Pack) {
+    const now = new Date();
+    const newCards = pack.cards.map((card) => ({ ...card, id: makeId() }) as Card);
+    const deck = { id: makeId(), name: pack.name, cardIds: newCards.map((c) => c.id) };
+    setData((d) => {
+      const cards = { ...d.cards };
+      const schedules = { ...d.schedules };
+      for (const card of newCards) {
+        cards[card.id] = card;
+        schedules[card.id] = newSchedule(now);
+      }
+      return { ...d, decks: [...d.decks, deck], cards, schedules };
+    });
+  }
+
   function deleteCard(cardId: string) {
     setData((d) => {
       const cards = { ...d.cards };
@@ -76,7 +93,7 @@ export function useAppData() {
       .filter((id) => data.schedules[id] && isDue(data.schedules[id], now));
   }
 
-  return { data, addDeck, deleteDeck, addFlashcard, deleteCard, reviewCard, dueCardIds };
+  return { data, addDeck, deleteDeck, addFlashcard, addPack, deleteCard, reviewCard, dueCardIds };
 }
 
 export type AppActions = ReturnType<typeof useAppData>;

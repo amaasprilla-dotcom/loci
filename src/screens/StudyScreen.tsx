@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
-import { formatInterval, GRADES, previewDueDates, Rating, type Grade } from "../scheduler";
+import { useState } from "react";
+import { FlashcardReview } from "../components/FlashcardReview";
+import { FormulaReview } from "../components/FormulaReview";
+import { GRADES, previewDueDates, Rating, type Grade } from "../scheduler";
 import type { AppActions } from "../useAppData";
 
 // Cards that come due again within this many minutes (e.g. after "Again")
@@ -15,7 +17,6 @@ type Props = {
 export function StudyScreen({ app, deckIds, onExit }: Props) {
   // The cards still to show, in order. Shuffled so decks and topics mix.
   const [queue, setQueue] = useState<string[]>(() => shuffle(app.dueCardIds(deckIds)));
-  const [revealed, setRevealed] = useState(false);
   const [counts, setCounts] = useState<Record<Grade, number>>({
     [Rating.Again]: 0,
     [Rating.Hard]: 0,
@@ -31,27 +32,11 @@ export function StudyScreen({ app, deckIds, onExit }: Props) {
     if (!cardId) return;
     const next = app.reviewCard(cardId, grade);
     setCounts((c) => ({ ...c, [grade]: c[grade] + 1 }));
-    setRevealed(false);
 
     const learnAheadLimit = Date.now() + LEARN_AHEAD_MINUTES * 60_000;
     const comesBackSoon = next.due.getTime() <= learnAheadLimit;
     setQueue((q) => (comesBackSoon ? [...q.slice(1), cardId] : q.slice(1)));
   }
-
-  // Keyboard shortcuts on desktop: Space shows the answer, 1-4 rate it.
-  useEffect(() => {
-    function onKey(event: KeyboardEvent) {
-      if (!card) return;
-      if (!revealed && (event.key === " " || event.key === "Enter")) {
-        event.preventDefault();
-        setRevealed(true);
-      } else if (revealed && ["1", "2", "3", "4"].includes(event.key)) {
-        handleRate(Number(event.key) as Grade);
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  });
 
   if (!card) {
     return (
@@ -80,9 +65,9 @@ export function StudyScreen({ app, deckIds, onExit }: Props) {
     );
   }
 
-  const schedule = app.data.schedules[card.id];
   const now = new Date();
-  const dueDates = previewDueDates(schedule, now);
+  const dueDates = previewDueDates(app.data.schedules[card.id], now);
+  const reviewProps = { dueDates, now, onRate: handleRate };
 
   return (
     <div className="screen study">
@@ -95,30 +80,12 @@ export function StudyScreen({ app, deckIds, onExit }: Props) {
         </span>
       </div>
 
-      <div className="card-face">
-        <div className="card-text">{card.front}</div>
-        {revealed && (
-          <>
-            <hr />
-            <div className="card-text">{card.back}</div>
-          </>
-        )}
-      </div>
-
-      {revealed ? (
-        <div className="grade-row">
-          {GRADES.map(({ grade, label }) => (
-            <button key={grade} className={`grade grade-${grade}`} onClick={() => handleRate(grade)}>
-              <span>{label}</span>
-              <small>{formatInterval(now, dueDates[grade])}</small>
-            </button>
-          ))}
-        </div>
-      ) : (
-        <button className="primary big" onClick={() => setRevealed(true)}>
-          Show answer
-        </button>
+      {/* A new key after every rating makes React start the card fresh
+          (new numbers, empty answer box), even if the same card comes back. */}
+      {card.type === "flashcard" && (
+        <FlashcardReview key={reviewedCount} card={card} {...reviewProps} />
       )}
+      {card.type === "formula" && <FormulaReview key={reviewedCount} card={card} {...reviewProps} />}
     </div>
   );
 }
