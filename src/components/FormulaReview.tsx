@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { checkAnswer, makeVariant } from "../formula";
-import { Rating, type Grade } from "../scheduler";
+import type { Grade } from "../scheduler";
 import type { FormulaProblem } from "../types";
-import { GradeButtons } from "./GradeButtons";
 import { MathText } from "./MathText";
+import { ProblemGrades, type Outcome } from "./ProblemGrades";
 
 type Props = {
   card: FormulaProblem;
@@ -11,10 +11,6 @@ type Props = {
   now: Date;
   onRate: (grade: Grade) => void;
 };
-
-// What happened after the user answered:
-// correct / wrong after typing, or "self" if they chose to just see the answer.
-type Outcome = "correct" | "wrong" | "self";
 
 export function FormulaReview({ card, dueDates, now, onRate }: Props) {
   // New random numbers each time this component appears.
@@ -84,25 +80,7 @@ export function FormulaReview({ card, dueDates, now, onRate }: Props) {
         </>
       )}
 
-      {outcome === "correct" && (
-        <GradeButtons
-          dueDates={dueDates}
-          now={now}
-          onRate={onRate}
-          allowed={[Rating.Hard, Rating.Good, Rating.Easy]}
-          preselected={Rating.Good}
-        />
-      )}
-      {outcome === "wrong" && (
-        <GradeButtons
-          dueDates={dueDates}
-          now={now}
-          onRate={onRate}
-          allowed={[Rating.Again]}
-          preselected={Rating.Again}
-        />
-      )}
-      {outcome === "self" && <GradeButtons dueDates={dueDates} now={now} onRate={onRate} />}
+      {outcome && <ProblemGrades outcome={outcome} dueDates={dueDates} now={now} onRate={onRate} />}
     </>
   );
 }

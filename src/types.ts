@@ -26,5 +26,18 @@ export type FormulaProblem = {
   solution?: string; // "v = {d} / {t} = {answer}"
 };
 
-// Milestone 3 will add TableProblem to this union.
-export type Card = Flashcard | FormulaProblem;
+// A grid of answers. Each review picks one random cell and asks for it.
+export type TableProblem = {
+  id: string;
+  type: "table";
+  prompt: string; // "Conjugate {verb} for {person}"
+  rowKey: string; // name of the row placeholder in the prompt, e.g. "verb"
+  colKey: string; // name of the column placeholder, e.g. "person"
+  rows: string[];
+  cols: string[];
+  cells: string[][]; // cells[row][col] = correct answer
+  mode: "typed" | "choice"; // choice = 4 options taken from the same column
+  ignoreAccents?: boolean; // typed mode: if true, "esta" counts as "está"
+};
+
+export type Card = Flashcard | FormulaProblem | TableProblem;

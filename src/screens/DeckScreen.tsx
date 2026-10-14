@@ -111,6 +111,17 @@ export function DeckScreen({ app, deckId, onBack, onStudy }: Props) {
                     <div className="muted">Formula problem · answer = {card.answer}</div>
                   </>
                 )}
+                {card.type === "table" && (
+                  <>
+                    <div>
+                      <MathText text={card.prompt} />
+                    </div>
+                    <div className="muted">
+                      Table problem · {card.rows.length} × {card.cols.length} ·{" "}
+                      {card.mode === "typed" ? "type the answer" : "multiple choice"}
+                    </div>
+                  </>
+                )}
               </div>
               <div className="card-row-side">
                 <small className="muted">{dueLabel(cardId)}</small>

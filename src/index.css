@@ -324,3 +324,34 @@ textarea {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+.feedback.almost {
+  color: var(--hard);
+}
+
+/* Multiple-choice options: 2 x 2 grid. */
+.options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.option {
+  padding: 14px 8px;
+  font-size: 1.15rem;
+  border-width: 2px;
+}
+
+.option:disabled {
+  opacity: 1;
+}
+
+.option.correct {
+  border-color: var(--good);
+  background: color-mix(in srgb, var(--good) 12%, var(--surface));
+}
+
+.option.wrong {
+  border-color: var(--again);
+  background: color-mix(in srgb, var(--again) 12%, var(--surface));
+}

@@ -1,0 +1,87 @@
+{
+  "name": "Spanish: present tense",
+  "cards": [
+    {
+      "type": "table",
+      "prompt": "Present tense of “{verb}” for “{person}”",
+      "rowKey": "verb",
+      "colKey": "person",
+      "rows": ["ser", "estar", "tener", "ir", "hacer", "poder", "querer", "hablar", "comer", "vivir"],
+      "cols": ["yo", "tú", "él / ella / usted", "nosotros", "vosotros", "ellos / ellas / ustedes"],
+      "cells": [
+        ["soy", "eres", "es", "somos", "sois", "son"],
+        ["estoy", "estás", "está", "estamos", "estáis", "están"],
+        ["tengo", "tienes", "tiene", "tenemos", "tenéis", "tienen"],
+        ["voy", "vas", "va", "vamos", "vais", "van"],
+        ["hago", "haces", "hace", "hacemos", "hacéis", "hacen"],
+        ["puedo", "puedes", "puede", "podemos", "podéis", "pueden"],
+        ["quiero", "quieres", "quiere", "queremos", "queréis", "quieren"],
+        ["hablo", "hablas", "habla", "hablamos", "habláis", "hablan"],
+        ["como", "comes", "come", "comemos", "coméis", "comen"],
+        ["vivo", "vives", "vive", "vivimos", "vivís", "viven"]
+      ],
+      "mode": "typed",
+      "ignoreAccents": false
+    },
+    {
+      "type": "flashcard",
+      "front": "la casa",
+      "back": "the house"
+    },
+    {
+      "type": "flashcard",
+      "front": "el perro",
+      "back": "the dog"
+    },
+    {
+      "type": "flashcard",
+      "front": "el gato",
+      "back": "the cat"
+    },
+    {
+      "type": "flashcard",
+      "front": "el agua",
+      "back": "the water"
+    },
+    {
+      "type": "flashcard",
+      "front": "el libro",
+      "back": "the book"
+    },
+    {
+      "type": "flashcard",
+      "front": "la ciudad",
+      "back": "the city"
+    },
+    {
+      "type": "flashcard",
+      "front": "el trabajo",
+      "back": "work / the job"
+    },
+    {
+      "type": "flashcard",
+      "front": "el amigo, la amiga",
+      "back": "the friend"
+    },
+    {
+      "type": "flashcard",
+      "front": "la comida",
+      "back": "food / the meal"
+    },
+    {
+      "type": "flashcard",
+      "front": "el tiempo",
+      "back": "time / the weather"
+    },
+    {
+      "type": "flashcard",
+      "front": "hoy",
+      "back": "today"
+    },
+    {
+      "type": "flashcard",
+      "front": "mañana",
+      "back": "tomorrow (also: morning)"
+    }
+  ]
+}

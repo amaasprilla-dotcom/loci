@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { FlashcardReview } from "../components/FlashcardReview";
 import { FormulaReview } from "../components/FormulaReview";
+import { TableReview } from "../components/TableReview";
 import { GRADES, previewDueDates, Rating, type Grade } from "../scheduler";
 import type { AppActions } from "../useAppData";
+import { shuffle } from "../random";
 
 // Cards that come due again within this many minutes (e.g. after "Again")
 // are shown again later in the same session instead of waiting for next time.
@@ -86,15 +88,8 @@ export function StudyScreen({ app, deckIds, onExit }: Props) {
         <FlashcardReview key={reviewedCount} card={card} {...reviewProps} />
       )}
       {card.type === "formula" && <FormulaReview key={reviewedCount} card={card} {...reviewProps} />}
+      {card.type === "table" && <TableReview key={reviewedCount} card={card} {...reviewProps} />}
     </div>
   );
 }
 
-function shuffle<T>(items: T[]): T[] {
-  const result = [...items];
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}

@@ -1,0 +1,181 @@
+{
+  "name": "Trigonometry",
+  "cards": [
+    {
+      "type": "table",
+      "prompt": "What is ${fn}({angle})$?",
+      "rowKey": "angle",
+      "colKey": "fn",
+      "rows": [
+        "0^\\circ",
+        "30^\\circ",
+        "45^\\circ",
+        "60^\\circ",
+        "90^\\circ",
+        "120^\\circ",
+        "135^\\circ",
+        "150^\\circ",
+        "180^\\circ",
+        "210^\\circ",
+        "225^\\circ",
+        "240^\\circ",
+        "270^\\circ",
+        "300^\\circ",
+        "315^\\circ",
+        "330^\\circ"
+      ],
+      "cols": ["\\sin", "\\cos", "\\tan"],
+      "cells": [
+        ["$0$", "$1$", "$0$"],
+        ["$\\frac{1}{2}$", "$\\frac{\\sqrt{3}}{2}$", "$\\frac{\\sqrt{3}}{3}$"],
+        ["$\\frac{\\sqrt{2}}{2}$", "$\\frac{\\sqrt{2}}{2}$", "$1$"],
+        ["$\\frac{\\sqrt{3}}{2}$", "$\\frac{1}{2}$", "$\\sqrt{3}$"],
+        ["$1$", "$0$", "undefined"],
+        ["$\\frac{\\sqrt{3}}{2}$", "$-\\frac{1}{2}$", "$-\\sqrt{3}$"],
+        ["$\\frac{\\sqrt{2}}{2}$", "$-\\frac{\\sqrt{2}}{2}$", "$-1$"],
+        ["$\\frac{1}{2}$", "$-\\frac{\\sqrt{3}}{2}$", "$-\\frac{\\sqrt{3}}{3}$"],
+        ["$0$", "$-1$", "$0$"],
+        ["$-\\frac{1}{2}$", "$-\\frac{\\sqrt{3}}{2}$", "$\\frac{\\sqrt{3}}{3}$"],
+        ["$-\\frac{\\sqrt{2}}{2}$", "$-\\frac{\\sqrt{2}}{2}$", "$1$"],
+        ["$-\\frac{\\sqrt{3}}{2}$", "$-\\frac{1}{2}$", "$\\sqrt{3}$"],
+        ["$-1$", "$0$", "undefined"],
+        ["$-\\frac{\\sqrt{3}}{2}$", "$\\frac{1}{2}$", "$-\\sqrt{3}$"],
+        ["$-\\frac{\\sqrt{2}}{2}$", "$\\frac{\\sqrt{2}}{2}$", "$-1$"],
+        ["$-\\frac{1}{2}$", "$\\frac{\\sqrt{3}}{2}$", "$-\\frac{\\sqrt{3}}{3}$"]
+      ],
+      "mode": "choice"
+    },
+    {
+      "type": "formula",
+      "prompt": "A right triangle has hypotenuse {h} cm and an angle of {A}°. How long is the side opposite that angle, in cm?",
+      "vars": {
+        "h": {
+          "min": 5,
+          "max": 20,
+          "step": 1
+        },
+        "A": {
+          "min": 20,
+          "max": 70,
+          "step": 5
+        }
+      },
+      "answer": "h * sin(A deg)",
+      "solution": "$\\text{opp} = h \\sin A = {h} \\times \\sin {A}^\\circ = {answer}$ cm"
+    },
+    {
+      "type": "formula",
+      "prompt": "A right triangle has hypotenuse {h} cm and an angle of {A}°. How long is the side adjacent to that angle, in cm?",
+      "vars": {
+        "h": {
+          "min": 5,
+          "max": 20,
+          "step": 1
+        },
+        "A": {
+          "min": 20,
+          "max": 70,
+          "step": 5
+        }
+      },
+      "answer": "h * cos(A deg)",
+      "solution": "$\\text{adj} = h \\cos A = {h} \\times \\cos {A}^\\circ = {answer}$ cm"
+    },
+    {
+      "type": "formula",
+      "prompt": "In a right triangle, the side adjacent to a {A}° angle is {a} cm. How long is the opposite side, in cm?",
+      "vars": {
+        "a": {
+          "min": 3,
+          "max": 15,
+          "step": 1
+        },
+        "A": {
+          "min": 20,
+          "max": 70,
+          "step": 5
+        }
+      },
+      "answer": "a * tan(A deg)",
+      "solution": "$\\text{opp} = \\text{adj} \\times \\tan A = {a} \\times \\tan {A}^\\circ = {answer}$ cm"
+    },
+    {
+      "type": "formula",
+      "prompt": "In a right triangle, the side opposite angle A is {o} cm and the hypotenuse is {h} cm. What is A in degrees (1 decimal)?",
+      "vars": {
+        "o": {
+          "min": 3,
+          "max": 9,
+          "step": 1
+        },
+        "h": {
+          "min": 10,
+          "max": 15,
+          "step": 1
+        }
+      },
+      "answer": "asin(o / h) * 180 / pi",
+      "decimals": 1,
+      "tolerance": 0.1,
+      "solution": "$A = \\sin^{-1}\\left(\\frac{{o}}{{h}}\\right) = {answer}^\\circ$"
+    },
+    {
+      "type": "formula",
+      "prompt": "A right triangle has legs of {a} cm and {b} cm. How long is the hypotenuse, in cm?",
+      "vars": {
+        "a": {
+          "min": 3,
+          "max": 12,
+          "step": 1
+        },
+        "b": {
+          "min": 4,
+          "max": 15,
+          "step": 1
+        }
+      },
+      "answer": "sqrt(a^2 + b^2)",
+      "solution": "$c = \\sqrt{a^2 + b^2} = \\sqrt{{a}^2 + {b}^2} = {answer}$ cm"
+    },
+    {
+      "type": "flashcard",
+      "front": "$\\sin^2 x + \\cos^2 x = \\;?$",
+      "back": "$1$"
+    },
+    {
+      "type": "flashcard",
+      "front": "Write $\\tan x$ using sine and cosine.",
+      "back": "$\\tan x = \\dfrac{\\sin x}{\\cos x}$"
+    },
+    {
+      "type": "flashcard",
+      "front": "$1 + \\tan^2 x = \\;?$",
+      "back": "$\\sec^2 x$"
+    },
+    {
+      "type": "flashcard",
+      "front": "$\\sin(2x) = \\;?$",
+      "back": "$2 \\sin x \\cos x$"
+    },
+    {
+      "type": "flashcard",
+      "front": "$\\cos(2x) = \\;?$ (three forms)",
+      "back": "$\\cos^2 x - \\sin^2 x$\n$= 2\\cos^2 x - 1$\n$= 1 - 2\\sin^2 x$"
+    },
+    {
+      "type": "flashcard",
+      "front": "$\\sin(-x) = \\;?$ and $\\cos(-x) = \\;?$",
+      "back": "$\\sin(-x) = -\\sin x$ (sine is odd)\n$\\cos(-x) = \\cos x$ (cosine is even)"
+    },
+    {
+      "type": "flashcard",
+      "front": "$\\sin(90^\\circ - x) = \\;?$",
+      "back": "$\\cos x$"
+    },
+    {
+      "type": "flashcard",
+      "front": "SOH CAH TOA: what does it stand for?",
+      "back": "$\\sin = \\dfrac{\\text{opp}}{\\text{hyp}}$, $\\cos = \\dfrac{\\text{adj}}{\\text{hyp}}$, $\\tan = \\dfrac{\\text{opp}}{\\text{adj}}$"
+    }
+  ]
+}
