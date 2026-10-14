@@ -4,6 +4,7 @@ export type Deck = {
   id: string;
   name: string;
   cardIds: string[];
+  packId?: string; // set when the deck came from a built-in pack
 };
 
 export type Flashcard = {

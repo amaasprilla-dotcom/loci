@@ -9,9 +9,10 @@ import trigonometry from "./trigonometry.json";
 export type PackCard = Card extends infer C ? (C extends Card ? Omit<C, "id"> : never) : never;
 
 export type Pack = {
+  id: string;
   name: string;
+  description: string;
   cards: PackCard[];
 };
 
-// Milestone 4 adds a proper Packs screen.
 export const PACKS: Pack[] = [trigonometry as Pack, kinematics as Pack, spanish as Pack];

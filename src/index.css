@@ -355,3 +355,128 @@ textarea {
   border-color: var(--again);
   background: color-mix(in srgb, var(--again) 12%, var(--surface));
 }
+
+/* ---------- Top navigation ---------- */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar nav {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 8px 16px;
+  display: flex;
+  gap: 4px;
+}
+
+.topbar nav button {
+  border: none;
+  background: none;
+  padding: 8px 12px;
+  color: var(--muted);
+}
+
+.topbar nav button.active {
+  color: var(--accent);
+  font-weight: 600;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* ---------- Home ---------- */
+
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.stat strong {
+  font-size: 1.8rem;
+  line-height: 1.2;
+}
+
+.center {
+  text-align: center;
+  margin: 0;
+}
+
+/* ---------- Packs ---------- */
+
+.pack {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.pack p {
+  margin: 4px 0;
+  font-size: 0.95rem;
+}
+
+.pack button {
+  flex-shrink: 0;
+}
+
+/* ---------- Settings ---------- */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.panel h2 {
+  margin: 0;
+}
+
+.panel p {
+  margin: 0;
+}
+
+.panel button,
+.file-button {
+  align-self: flex-start;
+}
+
+/* A label styled like a button; the real file input inside is hidden. */
+.file-button {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.file-button input {
+  display: none;
+}
+
+.notice {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}

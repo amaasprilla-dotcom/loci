@@ -1,5 +1,7 @@
 {
+  "id": "spanish-present",
   "name": "Spanish: present tense",
+  "description": "Conjugate 10 common verbs in the present tense, plus everyday vocabulary.",
   "cards": [
     {
       "type": "table",

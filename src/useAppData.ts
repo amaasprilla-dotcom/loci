@@ -2,7 +2,7 @@
 // Screens call these actions; the hook saves to localStorage after each change.
 
 import { useEffect, useState } from "react";
-import { loadData, makeId, saveData, type AppData } from "./storage";
+import { dayKey, emptyData, loadData, makeId, saveData, type AppData } from "./storage";
 import { isDue, newSchedule, rate, type Grade, type Schedule } from "./scheduler";
 import type { Card } from "./types";
 import type { Pack } from "./packs";
@@ -48,7 +48,12 @@ export function useAppData() {
   function addPack(pack: Pack) {
     const now = new Date();
     const newCards = pack.cards.map((card) => ({ ...card, id: makeId() }) as Card);
-    const deck = { id: makeId(), name: pack.name, cardIds: newCards.map((c) => c.id) };
+    const deck = {
+      id: makeId(),
+      name: pack.name,
+      cardIds: newCards.map((c) => c.id),
+      packId: pack.id,
+    };
     setData((d) => {
       const cards = { ...d.cards };
       const schedules = { ...d.schedules };
@@ -81,8 +86,22 @@ export function useAppData() {
   // Saves the rating and returns the card's new schedule.
   function reviewCard(cardId: string, grade: Grade): Schedule {
     const next = rate(data.schedules[cardId], grade);
-    setData((d) => ({ ...d, schedules: { ...d.schedules, [cardId]: next } }));
+    const today = dayKey(new Date());
+    setData((d) => ({
+      ...d,
+      schedules: { ...d.schedules, [cardId]: next },
+      reviewDays: d.reviewDays.includes(today) ? d.reviewDays : [...d.reviewDays, today],
+    }));
     return next;
+  }
+
+  // Swaps in imported data (from a backup file).
+  function replaceData(newData: AppData) {
+    setData(newData);
+  }
+
+  function resetData() {
+    setData(emptyData());
   }
 
   // Ids of cards in the given decks that are due right now.
@@ -93,7 +112,18 @@ export function useAppData() {
       .filter((id) => data.schedules[id] && isDue(data.schedules[id], now));
   }
 
-  return { data, addDeck, deleteDeck, addFlashcard, addPack, deleteCard, reviewCard, dueCardIds };
+  return {
+    data,
+    addDeck,
+    deleteDeck,
+    addFlashcard,
+    addPack,
+    deleteCard,
+    reviewCard,
+    replaceData,
+    resetData,
+    dueCardIds,
+  };
 }
 
 export type AppActions = ReturnType<typeof useAppData>;

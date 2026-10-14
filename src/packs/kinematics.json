@@ -1,5 +1,7 @@
 {
+  "id": "kinematics",
   "name": "Kinematics",
+  "description": "Speed, acceleration and suvat problems with fresh numbers every time, plus key definitions.",
   "cards": [
     {
       "type": "formula",
