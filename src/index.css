@@ -1,0 +1,274 @@
+/* Plain CSS for the whole app. Colors live in variables so dark mode is one block. */
+
+:root {
+  --bg: #f7f7f8;
+  --surface: #ffffff;
+  --text: #1c1c21;
+  --muted: #6b6b76;
+  --border: #dedee3;
+  --accent: #4f46e5;
+  --accent-text: #ffffff;
+  --again: #dc2626;
+  --hard: #d97706;
+  --good: #16a34a;
+  --easy: #2563eb;
+
+  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15151a;
+    --surface: #1f1f26;
+    --text: #ececf1;
+    --muted: #9b9ba8;
+    --border: #33333d;
+    --accent: #818cf8;
+    --accent-text: #11111a;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+}
+
+.app {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+h1 {
+  margin: 8px 0;
+  font-size: 1.75rem;
+}
+
+h2 {
+  margin: 16px 0 0;
+  font-size: 1.1rem;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+/* ---------- Buttons and inputs ---------- */
+
+button {
+  font: inherit;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+button.big {
+  padding: 16px;
+  font-size: 1.1rem;
+}
+
+button.link {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  padding: 4px 0;
+  color: var(--accent);
+}
+
+button.danger {
+  color: var(--again);
+  align-self: flex-start;
+}
+
+button.small {
+  padding: 4px 10px;
+  font-size: 0.85rem;
+}
+
+input,
+textarea {
+  font: inherit;
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.inline-form {
+  display: flex;
+  gap: 8px;
+}
+
+.inline-form button {
+  flex-shrink: 0;
+}
+
+.card-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.card-form button {
+  align-self: flex-start;
+}
+
+/* ---------- Lists ---------- */
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.list-item {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  padding: 14px 16px;
+}
+
+.due {
+  color: var(--accent);
+}
+
+.card-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.card-row-text {
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.card-row-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ---------- Study screen ---------- */
+
+.study-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-face {
+  min-height: 220px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  font-size: 1.25rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+}
+
+.card-face hr {
+  width: 100%;
+  border: none;
+  border-top: 1px solid var(--border);
+}
+
+.card-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.grade-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.grade {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 4px;
+  font-weight: 600;
+  border-width: 2px;
+}
+
+.grade small {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.grade-1 { border-color: var(--again); }
+.grade-2 { border-color: var(--hard); }
+.grade-3 { border-color: var(--good); }
+.grade-4 { border-color: var(--easy); }
+
+.summary {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.grade-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 5px solid;
+}
