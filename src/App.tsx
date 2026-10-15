@@ -48,6 +48,12 @@ export default function App() {
       )}
 
       <main className="app">
+        {app.saveFailed && (
+          <p className="notice warning">
+            Your latest changes could not be saved: this browser's storage may be full. Go to
+            Settings and Export a backup now.
+          </p>
+        )}
         {screen.name === "home" && (
           <HomeScreen
             app={app}

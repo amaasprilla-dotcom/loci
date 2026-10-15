@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Grade } from "../scheduler";
-import type { Flashcard } from "../types";
+import type { Flashcard, ReviewResult } from "../types";
 import { GradeButtons } from "./GradeButtons";
 import { MathText } from "./MathText";
 
@@ -8,7 +8,7 @@ type Props = {
   card: Flashcard;
   dueDates: Record<Grade, Date>;
   now: Date;
-  onRate: (grade: Grade) => void;
+  onRate: (grade: Grade, result: ReviewResult) => void;
 };
 
 // Front -> "Show answer" -> back + rating buttons.
@@ -45,7 +45,7 @@ export function FlashcardReview({ card, dueDates, now, onRate }: Props) {
       </div>
 
       {revealed ? (
-        <GradeButtons dueDates={dueDates} now={now} onRate={onRate} />
+        <GradeButtons dueDates={dueDates} now={now} onRate={(grade) => onRate(grade, "flashcard")} />
       ) : (
         <button className="primary big" onClick={() => setRevealed(true)}>
           Show answer

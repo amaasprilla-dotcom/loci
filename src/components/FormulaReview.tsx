@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { checkAnswer, makeVariant } from "../formula";
 import type { Grade } from "../scheduler";
-import type { FormulaProblem } from "../types";
+import type { FormulaProblem, ReviewResult } from "../types";
 import { MathText } from "./MathText";
 import { ProblemGrades, type Outcome } from "./ProblemGrades";
 
@@ -9,7 +9,7 @@ type Props = {
   card: FormulaProblem;
   dueDates: Record<Grade, Date>;
   now: Date;
-  onRate: (grade: Grade) => void;
+  onRate: (grade: Grade, result: ReviewResult) => void;
 };
 
 export function FormulaReview({ card, dueDates, now, onRate }: Props) {

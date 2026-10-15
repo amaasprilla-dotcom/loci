@@ -42,3 +42,39 @@ export type TableProblem = {
 };
 
 export type Card = Flashcard | FormulaProblem | TableProblem;
+
+// ---------- Added in v0.2 ----------
+
+// How a review went.
+export type ReviewResult =
+  | "flashcard" // a flashcard, graded by the user
+  | "correct" // a problem, checked by the app: right
+  | "almost" // a problem: right except for accents
+  | "wrong" // a problem: wrong
+  | "self" // a problem the user chose to grade themselves
+  | "skipped"; // skipped without answering (not counted as cleared)
+
+// One line in the review log, written every time a card is reviewed.
+// The Progress screen and rewards are calculated from this.
+export type ReviewLogEntry = {
+  at: string; // when, as an ISO date-time, e.g. "2026-10-15T09:30:00.000Z"
+  cardId: string;
+  deckId: string;
+  cardType: Card["type"];
+  result: ReviewResult;
+  grade: 1 | 2 | 3 | 4 | null; // Again / Hard / Good / Easy; null if skipped
+  stateBefore: "new" | "learning" | "review" | "relearning"; // FSRS state before this review
+  durationMs: number; // time from the card appearing to the rating
+};
+
+// Settings and rewards that belong to the user rather than to a deck.
+export type Profile = {
+  settings: {
+    sessionMinutes: 15 | 30 | 45 | 60 | null; // null = until the queue is empty
+    sound: boolean;
+    calmMode: boolean;
+  };
+  coins: number;
+  unlockedCardBacks: string[];
+  badges: string[];
+};

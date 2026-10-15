@@ -540,3 +540,32 @@ button.link {
     align-items: stretch;
   }
 }
+
+/* ---------- Review history (Settings) ---------- */
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.history {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.history th,
+.history td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.history th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.notice.warning {
+  background: color-mix(in srgb, var(--again) 15%, var(--surface));
+}

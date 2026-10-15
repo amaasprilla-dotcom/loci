@@ -3,15 +3,20 @@
 
 import { useEffect, useState } from "react";
 import { dayKey, emptyData, loadData, makeId, saveData, type AppData } from "./storage";
-import { isDue, newSchedule, rate, type Grade, type Schedule } from "./scheduler";
-import type { Card } from "./types";
+import { isDue, newSchedule, rate, State, type Grade, type Schedule } from "./scheduler";
+import type { Card, ReviewLogEntry, ReviewResult } from "./types";
 import type { Pack } from "./packs";
 
 export function useAppData() {
   const [data, setData] = useState<AppData>(loadData);
+  // True if the last save failed (e.g. the browser's storage is full).
+  const [saveFailed, setSaveFailed] = useState(false);
 
+  // Write to localStorage whenever the data changes, and remember if it failed.
   useEffect(() => {
-    saveData(data);
+    // Recording the save result is the point of this effect, so setState here is intended.
+    // eslint-disable-next-line react/set-state-in-effect
+    setSaveFailed(!saveData(data));
   }, [data]);
 
   function addDeck(name: string) {
@@ -83,14 +88,32 @@ export function useAppData() {
     });
   }
 
-  // Saves the rating and returns the card's new schedule.
-  function reviewCard(cardId: string, grade: Grade): Schedule {
-    const next = rate(data.schedules[cardId], grade);
-    const today = dayKey(new Date());
+  // Saves the rating, adds a line to the review log, and returns the card's new schedule.
+  function reviewCard(
+    cardId: string,
+    grade: Grade,
+    result: ReviewResult,
+    durationMs: number,
+  ): Schedule {
+    const before = data.schedules[cardId];
+    const next = rate(before, grade);
+    const now = new Date();
+    const today = dayKey(now);
+    const logEntry: ReviewLogEntry = {
+      at: now.toISOString(),
+      cardId,
+      deckId: data.decks.find((deck) => deck.cardIds.includes(cardId))?.id ?? "",
+      cardType: data.cards[cardId].type,
+      result,
+      grade,
+      stateBefore: STATE_NAMES[before.state],
+      durationMs: Math.round(durationMs),
+    };
     setData((d) => ({
       ...d,
       schedules: { ...d.schedules, [cardId]: next },
       reviewDays: d.reviewDays.includes(today) ? d.reviewDays : [...d.reviewDays, today],
+      reviewLog: [...d.reviewLog, logEntry],
     }));
     return next;
   }
@@ -124,6 +147,7 @@ export function useAppData() {
 
   return {
     data,
+    saveFailed,
     addDeck,
     deleteDeck,
     addFlashcard,
@@ -138,3 +162,10 @@ export function useAppData() {
 }
 
 export type AppActions = ReturnType<typeof useAppData>;
+
+const STATE_NAMES: Record<State, ReviewLogEntry["stateBefore"]> = {
+  [State.New]: "new",
+  [State.Learning]: "learning",
+  [State.Review]: "review",
+  [State.Relearning]: "relearning",
+};

@@ -1,4 +1,5 @@
 import { Rating, type Grade } from "../scheduler";
+import type { ReviewResult } from "../types";
 import { GradeButtons } from "./GradeButtons";
 
 // How a problem card went:
@@ -19,7 +20,7 @@ type Props = {
   outcome: Outcome;
   dueDates: Record<Grade, Date>;
   now: Date;
-  onRate: (grade: Grade) => void;
+  onRate: (grade: Grade, result: ReviewResult) => void;
 };
 
 // The rating buttons to show after a problem card has been answered.
@@ -29,7 +30,7 @@ export function ProblemGrades({ outcome, dueDates, now, onRate }: Props) {
     <GradeButtons
       dueDates={dueDates}
       now={now}
-      onRate={onRate}
+      onRate={(grade) => onRate(grade, outcome)}
       allowed={allowed}
       preselected={preselected}
     />

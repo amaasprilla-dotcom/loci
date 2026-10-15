@@ -3,6 +3,7 @@ import { FlashcardReview } from "../components/FlashcardReview";
 import { FormulaReview } from "../components/FormulaReview";
 import { TableReview } from "../components/TableReview";
 import { GRADES, previewDueDates, Rating, type Grade } from "../scheduler";
+import type { ReviewResult } from "../types";
 import type { AppActions } from "../useAppData";
 import { shuffle } from "../random";
 
@@ -32,9 +33,10 @@ export function StudyScreen({ app, deckIds, onExit }: Props) {
   const card = cardId ? app.data.cards[cardId] : undefined;
   const reviewedCount = Object.values(counts).reduce((a, b) => a + b, 0);
 
-  function handleRate(grade: Grade) {
+  function handleRate(grade: Grade, result: ReviewResult) {
     if (!cardId) return;
-    const next = app.reviewCard(cardId, grade);
+    const durationMs = Date.now() - shownAt.getTime();
+    const next = app.reviewCard(cardId, grade, result, durationMs);
     setCounts((c) => ({ ...c, [grade]: c[grade] + 1 }));
 
     const learnAheadLimit = Date.now() + LEARN_AHEAD_MINUTES * 60_000;

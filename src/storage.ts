@@ -1,22 +1,35 @@
 // Saving and loading everything to the browser's localStorage,
 // plus turning data into a backup file and back.
 
-import type { Card, Deck } from "./types";
+import type { Card, Deck, Profile, ReviewLogEntry } from "./types";
 import { reviveSchedule, type Schedule } from "./scheduler";
+import { defaultProfile, migrate, SCHEMA_VERSION, versionOf, type SavedData } from "./migrate";
 
 export type AppData = {
-  version: 1;
+  schemaVersion: typeof SCHEMA_VERSION;
   decks: Deck[];
   cards: Record<string, Card>; // card id -> card
   schedules: Record<string, Schedule>; // card id -> FSRS state
   reviewDays: string[]; // days with at least one review, "2026-10-14" (for the streak)
+  reviewLog: ReviewLogEntry[]; // every review ever done, oldest first
+  profile: Profile;
 };
 
 const STORAGE_KEY = "study-app-data";
-const BACKUP_KEY = "study-app-data-unreadable";
+const UNREADABLE_KEY = "study-app-data-unreadable";
+// A copy of the data exactly as it was before it was upgraded to a newer version.
+const PRE_UPGRADE_KEY = "study-app-data-before-upgrade";
 
 export function emptyData(): AppData {
-  return { version: 1, decks: [], cards: {}, schedules: {}, reviewDays: [] };
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    decks: [],
+    cards: {},
+    schedules: {},
+    reviewDays: [],
+    reviewLog: [],
+    profile: defaultProfile(),
+  };
 }
 
 export function loadData(): AppData {
@@ -24,52 +37,82 @@ export function loadData(): AppData {
   if (!raw) return emptyData();
 
   try {
-    return parseData(raw);
+    const data = parseData(raw);
+    // Saved by an older version? Keep the original text untouched, just in case.
+    if (versionOf(JSON.parse(raw)) < SCHEMA_VERSION && !localStorage.getItem(PRE_UPGRADE_KEY)) {
+      localStorage.setItem(PRE_UPGRADE_KEY, raw);
+    }
+    return data;
   } catch (error) {
     // Don't throw the user's data away: keep a copy before starting fresh.
     console.error("Could not read saved data, starting empty.", error);
-    localStorage.setItem(BACKUP_KEY, raw);
+    localStorage.setItem(UNREADABLE_KEY, raw);
     return emptyData();
   }
 }
 
-export function saveData(data: AppData): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+// Returns false if the browser refused (usually because storage is full).
+export function saveData(data: AppData): boolean {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    return true;
+  } catch (error) {
+    console.error("Could not save data.", error);
+    return false;
+  }
 }
 
-// Reads saved or imported JSON text. Throws an Error with a readable
-// message if it doesn't look like this app's data.
+// Reads saved or imported JSON text from any version of the app.
+// Throws an Error with a readable message if it isn't this app's data.
 export function parseData(text: string): AppData {
-  let parsed;
+  let parsed: SavedData;
   try {
     parsed = JSON.parse(text);
   } catch {
     throw new Error("This file is not valid JSON.");
   }
+  if (!parsed || typeof parsed !== "object") {
+    throw new Error("This file is not a backup from this app.");
+  }
+
+  const data = migrate(parsed);
 
   const looksRight =
-    parsed &&
-    parsed.version === 1 &&
-    Array.isArray(parsed.decks) &&
-    typeof parsed.cards === "object" &&
-    typeof parsed.schedules === "object";
+    Array.isArray(data.decks) &&
+    isObject(data.cards) &&
+    isObject(data.schedules) &&
+    Array.isArray(data.reviewLog);
   if (!looksRight) {
     throw new Error("This file is not a backup from this app.");
   }
 
   // Dates were saved as text; turn them back into real dates.
   const schedules: Record<string, Schedule> = {};
-  for (const [cardId, stored] of Object.entries(parsed.schedules)) {
+  for (const [cardId, stored] of Object.entries(data.schedules as object)) {
     schedules[cardId] = reviveSchedule(stored);
   }
 
-  return {
-    version: 1,
-    decks: parsed.decks,
-    cards: parsed.cards,
-    schedules,
-    reviewDays: Array.isArray(parsed.reviewDays) ? parsed.reviewDays : [],
+  // Fill in any profile fields that are missing, keeping the saved ones.
+  const savedProfile = (data.profile ?? {}) as Partial<Profile>;
+  const profile: Profile = {
+    ...defaultProfile(),
+    ...savedProfile,
+    settings: { ...defaultProfile().settings, ...savedProfile.settings },
   };
+
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    decks: data.decks as Deck[],
+    cards: data.cards as Record<string, Card>,
+    schedules,
+    reviewDays: Array.isArray(data.reviewDays) ? data.reviewDays : [],
+    reviewLog: data.reviewLog as ReviewLogEntry[],
+    profile,
+  };
+}
+
+function isObject(value: unknown): boolean {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 // Makes the browser download the data as a .json file.

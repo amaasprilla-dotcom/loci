@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ReviewHistory } from "../components/ReviewHistory";
 import { downloadBackup, parseData } from "../storage";
 import type { AppActions } from "../useAppData";
 
@@ -41,8 +42,9 @@ export function SettingsScreen({ app }: { app: AppActions }) {
       <section className="panel">
         <h2>Back up your data</h2>
         <p className="muted">
-          Your {deckCount} decks and {cardCount} cards are saved only in this browser. Clearing
-          browser data deletes them, so download a backup now and then.
+          Your {deckCount} decks, {cardCount} cards and {app.data.reviewLog.length} logged reviews
+          are saved only in this browser. Clearing browser data deletes them, so download a
+          backup now and then.
         </p>
         <button className="primary" onClick={() => downloadBackup(app.data)}>
           Export (download .json)
@@ -59,6 +61,8 @@ export function SettingsScreen({ app }: { app: AppActions }) {
       </section>
 
       {message && <p className="notice">{message}</p>}
+
+      <ReviewHistory app={app} />
 
       <section className="panel">
         <h2>Reset</h2>
