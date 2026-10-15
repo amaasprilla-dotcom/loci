@@ -22,66 +22,78 @@
         ["como", "comes", "come", "comemos", "coméis", "comen"],
         ["vivo", "vives", "vive", "vivimos", "vivís", "viven"]
       ],
-      "mode": "typed",
+      "mode": "choice",
       "ignoreAccents": false
     },
     {
       "type": "flashcard",
+      "choice": true,
       "front": "la casa",
       "back": "the house"
     },
     {
       "type": "flashcard",
+      "choice": true,
       "front": "el perro",
       "back": "the dog"
     },
     {
       "type": "flashcard",
+      "choice": true,
       "front": "el gato",
       "back": "the cat"
     },
     {
       "type": "flashcard",
+      "choice": true,
       "front": "el agua",
       "back": "the water"
     },
     {
       "type": "flashcard",
+      "choice": true,
       "front": "el libro",
       "back": "the book"
     },
     {
       "type": "flashcard",
+      "choice": true,
       "front": "la ciudad",
       "back": "the city"
     },
     {
       "type": "flashcard",
+      "choice": true,
       "front": "el trabajo",
       "back": "work / the job"
     },
     {
       "type": "flashcard",
+      "choice": true,
       "front": "el amigo, la amiga",
       "back": "the friend"
     },
     {
       "type": "flashcard",
+      "choice": true,
       "front": "la comida",
       "back": "food / the meal"
     },
     {
       "type": "flashcard",
+      "choice": true,
       "front": "el tiempo",
       "back": "time / the weather"
     },
     {
       "type": "flashcard",
+      "choice": true,
       "front": "hoy",
       "back": "today"
     },
     {
       "type": "flashcard",
+      "choice": true,
       "front": "mañana",
       "back": "tomorrow (also: morning)"
     }

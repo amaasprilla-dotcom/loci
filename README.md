@@ -33,8 +33,12 @@ Data stays in each visitor's own browser, so a deployed copy starts empty for ev
 - `src/types.ts`: the data shapes (decks, flashcards, formula and table problems)
 - `src/storage.ts`: saving to `localStorage`, backup export/import
 - `src/scheduler.ts`: spaced-repetition scheduling (wraps `ts-fsrs`)
-- `src/formula.ts`: making and checking formula problems (uses `mathjs`)
-- `src/table.ts`: making and checking table problems
+- `src/migrate.ts`: upgrading saved data from older versions (schema version)
+- `src/formula.ts`: making formula problems, with wrong options from typical mistakes (uses `mathjs`)
+- `src/table.ts`: making table problems
+- `src/questions.ts`, `src/choices.ts`: turning any card into a multiple-choice question
+- `src/queue.ts`: the order cards are shown in during a session
+- `src/exam.ts`: exam mode rules (interval cap, new-card pacing, final days)
 - `src/streak.ts`: the day streak
 - `src/useAppData.ts`: all app data plus the actions that change it
 - `src/packs/`: built-in packs as JSON files (add a pack by adding a file and listing it in `index.ts`)

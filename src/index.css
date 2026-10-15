@@ -569,3 +569,95 @@ button.link {
 .notice.warning {
   background: color-mix(in srgb, var(--again) 15%, var(--surface));
 }
+
+/* ---------- v0.2: multiple choice, practice, exam ---------- */
+
+.option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.option-key {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 5px;
+}
+
+button.link.skip {
+  align-self: center;
+  color: var(--muted);
+}
+
+.practice-tag {
+  color: var(--accent);
+}
+
+.chip {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  vertical-align: middle;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.chip.urgent {
+  color: var(--again);
+  background: color-mix(in srgb, var(--again) 14%, transparent);
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.check input {
+  width: auto;
+  margin-top: 4px;
+}
+
+button.toggle {
+  margin-top: 6px;
+  align-self: flex-start;
+}
+
+select {
+  font: inherit;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  align-self: flex-start;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 8px;
+}
+
+.pause {
+  text-align: center;
+  padding-top: 40px;
+}
+
+.pause p {
+  margin: 0 0 12px;
+}

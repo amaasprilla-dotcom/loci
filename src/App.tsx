@@ -12,7 +12,7 @@ type Screen =
   | { name: "packs" }
   | { name: "settings" }
   | { name: "deck"; deckId: string }
-  | { name: "study"; deckIds: string[]; returnTo: Screen };
+  | { name: "study"; deckIds: string[]; practice: boolean; returnTo: Screen };
 
 const NAV_ITEMS: { screen: Screen; label: string }[] = [
   { screen: { name: "home" }, label: "Home" },
@@ -25,8 +25,8 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>({ name: "home" });
 
   const goHome = () => setScreen({ name: "home" });
-  const startStudy = (deckIds: string[]) =>
-    setScreen({ name: "study", deckIds, returnTo: screen });
+  const startStudy = (deckIds: string[], practice = false) =>
+    setScreen({ name: "study", deckIds, practice, returnTo: screen });
 
   return (
     <>
@@ -70,6 +70,7 @@ export default function App() {
           <StudyScreen
             app={app}
             deckIds={screen.deckIds}
+            practice={screen.practice}
             onExit={() => setScreen(screen.returnTo)}
           />
         )}

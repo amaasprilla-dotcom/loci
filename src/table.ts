@@ -1,13 +1,14 @@
-// Picking a random question from a TableProblem, and checking answers.
+// Picking a random multiple-choice question from a TableProblem.
 
+import { pickOptions } from "./choices";
 import { fillTemplate } from "./formula";
-import { randomIndex, shuffle } from "./random";
+import { randomIndex } from "./random";
 import type { TableProblem } from "./types";
 
 export type TableVariant = {
   prompt: string;
   answer: string;
-  options: string[]; // only used in "choice" mode: the answer plus distractors, shuffled
+  options: string[]; // the answer plus up to 3 wrong ones, shuffled
 };
 
 export function makeTableVariant(problem: TableProblem): TableVariant {
@@ -20,39 +21,13 @@ export function makeTableVariant(problem: TableProblem): TableVariant {
     [problem.colKey]: problem.cols[col],
   });
 
-  // Distractors: other different answers from the same column,
-  // so they look plausible (e.g. other sine values, not cosines).
+  // Wrong options come from the same row and the same column, so they look
+  // plausible: for "tener, nosotros" that's other forms of tener ("tienes")
+  // and other verbs for nosotros ("hablamos"); for sin(30°) it's other sines
+  // and the cosine/tangent of 30°.
+  const sameRow = problem.cells[row];
   const sameColumn = problem.cells.map((cells) => cells[col]);
-  const others = shuffle(unique(sameColumn).filter((cell) => cell !== answer));
-  const options = shuffle([answer, ...others.slice(0, 3)]);
+  const options = pickOptions(answer, [...sameRow, ...sameColumn]);
 
   return { prompt, answer, options };
-}
-
-// "almost" = right except for accents (only when the card doesn't ignore accents).
-export type TypedResult = "correct" | "almost" | "wrong";
-
-export function checkTypedAnswer(input: string, answer: string, ignoreAccents = false): TypedResult {
-  const typed = normalize(input);
-  const expected = normalize(answer);
-  if (typed === expected) return "correct";
-  if (removeAccents(typed) === removeAccents(expected)) {
-    return ignoreAccents ? "correct" : "almost";
-  }
-  return "wrong";
-}
-
-// Trim, lowercase and squeeze spaces: "  Hablo " -> "hablo".
-function normalize(text: string): string {
-  return text.trim().toLowerCase().replace(/\s+/g, " ");
-}
-
-// "está" -> "esta". "NFD" splits each letter from its accent mark,
-// then \p{M} ("any mark") removes the marks.
-function removeAccents(text: string): string {
-  return text.normalize("NFD").replace(/\p{M}/gu, "");
-}
-
-function unique<T>(items: T[]): T[] {
-  return [...new Set(items)];
 }

@@ -6,13 +6,14 @@ import { MathText } from "./MathText";
 
 type Props = {
   card: Flashcard;
-  dueDates: Record<Grade, Date>;
+  dueDates?: Record<Grade, Date>; // missing in practice mode
   now: Date;
   onRate: (grade: Grade, result: ReviewResult) => void;
+  onSkip: () => void;
 };
 
-// Front -> "Show answer" -> back + rating buttons.
-export function FlashcardReview({ card, dueDates, now, onRate }: Props) {
+// A classic flashcard: front -> "Show answer" -> back + Again / Hard / Good / Easy.
+export function FlashcardReview({ card, dueDates, now, onRate, onSkip }: Props) {
   const [revealed, setRevealed] = useState(false);
 
   // Space or Enter shows the answer.
@@ -47,9 +48,14 @@ export function FlashcardReview({ card, dueDates, now, onRate }: Props) {
       {revealed ? (
         <GradeButtons dueDates={dueDates} now={now} onRate={(grade) => onRate(grade, "flashcard")} />
       ) : (
-        <button className="primary big" onClick={() => setRevealed(true)}>
-          Show answer
-        </button>
+        <>
+          <button className="primary big" onClick={() => setRevealed(true)}>
+            Show answer
+          </button>
+          <button className="link skip" onClick={onSkip}>
+            Skip this card →
+          </button>
+        </>
       )}
     </>
   );

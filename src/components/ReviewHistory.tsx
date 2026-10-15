@@ -45,7 +45,10 @@ export function ReviewHistory({ app }: { app: AppActions }) {
                   </td>
                   <td>{deckName(entry.deckId)}</td>
                   <td>{entry.cardType}</td>
-                  <td>{entry.result}</td>
+                  <td>
+                    {entry.result}
+                    {entry.practice && " (practice)"}
+                  </td>
                   <td>{entry.grade ? GRADE_LABELS[entry.grade] : "–"}</td>
                   <td>{Math.round(entry.durationMs / 1000)} s</td>
                 </tr>

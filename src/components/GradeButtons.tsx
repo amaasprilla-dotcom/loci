@@ -2,14 +2,15 @@ import { useEffect } from "react";
 import { formatInterval, GRADES, type Grade } from "../scheduler";
 
 type Props = {
-  dueDates: Record<Grade, Date>; // when the card would come back for each rating
+  dueDates?: Record<Grade, Date>; // when the card would come back for each rating (not in practice)
   now: Date;
   onRate: (grade: Grade) => void;
   allowed?: Grade[]; // which buttons to show (default: all four)
   preselected?: Grade; // highlighted and focused, so Enter picks it
 };
 
-// The Again / Hard / Good / Easy buttons, each showing its next interval.
+// The Again / Hard / Good / Easy buttons, each showing its next interval
+// (in practice mode there is no interval, because the schedule doesn't change).
 // Keys 1-4 also work on a keyboard.
 export function GradeButtons({ dueDates, now, onRate, allowed, preselected }: Props) {
   const shown = GRADES.filter(({ grade }) => !allowed || allowed.includes(grade));
@@ -33,7 +34,7 @@ export function GradeButtons({ dueDates, now, onRate, allowed, preselected }: Pr
           onClick={() => onRate(grade)}
         >
           <span>{label}</span>
-          <small>{formatInterval(now, dueDates[grade])}</small>
+          {dueDates && <small>{formatInterval(now, dueDates[grade])}</small>}
         </button>
       ))}
     </div>

@@ -5,6 +5,8 @@ export type Deck = {
   name: string;
   cardIds: string[];
   packId?: string; // set when the deck came from a built-in pack
+  examDate?: string; // "2026-12-01": exam mode is on while this is set (v0.2)
+  archived?: boolean; // hidden from studying, e.g. after an exam (v0.2)
 };
 
 export type Flashcard = {
@@ -12,6 +14,9 @@ export type Flashcard = {
   type: "flashcard";
   front: string;
   back: string;
+  // v0.2: pick the back from 4 options (taken from other cards in the deck),
+  // checked by the app. Otherwise: Show answer, then rate yourself.
+  choice?: boolean;
 };
 
 // A template that makes a fresh numeric problem each time it is reviewed.
@@ -37,8 +42,9 @@ export type TableProblem = {
   rows: string[];
   cols: string[];
   cells: string[][]; // cells[row][col] = correct answer
-  mode: "typed" | "choice"; // choice = 4 options taken from the same column
-  ignoreAccents?: boolean; // typed mode: if true, "esta" counts as "está"
+  // v0.1 setting. Since v0.2 every table problem is shown as multiple choice.
+  mode: "typed" | "choice";
+  ignoreAccents?: boolean; // v0.1, typed mode only
 };
 
 export type Card = Flashcard | FormulaProblem | TableProblem;
@@ -47,12 +53,12 @@ export type Card = Flashcard | FormulaProblem | TableProblem;
 
 // How a review went.
 export type ReviewResult =
-  | "flashcard" // a flashcard, graded by the user
-  | "correct" // a problem, checked by the app: right
-  | "almost" // a problem: right except for accents
-  | "wrong" // a problem: wrong
-  | "self" // a problem the user chose to grade themselves
-  | "skipped"; // skipped without answering (not counted as cleared)
+  | "flashcard" // a classic flashcard, graded by the user
+  | "correct" // checked by the app (problem or multiple-choice flashcard): right
+  | "wrong" // checked by the app: wrong
+  | "skipped" // skipped without answering (not counted as cleared)
+  | "almost" // v0.1 only: typed answer right except for accents
+  | "self"; // v0.1 only: problem the user chose to grade themselves
 
 // One line in the review log, written every time a card is reviewed.
 // The Progress screen and rewards are calculated from this.
@@ -65,6 +71,7 @@ export type ReviewLogEntry = {
   grade: 1 | 2 | 3 | 4 | null; // Again / Hard / Good / Easy; null if skipped
   stateBefore: "new" | "learning" | "review" | "relearning"; // FSRS state before this review
   durationMs: number; // time from the card appearing to the rating
+  practice?: boolean; // extra practice: logged, but the schedule was not changed
 };
 
 // Settings and rewards that belong to the user rather than to a deck.

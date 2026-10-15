@@ -1,12 +1,16 @@
 import { useState } from "react";
 import { ReviewHistory } from "../components/ReviewHistory";
 import { downloadBackup, parseData } from "../storage";
+import type { Profile } from "../types";
 import type { AppActions } from "../useAppData";
+
+type SessionMinutes = Profile["settings"]["sessionMinutes"];
 
 export function SettingsScreen({ app }: { app: AppActions }) {
   const [message, setMessage] = useState("");
   const deckCount = app.data.decks.length;
   const cardCount = Object.keys(app.data.cards).length;
+  const sessionMinutes = app.data.profile.settings.sessionMinutes;
 
   async function handleImport(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -38,6 +42,29 @@ export function SettingsScreen({ app }: { app: AppActions }) {
   return (
     <div className="screen">
       <h1>Settings</h1>
+
+      <section className="panel">
+        <h2>Session length</h2>
+        <p className="muted">
+          When the time is up, the app suggests stopping: two short sessions beat one long one.
+        </p>
+        <select
+          aria-label="Session length"
+          value={sessionMinutes ?? "empty"}
+          onChange={(e) =>
+            app.updateSettings({
+              sessionMinutes:
+                e.target.value === "empty" ? null : (Number(e.target.value) as SessionMinutes),
+            })
+          }
+        >
+          <option value="15">15 minutes</option>
+          <option value="30">30 minutes</option>
+          <option value="45">45 minutes</option>
+          <option value="60">60 minutes</option>
+          <option value="empty">Until the queue is empty</option>
+        </select>
+      </section>
 
       <section className="panel">
         <h2>Back up your data</h2>

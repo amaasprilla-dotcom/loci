@@ -141,41 +141,49 @@
     },
     {
       "type": "flashcard",
+      "choice": true,
       "front": "$\\sin^2 x + \\cos^2 x = \\;?$",
       "back": "$1$"
     },
     {
       "type": "flashcard",
+      "choice": true,
       "front": "Write $\\tan x$ using sine and cosine.",
       "back": "$\\tan x = \\dfrac{\\sin x}{\\cos x}$"
     },
     {
       "type": "flashcard",
+      "choice": true,
       "front": "$1 + \\tan^2 x = \\;?$",
       "back": "$\\sec^2 x$"
     },
     {
       "type": "flashcard",
+      "choice": true,
       "front": "$\\sin(2x) = \\;?$",
       "back": "$2 \\sin x \\cos x$"
     },
     {
       "type": "flashcard",
+      "choice": true,
       "front": "$\\cos(2x) = \\;?$ (three forms)",
       "back": "$\\cos^2 x - \\sin^2 x$\n$= 2\\cos^2 x - 1$\n$= 1 - 2\\sin^2 x$"
     },
     {
       "type": "flashcard",
+      "choice": true,
       "front": "$\\sin(-x) = \\;?$ and $\\cos(-x) = \\;?$",
       "back": "$\\sin(-x) = -\\sin x$ (sine is odd)\n$\\cos(-x) = \\cos x$ (cosine is even)"
     },
     {
       "type": "flashcard",
+      "choice": true,
       "front": "$\\sin(90^\\circ - x) = \\;?$",
       "back": "$\\cos x$"
     },
     {
       "type": "flashcard",
+      "choice": true,
       "front": "SOH CAH TOA: what does it stand for?",
       "back": "$\\sin = \\dfrac{\\text{opp}}{\\text{hyp}}$, $\\cos = \\dfrac{\\text{adj}}{\\text{hyp}}$, $\\tan = \\dfrac{\\text{opp}}{\\text{adj}}$"
     }
