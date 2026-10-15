@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { DeckStack } from "../components/DeckStack";
 import { ExamChip } from "../components/ExamChip";
+import { CARD_BACKS, cardBackOf } from "../cardBacks";
 import { daysUntilExam, intervalCapDays } from "../exam";
 import { formatInterval, isDue, State } from "../scheduler";
 import type { AppActions } from "../useAppData";
@@ -56,14 +58,19 @@ export function DeckScreen({ app, deckId, onBack, onStudy }: Props) {
     return `due in ${formatInterval(now, schedule.due)}`;
   }
 
+  const cardBack = cardBackOf(deck);
+
   return (
-    <div className="screen">
+    <div className="screen narrow">
       <button className="link" onClick={onBack}>
         ← All decks
       </button>
-      <h1>
-        {deck.name} <ExamChip deck={deck} now={now} />
-      </h1>
+      <div className="deck-header">
+        <DeckStack cardBack={cardBack} cardCount={deck.cardIds.length} size="large" />
+        <h1>
+          {deck.name} <ExamChip deck={deck} now={now} />
+        </h1>
+      </div>
 
       {deck.archived ? (
         <div className="notice">
@@ -114,6 +121,22 @@ export function DeckScreen({ app, deckId, onBack, onStudy }: Props) {
         </p>
       </section>
 
+      <section className="panel">
+        <h2>Card back</h2>
+        <div className="back-picker">
+          {CARD_BACKS.map((back) => (
+            <button
+              key={back.id}
+              className={`back-swatch card-back back-${back.id}${back.id === cardBack ? " selected" : ""}`}
+              title={back.name}
+              aria-label={back.name}
+              aria-pressed={back.id === cardBack}
+              onClick={() => app.setCardBack(deck.id, back.id)}
+            />
+          ))}
+        </div>
+      </section>
+
       <h2>Add flashcard</h2>
       <form className="card-form" onSubmit={handleAddCard}>
         <label>
@@ -154,7 +177,7 @@ export function DeckScreen({ app, deckId, onBack, onStudy }: Props) {
         {deck.cardIds.map((cardId) => {
           const card = app.data.cards[cardId];
           return (
-            <li key={cardId} className="card-row">
+            <li key={cardId} className={`card-row type-${card.type}`}>
               <div className="card-row-text">
                 {card.type === "flashcard" && (
                   <>

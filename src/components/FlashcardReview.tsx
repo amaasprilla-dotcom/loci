@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import type { Grade } from "../scheduler";
+import { sounds } from "../sound";
 import type { Flashcard, ReviewResult } from "../types";
 import { GradeButtons } from "./GradeButtons";
 import { MathText } from "./MathText";
+import { PlayingCard } from "./PlayingCard";
 
 type Props = {
   card: Flashcard;
@@ -12,9 +14,14 @@ type Props = {
   onSkip: () => void;
 };
 
-// A classic flashcard: front -> "Show answer" -> back + Again / Hard / Good / Easy.
+// A classic flashcard: front -> "Show answer" (the card flips) -> Again / Hard / Good / Easy.
 export function FlashcardReview({ card, dueDates, now, onRate, onSkip }: Props) {
   const [revealed, setRevealed] = useState(false);
+
+  function reveal() {
+    sounds.flip();
+    setRevealed(true);
+  }
 
   // Space or Enter shows the answer.
   useEffect(() => {
@@ -22,6 +29,7 @@ export function FlashcardReview({ card, dueDates, now, onRate, onSkip }: Props) 
     function onKey(event: KeyboardEvent) {
       if (event.key === " " || event.key === "Enter") {
         event.preventDefault();
+        sounds.flip();
         setRevealed(true);
       }
     }
@@ -31,32 +39,47 @@ export function FlashcardReview({ card, dueDates, now, onRate, onSkip }: Props) 
 
   return (
     <>
-      <div className="card-face">
-        <div className="card-text">
-          <MathText text={card.front} />
-        </div>
-        {revealed && (
-          <>
-            <hr />
+      <div className="card-stage">
+        <PlayingCard
+          type="flashcard"
+          flipped={revealed}
+          front={
             <div className="card-text">
-              <MathText text={card.back} />
+              <MathText text={card.front} />
             </div>
+          }
+          back={
+            <>
+              <div className="card-text small-text">
+                <MathText text={card.front} />
+              </div>
+              <hr />
+              <div className="card-text">
+                <MathText text={card.back} />
+              </div>
+            </>
+          }
+        />
+      </div>
+
+      <div className="controls">
+        {revealed ? (
+          <GradeButtons
+            dueDates={dueDates}
+            now={now}
+            onRate={(grade) => onRate(grade, "flashcard")}
+          />
+        ) : (
+          <>
+            <button className="primary big" onClick={reveal}>
+              Show answer
+            </button>
+            <button className="link skip" onClick={onSkip}>
+              Skip this card →
+            </button>
           </>
         )}
       </div>
-
-      {revealed ? (
-        <GradeButtons dueDates={dueDates} now={now} onRate={(grade) => onRate(grade, "flashcard")} />
-      ) : (
-        <>
-          <button className="primary big" onClick={() => setRevealed(true)}>
-            Show answer
-          </button>
-          <button className="link skip" onClick={onSkip}>
-            Skip this card →
-          </button>
-        </>
-      )}
     </>
   );
 }

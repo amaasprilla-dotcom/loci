@@ -1,28 +1,31 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAppData } from "./useAppData";
+import { useCalmMode } from "./motion";
+import { setSoundOn } from "./sound";
 import { HomeScreen } from "./screens/HomeScreen";
 import { DeckScreen } from "./screens/DeckScreen";
 import { StudyScreen } from "./screens/StudyScreen";
-import { PacksScreen } from "./screens/PacksScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 
 // Which screen is showing. A plain state variable is enough; no router needed.
 type Screen =
   | { name: "home" }
-  | { name: "packs" }
   | { name: "settings" }
   | { name: "deck"; deckId: string }
   | { name: "study"; deckIds: string[]; practice: boolean; returnTo: Screen };
 
 const NAV_ITEMS: { screen: Screen; label: string }[] = [
-  { screen: { name: "home" }, label: "Home" },
-  { screen: { name: "packs" }, label: "Packs" },
+  { screen: { name: "home" }, label: "Decks" },
   { screen: { name: "settings" }, label: "Settings" },
 ];
 
 export default function App() {
   const app = useAppData();
   const [screen, setScreen] = useState<Screen>({ name: "home" });
+  const settings = app.data.profile.settings;
+
+  useCalmMode(settings.calmMode);
+  useEffect(() => setSoundOn(settings.sound), [settings.sound]);
 
   const goHome = () => setScreen({ name: "home" });
   const startStudy = (deckIds: string[], practice = false) =>
@@ -34,6 +37,7 @@ export default function App() {
       {screen.name !== "study" && (
         <header className="topbar">
           <nav>
+            <span className="brand">Study App</span>
             {NAV_ITEMS.map((item) => (
               <button
                 key={item.label}
@@ -61,7 +65,6 @@ export default function App() {
             onStudy={startStudy}
           />
         )}
-        {screen.name === "packs" && <PacksScreen app={app} />}
         {screen.name === "settings" && <SettingsScreen app={app} />}
         {screen.name === "deck" && (
           <DeckScreen app={app} deckId={screen.deckId} onBack={goHome} onStudy={startStudy} />

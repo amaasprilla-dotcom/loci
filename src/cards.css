@@ -1,0 +1,555 @@
+/* Playing cards: their look, and how they move.
+   Movement uses only `transform` and `opacity`, which phones can animate smoothly.
+
+   A card is built from nested wrappers, so each kind of movement has its own layer:
+     .playing-card   deal in, play into the tray, discard, shake
+       .card-float   slow idle float
+         .card-tilt  leans toward the pointer (desktop)
+           .card-flip  the 3D flip between front and back
+             .card-side.front / .card-side.back
+*/
+
+/* ---------- The card ---------- */
+
+.card-stage {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 4px;
+}
+
+.playing-card {
+  position: relative;
+  /* As wide as fits, but short enough that the answer buttons stay on screen */
+  width: min(84vw, 320px, calc(50vh * 5 / 7));
+  animation: deal 0.38s cubic-bezier(0.2, 0.9, 0.3, 1.15) both;
+}
+
+.card-float {
+  perspective: 1000px;
+  animation: float 5.5s ease-in-out infinite;
+}
+
+.card-tilt {
+  transform-style: preserve-3d;
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 0.18s ease-out;
+}
+
+/* Both sides sit in the same grid cell, so the card is as tall as the taller side. */
+.card-flip {
+  display: grid;
+  aspect-ratio: 5 / 7; /* playing-card shape; grows if the text needs more room */
+  transform-style: preserve-3d;
+  transition: transform 0.55s cubic-bezier(0.3, 0.7, 0.25, 1.15);
+}
+
+.card-flip.flipped {
+  transform: rotateY(180deg);
+}
+
+.card-side {
+  grid-area: 1 / 1;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  position: relative;
+  padding: 40px 26px;
+  border-radius: 18px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 1.3rem;
+  line-height: 1.45;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  /* A thin colored frame inside the paper edge, plus the drop shadow */
+  box-shadow:
+    inset 0 0 0 7px var(--paper),
+    inset 0 0 0 9px var(--type-color),
+    0 3px 0 var(--paper-edge),
+    0 14px 28px rgba(0, 0, 0, 0.45);
+}
+
+.card-side.back {
+  transform: rotateY(180deg);
+}
+
+.card-side hr {
+  width: 100%;
+  border: none;
+  border-top: 2px dashed var(--paper-edge);
+  margin: 4px 0;
+}
+
+.card-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.card-side .small-text {
+  font-size: 1rem;
+  color: var(--ink-muted);
+}
+
+.card-side .solution {
+  font-size: 1.05rem;
+  color: var(--ink-muted);
+}
+
+/* Card types: the frame color and the suit icon in the corners */
+.type-flashcard { --type-color: var(--type-flashcard); }
+.type-formula { --type-color: var(--type-formula); }
+.type-table { --type-color: var(--type-table); }
+
+.corner {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: var(--type-color);
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.corner svg {
+  width: 20px;
+  height: 20px;
+}
+
+.corner.top {
+  top: 14px;
+  left: 16px;
+}
+
+.corner.bottom {
+  bottom: 14px;
+  right: 16px;
+  transform: rotate(180deg);
+}
+
+/* Right / wrong */
+.playing-card.correct .card-side {
+  box-shadow:
+    inset 0 0 0 7px var(--paper),
+    inset 0 0 0 9px var(--good),
+    0 0 0 4px rgba(41, 183, 101, 0.55),
+    0 14px 28px rgba(0, 0, 0, 0.45);
+}
+
+.stamp {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.stamp.correct {
+  color: #178a48;
+}
+
+.stamp.wrong {
+  color: #c0392b;
+}
+
+/* ---------- Motion ---------- */
+
+@keyframes deal {
+  from {
+    transform: translate(60px, 80px) rotate(10deg) scale(0.9);
+    opacity: 0;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-0.4deg);
+  }
+  50% {
+    transform: translateY(-7px) rotate(0.4deg);
+  }
+}
+
+/* Played: dips, then flies up into the tray at the top */
+@keyframes play {
+  0% {
+    transform: none;
+  }
+  25% {
+    transform: translateY(10px) scale(1.02);
+  }
+  100% {
+    transform: translateY(-75vh) scale(0.2) rotate(-8deg);
+    opacity: 0;
+  }
+}
+
+/* Discarded (Again or skipped): slides off to the side */
+@keyframes discard {
+  to {
+    transform: translateX(-110vw) rotate(-18deg);
+    opacity: 0;
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-12px) rotate(-1.5deg);
+  }
+  40% {
+    transform: translateX(10px) rotate(1.5deg);
+  }
+  60% {
+    transform: translateX(-7px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+.card-slot.exit-play .playing-card {
+  animation: play 0.5s cubic-bezier(0.5, 0, 0.75, 0) forwards;
+}
+
+.card-slot.exit-discard .playing-card {
+  animation: discard 0.42s cubic-bezier(0.5, 0, 0.75, 0) forwards;
+}
+
+/* The buttons under the card fade while it leaves */
+.card-slot.exit-play .controls,
+.card-slot.exit-discard .controls {
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+
+.playing-card.shake {
+  animation: shake 0.42s ease-in-out;
+}
+
+/* ---------- Points popping off a card ---------- */
+
+.points-pop {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  z-index: 5;
+  pointer-events: none;
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  color: var(--accent);
+  text-shadow:
+    0 3px 0 var(--accent-dark),
+    0 6px 14px rgba(0, 0, 0, 0.5);
+  animation: points-pop 0.9s ease-out forwards;
+}
+
+@keyframes points-pop {
+  0% {
+    transform: translate(-50%, 0) scale(0.5);
+    opacity: 0;
+  }
+  20% {
+    transform: translate(-50%, -10px) scale(1.25);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -110px) scale(1);
+    opacity: 0;
+  }
+}
+
+.particle {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  z-index: 4;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--particle-color, var(--accent));
+  pointer-events: none;
+  animation: burst 0.75s ease-out forwards;
+}
+
+@keyframes burst {
+  to {
+    transform: translate(var(--dx), var(--dy)) rotate(200deg) scale(0.2);
+    opacity: 0;
+  }
+}
+
+/* ---------- Study screen around the card ---------- */
+
+.study-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+/* The tray: where played cards go */
+.tray {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 4px 6px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+}
+
+.tray-card {
+  width: 22px;
+  height: 30px;
+  border-radius: 4px;
+  background: var(--paper);
+  box-shadow:
+    2px 2px 0 var(--paper-edge),
+    4px 4px 0 rgba(0, 0, 0, 0.3);
+}
+
+.tray-count {
+  display: inline-block;
+  min-width: 1.5em;
+  animation: bump 0.35s ease-out;
+}
+
+@keyframes bump {
+  40% {
+    transform: scale(1.35) translateY(-3px);
+    color: var(--accent);
+  }
+}
+
+.practice-tag {
+  font-family: var(--font-display);
+  color: var(--accent);
+}
+
+.progress {
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.progress div {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-dark), var(--accent));
+  transition: width 0.3s;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(100%, 560px);
+  margin: 0 auto;
+}
+
+.feedback {
+  margin: 0;
+  font-weight: 700;
+}
+
+.feedback.correct {
+  color: var(--good);
+}
+
+.feedback.wrong {
+  color: var(--again);
+}
+
+button.link.skip {
+  align-self: center;
+  color: var(--muted);
+}
+
+/* ---------- Answer options: little paper tiles ---------- */
+
+.options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 60px;
+  padding: 12px 10px;
+  font-size: 1.15rem;
+  border-radius: 12px;
+  border: 2px solid var(--paper-edge);
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 4px 0 var(--paper-edge);
+}
+
+.option:hover:not(:disabled) {
+  background: #fffdf5;
+  transform: translateY(-2px);
+}
+
+.option:disabled {
+  opacity: 1;
+}
+
+.option.correct {
+  border-color: var(--good);
+  background: #e3f7ea;
+  box-shadow: 0 4px 0 var(--good);
+}
+
+.option.wrong {
+  border-color: var(--again);
+  background: #fde6e3;
+  box-shadow: 0 4px 0 var(--again);
+}
+
+.option-key {
+  position: absolute;
+  top: 5px;
+  left: 7px;
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
+/* ---------- Rating buttons ---------- */
+
+.grade-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.grade {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 4px;
+  font-weight: 700;
+  color: #fff;
+  border: none;
+  background: var(--grade-color);
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--grade-color) 60%, black);
+}
+
+.grade:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--grade-color) 85%, white);
+}
+
+.grade small {
+  font-weight: 400;
+  opacity: 0.85;
+}
+
+.grade-1 { --grade-color: var(--again); }
+.grade-2 { --grade-color: var(--hard); }
+.grade-3 { --grade-color: var(--good); }
+.grade-4 { --grade-color: var(--easy); }
+
+.grade.selected {
+  outline: 3px solid var(--text);
+  outline-offset: 2px;
+}
+
+/* ---------- Pause and summary screens ---------- */
+
+.pause {
+  text-align: center;
+  padding-top: 40px;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.pause p {
+  margin: 0 0 12px;
+}
+
+/* ---------- Calm mode (also used for "reduce motion") ----------
+   No float, tilt, shake or particles; cards just fade in and out. */
+
+.calm .card-float,
+.calm .playing-card.shake,
+.calm .tray-count {
+  animation: none;
+}
+
+.calm .card-tilt {
+  transform: none;
+  transition: none;
+}
+
+.calm .card-flip {
+  transition: none;
+}
+
+.calm .particle {
+  display: none;
+}
+
+.calm .playing-card {
+  animation: fade-in 0.2s both;
+}
+
+.calm .card-slot.exit-play .playing-card,
+.calm .card-slot.exit-discard .playing-card {
+  animation: fade-out 0.2s forwards;
+}
+
+.calm .points-pop {
+  animation: fade-out 0.9s ease-in forwards;
+  transform: translate(-50%, -40px);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  /* A little squatter on phones, so the answer buttons fit below it */
+  .card-flip {
+    aspect-ratio: 5 / 6;
+  }
+
+  .card-side {
+    padding: 36px 20px;
+    font-size: 1.2rem;
+  }
+}
+
+/* Points and particles float above the card area */
+.study {
+  position: relative;
+}
+
+.pop-layer {
+  position: absolute;
+  inset: 90px 0 auto 0;
+  height: 260px;
+  pointer-events: none;
+  z-index: 6;
+}

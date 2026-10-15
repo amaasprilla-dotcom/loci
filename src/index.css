@@ -1,36 +1,47 @@
-/* Plain CSS for the whole app. Colors live in variables so dark mode is one block. */
+/* Theme and general layout. Cards live in cards.css, decks and packs in decks.css.
+   Every color is a variable here, so the whole look can be retuned in one place. */
 
 :root {
-  --bg: #f7f7f8;
-  --surface: #ffffff;
-  --text: #1c1c21;
-  --muted: #6b6b76;
-  --border: #dedee3;
-  --accent: #4f46e5;
-  --accent-text: #ffffff;
-  --again: #dc2626;
-  --hard: #d97706;
-  --good: #16a34a;
-  --easy: #2563eb;
+  /* The table: dark green felt */
+  --felt: #134a37;
+  --felt-dark: #0a2c20;
+  --panel: rgba(0, 0, 0, 0.28); /* boxes sitting on the felt */
+  --panel-border: rgba(255, 255, 255, 0.12);
+  --text: #f4efe1;
+  --muted: #b9c8bd;
 
-  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
-  font-size: 16px;
+  /* Gold accent for the main actions */
+  --accent: #ffc83d;
+  --accent-dark: #c38f0c;
+  --accent-text: #2b1d00;
+
+  /* Card paper */
+  --paper: #fbf6e9;
+  --paper-edge: #e4d9bd;
+  --ink: #1f1c16;
+  --ink-muted: #6b6455;
+
+  /* Card types (each also has a suit icon) */
+  --type-flashcard: #2f7fe0;
+  --type-formula: #e4572e;
+  --type-table: #8a4fd0;
+
+  /* Ratings */
+  --again: #e5483b;
+  --hard: #f29b18;
+  --good: #29b765;
+  --easy: #2e8fe0;
+
+  /* Fonts: a pixel display font for headings and numbers, a highly legible one for reading */
+  --font-display: "Pixelify Sans", system-ui, sans-serif;
+  --font-text: "Atkinson Hyperlegible", system-ui, "Segoe UI", Roboto, sans-serif;
+
+  font-family: var(--font-text);
+  font-size: 17px;
   line-height: 1.5;
   color: var(--text);
-  background: var(--bg);
-  color-scheme: light dark;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #15151a;
-    --surface: #1f1f26;
-    --text: #ececf1;
-    --muted: #9b9ba8;
-    --border: #33333d;
-    --accent: #818cf8;
-    --accent-text: #11111a;
-  }
+  background: var(--felt-dark);
+  color-scheme: dark;
 }
 
 * {
@@ -39,45 +50,83 @@
 
 body {
   margin: 0;
-  background: var(--bg);
+  min-height: 100vh;
+  /* A soft spotlight on the felt */
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.08), transparent 60%),
+    radial-gradient(ellipse at 50% 40%, var(--felt), var(--felt-dark) 85%);
+  background-attachment: fixed;
 }
 
 .app {
-  max-width: 640px;
+  max-width: 880px;
   margin: 0 auto;
-  padding: 16px;
+  padding: 16px 16px calc(32px + env(safe-area-inset-bottom));
 }
 
 .screen {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
+}
+
+/* Reading-width screens (forms, settings) stay narrower than the deck table */
+.screen.narrow {
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+h1,
+h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 h1 {
   margin: 8px 0;
-  font-size: 1.75rem;
+  font-size: 2rem;
+  line-height: 1.15;
 }
 
 h2 {
   margin: 16px 0 0;
-  font-size: 1.1rem;
+  font-size: 1.25rem;
 }
 
 .muted {
   color: var(--muted);
 }
 
-/* ---------- Buttons and inputs ---------- */
+.center {
+  text-align: center;
+  margin: 0;
+}
+
+/* ---------- Buttons: chunky, with a "pressable" bottom edge ---------- */
 
 button {
   font: inherit;
   padding: 10px 16px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--surface);
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--panel-border);
+  background: rgba(0, 0, 0, 0.35);
   color: var(--text);
   cursor: pointer;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.45);
+  transition: transform 0.08s, box-shadow 0.08s, background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
 }
 
 button:disabled {
@@ -85,45 +134,90 @@ button:disabled {
   cursor: default;
 }
 
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
 button.primary {
   background: var(--accent);
-  border-color: var(--accent);
+  border-color: var(--accent-dark);
   color: var(--accent-text);
-  font-weight: 600;
+  font-weight: 700;
+  box-shadow: 0 4px 0 var(--accent-dark);
+}
+
+button.primary:hover:not(:disabled) {
+  background: #ffd45e;
+}
+
+button.primary:active:not(:disabled) {
+  box-shadow: 0 1px 0 var(--accent-dark);
 }
 
 button.big {
   padding: 16px;
-  font-size: 1.1rem;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  letter-spacing: 0.03em;
 }
 
 button.link {
   align-self: flex-start;
+  min-height: 0;
   border: none;
   background: none;
+  box-shadow: none;
   padding: 4px 0;
   color: var(--accent);
 }
 
+button.link:hover:not(:disabled) {
+  background: none;
+  text-decoration: underline;
+}
+
 button.danger {
-  color: var(--again);
+  color: #ff9b91;
   align-self: flex-start;
 }
 
 button.small {
+  min-height: 0;
   padding: 4px 10px;
   font-size: 0.85rem;
 }
 
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ---------- Inputs ---------- */
+
 input,
-textarea {
+textarea,
+select {
   font: inherit;
   width: 100%;
   padding: 10px;
   border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--surface);
+  border: 1px solid var(--panel-border);
+  background: rgba(0, 0, 0, 0.3);
   color: var(--text);
+}
+
+select {
+  width: auto;
+  align-self: flex-start;
+}
+
+input[type="date"] {
+  color-scheme: dark;
 }
 
 .inline-form {
@@ -153,7 +247,94 @@ textarea {
   align-self: flex-start;
 }
 
-/* ---------- Lists ---------- */
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.check input {
+  width: auto;
+  margin-top: 4px;
+}
+
+.preview {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+/* ---------- Top bar ---------- */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(8, 34, 25, 0.85);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.topbar nav {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.topbar .brand {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  margin-right: auto;
+  color: var(--accent);
+}
+
+.topbar nav button {
+  border: none;
+  background: none;
+  box-shadow: none;
+  padding: 8px 12px;
+  color: var(--muted);
+}
+
+.topbar nav button.active {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ---------- Panels, lists, stats ---------- */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+.panel h2 {
+  margin: 0;
+}
+
+.panel p {
+  margin: 0;
+}
+
+.panel button,
+.file-button {
+  align-self: flex-start;
+}
 
 .list {
   list-style: none;
@@ -164,27 +345,119 @@ textarea {
   gap: 8px;
 }
 
-.list-item {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  text-align: left;
-  padding: 14px 16px;
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
 
-.due {
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+.stat strong {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  line-height: 1.1;
   color: var(--accent);
 }
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+}
+
+.chip {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  vertical-align: middle;
+  color: var(--accent-text);
+  background: var(--accent);
+}
+
+.chip.urgent {
+  color: #fff;
+  background: var(--again);
+}
+
+.notice {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(255, 200, 61, 0.15);
+  border: 1px solid rgba(255, 200, 61, 0.35);
+}
+
+.notice.warning {
+  background: rgba(229, 72, 59, 0.2);
+  border-color: rgba(229, 72, 59, 0.5);
+}
+
+/* A label styled like a button; the real file input inside is hidden. */
+.file-button {
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--panel-border);
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+}
+
+.file-button input {
+  display: none;
+}
+
+/* On/off switch rows in Settings */
+.toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.toggle-row input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--accent);
+}
+
+/* ---------- Deck screen: list of cards ---------- */
 
 .card-row {
   display: flex;
   justify-content: space-between;
   gap: 12px;
   padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface);
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--ink);
+  border-left: 6px solid var(--type-color, var(--paper-edge));
+}
+
+.card-row .muted {
+  color: var(--ink-muted);
+}
+
+.card-row button {
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.15);
+}
+
+.card-row button.danger {
+  color: #b42318;
 }
 
 .card-row-text {
@@ -201,344 +474,9 @@ textarea {
   flex-shrink: 0;
 }
 
-/* ---------- Study screen ---------- */
-
-.study-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.card-face {
-  min-height: 220px;
-  padding: 24px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--surface);
-  font-size: 1.25rem;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 12px;
-}
-
-.card-face hr {
-  width: 100%;
-  border: none;
-  border-top: 1px solid var(--border);
-}
-
-.card-text {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.grade-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-
-.grade {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 12px 4px;
-  font-weight: 600;
-  border-width: 2px;
-}
-
-.grade small {
-  font-weight: 400;
-  color: var(--muted);
-}
-
-.grade-1 { border-color: var(--again); }
-.grade-2 { border-color: var(--hard); }
-.grade-3 { border-color: var(--good); }
-.grade-4 { border-color: var(--easy); }
-
-.summary {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.grade-dot {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  border: 5px solid;
-}
-
-/* ---------- Math, problems, previews ---------- */
-
-.preview {
-  padding: 10px 12px;
-  border: 1px dashed var(--border);
-  border-radius: 10px;
-  background: var(--surface);
-}
-
-.hint {
-  margin: 0;
-  font-size: 0.85rem;
-}
-
-.answer-form {
-  display: flex;
-  gap: 8px;
-}
-
-.answer-form input {
-  font-size: 1.2rem;
-}
-
-.answer-form button {
-  flex-shrink: 0;
-}
-
-.feedback {
-  margin: 0;
-  font-weight: 600;
-}
-
-.feedback.correct {
-  color: var(--good);
-}
-
-.feedback.wrong {
-  color: var(--again);
-}
-
-.solution {
-  font-size: 1rem;
-  color: var(--muted);
-}
-
-/* The rating the app suggests after a typed answer. */
-.grade.selected {
-  background: color-mix(in srgb, currentColor 8%, var(--surface));
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.feedback.almost {
-  color: var(--hard);
-}
-
-/* Multiple-choice options: 2 x 2 grid. */
-.options {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.option {
-  padding: 14px 8px;
-  font-size: 1.15rem;
-  border-width: 2px;
-}
-
-.option:disabled {
-  opacity: 1;
-}
-
-.option.correct {
-  border-color: var(--good);
-  background: color-mix(in srgb, var(--good) 12%, var(--surface));
-}
-
-.option.wrong {
-  border-color: var(--again);
-  background: color-mix(in srgb, var(--again) 12%, var(--surface));
-}
-
-/* ---------- Top navigation ---------- */
-
-.topbar {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: var(--bg);
-  border-bottom: 1px solid var(--border);
-}
-
-.topbar nav {
-  max-width: 640px;
-  margin: 0 auto;
-  padding: 8px 16px;
-  display: flex;
-  gap: 4px;
-}
-
-.topbar nav button {
-  border: none;
-  background: none;
-  padding: 8px 12px;
-  color: var(--muted);
-}
-
-.topbar nav button.active {
-  color: var(--accent);
-  font-weight: 600;
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-}
-
-/* ---------- Home ---------- */
-
-.stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
-}
-
-.stat strong {
-  font-size: 1.8rem;
-  line-height: 1.2;
-}
-
-.center {
-  text-align: center;
-  margin: 0;
-}
-
-/* ---------- Packs ---------- */
-
-.pack {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 14px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
-}
-
-.pack p {
-  margin: 4px 0;
-  font-size: 0.95rem;
-}
-
-.pack button {
-  flex-shrink: 0;
-}
-
-/* ---------- Settings ---------- */
-
-.panel {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 14px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
-}
-
-.panel h2 {
-  margin: 0;
-}
-
-.panel p {
-  margin: 0;
-}
-
-.panel button,
-.file-button {
+button.toggle {
+  margin-top: 6px;
   align-self: flex-start;
-}
-
-/* A label styled like a button; the real file input inside is hidden. */
-.file-button {
-  padding: 10px 16px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  cursor: pointer;
-}
-
-.file-button input {
-  display: none;
-}
-
-.notice {
-  margin: 0;
-  padding: 10px 14px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
-}
-
-/* ---------- Study progress ---------- */
-
-.progress {
-  height: 6px;
-  border-radius: 3px;
-  background: var(--border);
-  overflow: hidden;
-}
-
-.progress div {
-  height: 100%;
-  background: var(--accent);
-  transition: width 0.2s;
-}
-
-/* ---------- Phones ---------- */
-
-/* Comfortable tap targets, and no grey flash when tapping on mobile. */
-button {
-  min-height: 44px;
-  -webkit-tap-highlight-color: transparent;
-}
-
-button.small,
-button.link {
-  min-height: 0;
-}
-
-@media (max-width: 480px) {
-  .app {
-    padding: 12px 12px calc(24px + env(safe-area-inset-bottom));
-  }
-
-  h1 {
-    font-size: 1.5rem;
-  }
-
-  .card-face {
-    min-height: 180px;
-    padding: 18px 14px;
-    font-size: 1.15rem;
-  }
-
-  /* Card list: put the delete button under the text instead of beside it. */
-  .card-row {
-    flex-direction: column;
-  }
-
-  .card-row-side {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .pack {
-    flex-direction: column;
-    align-items: stretch;
-  }
 }
 
 /* ---------- Review history (Settings) ---------- */
@@ -558,106 +496,32 @@ button.link {
 .history td {
   text-align: left;
   padding: 6px 8px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--panel-border);
 }
 
 .history th {
   color: var(--muted);
-  font-weight: 600;
-}
-
-.notice.warning {
-  background: color-mix(in srgb, var(--again) 15%, var(--surface));
-}
-
-/* ---------- v0.2: multiple choice, practice, exam ---------- */
-
-.option {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.option-key {
-  font-size: 0.75rem;
   font-weight: 700;
-  color: var(--muted);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 0 5px;
 }
 
-button.link.skip {
-  align-self: center;
-  color: var(--muted);
-}
+/* ---------- Phones ---------- */
 
-.practice-tag {
-  color: var(--accent);
-}
+@media (max-width: 480px) {
+  .app {
+    padding: 12px 12px calc(24px + env(safe-area-inset-bottom));
+  }
 
-.chip {
-  display: inline-block;
-  margin-left: 6px;
-  padding: 1px 8px;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  vertical-align: middle;
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-}
+  h1 {
+    font-size: 1.6rem;
+  }
 
-.chip.urgent {
-  color: var(--again);
-  background: color-mix(in srgb, var(--again) 14%, transparent);
-}
+  .card-row {
+    flex-direction: column;
+  }
 
-.button-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.check {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  font-size: 0.9rem;
-}
-
-.check input {
-  width: auto;
-  margin-top: 4px;
-}
-
-button.toggle {
-  margin-top: 6px;
-  align-self: flex-start;
-}
-
-select {
-  font: inherit;
-  padding: 10px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  align-self: flex-start;
-}
-
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-  gap: 8px;
-}
-
-.pause {
-  text-align: center;
-  padding-top: 40px;
-}
-
-.pause p {
-  margin: 0 0 12px;
+  .card-row-side {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
 }

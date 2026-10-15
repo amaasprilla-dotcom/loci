@@ -42,5 +42,9 @@ Data stays in each visitor's own browser, so a deployed copy starts empty for ev
 - `src/streak.ts`: the day streak
 - `src/useAppData.ts`: all app data plus the actions that change it
 - `src/packs/`: built-in packs as JSON files (add a pack by adding a file and listing it in `index.ts`)
-- `src/screens/`: one file per screen (Home, Deck, Study, Packs, Settings)
-- `src/components/`: pieces shared between screens (math text, rating buttons, card reviews)
+- `src/screens/`: one file per screen (Home, Deck, Study, Settings)
+- `src/components/`: pieces shared between screens (playing card, deck stack, pack opening, math text, rating buttons, card reviews)
+- `src/index.css`, `src/cards.css`, `src/decks.css`: the look (theme colors are variables at the top of `index.css`)
+- `src/sound.ts`: sound effects, synthesized in code
+- `src/motion.ts`: Calm mode (also on when the device asks for reduced motion)
+- `ASSETS.md`: where every font, sound and design comes from, and its license

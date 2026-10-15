@@ -65,11 +65,16 @@ export function useAppData() {
     updateDeck(deckId, archived ? { archived: true } : { archived: false, examDate: undefined });
   }
 
+  function setCardBack(deckId: string, cardBack: string) {
+    updateDeck(deckId, { cardBack });
+  }
+
   // Adds a built-in pack as a new deck, giving each card a fresh id.
-  function addPack(pack: Pack) {
+  // Returns the new deck (the pack-opening animation shows its card back).
+  function addPack(pack: Pack): Deck {
     const now = new Date();
     const newCards = pack.cards.map((card) => ({ ...card, id: makeId() }) as Card);
-    const deck = {
+    const deck: Deck = {
       id: makeId(),
       name: pack.name,
       cardIds: newCards.map((c) => c.id),
@@ -84,6 +89,7 @@ export function useAppData() {
       }
       return { ...d, decks: [...d.decks, deck], cards, schedules };
     });
+    return deck;
   }
 
   // ---------- Cards ----------
@@ -310,6 +316,7 @@ export function useAppData() {
     deleteDeck,
     setExamDate,
     setArchived,
+    setCardBack,
     addPack,
     addFlashcard,
     setFlashcardChoice,

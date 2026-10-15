@@ -1,8 +1,14 @@
 import { useState } from "react";
+import { DeckStack } from "../components/DeckStack";
 import { ExamChip } from "../components/ExamChip";
-import { PackList } from "../components/PackList";
+import { NewDeckPanel } from "../components/NewDeckPanel";
+import { PackOpening } from "../components/PackOpening";
+import { cardBackOf } from "../cardBacks";
 import { daysUntilExam } from "../exam";
+import { isCalm } from "../motion";
+import type { Pack } from "../packs";
 import { formatInterval } from "../scheduler";
+import { sounds } from "../sound";
 import { currentStreak } from "../streak";
 import type { AppActions } from "../useAppData";
 import { useNow } from "../useNow";
@@ -14,11 +20,13 @@ type Props = {
 };
 
 export function HomeScreen({ app, onOpenDeck, onStudy }: Props) {
-  const [newDeckName, setNewDeckName] = useState("");
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [opening, setOpening] = useState<{ packName: string; cardBack: string } | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const decks = app.data.decks.filter((d) => !d.archived);
   const archived = app.data.decks.filter((d) => d.archived);
   const deckIds = decks.map((d) => d.id);
+  const isNewUser = app.data.decks.length === 0;
 
   const now = useNow();
   const endOfToday = new Date(now);
@@ -31,12 +39,12 @@ export function HomeScreen({ app, onOpenDeck, onStudy }: Props) {
   const canPractice = app.practiceCardIds(deckIds).length > 0;
   const examsOver = decks.filter((d) => d.examDate && daysUntilExam(d.examDate, now) < 0);
 
-  function handleAddDeck(event: React.FormEvent) {
-    event.preventDefault();
-    const name = newDeckName.trim();
-    if (!name) return;
-    app.addDeck(name);
-    setNewDeckName("");
+  // Opening a pack: the deck is created right away; the animation is just for show.
+  function openPack(pack: Pack) {
+    const deck = app.addPack(pack);
+    setSheetOpen(false);
+    if (isCalm()) sounds.packOpen();
+    else setOpening({ packName: pack.name, cardBack: cardBackOf(deck) });
   }
 
   return (
@@ -80,47 +88,46 @@ export function HomeScreen({ app, onOpenDeck, onStudy }: Props) {
         </section>
       ))}
 
-      {decks.length === 0 && archived.length === 0 ? (
-        <>
-          <h2>Welcome!</h2>
-          <p className="muted">Add a ready-made pack to start studying, or create your own deck below.</p>
-          <PackList app={app} />
-        </>
+      {isNewUser ? (
+        // First visit: show the packs right away, so it's "open a pack" then "Study".
+        <section className="panel">
+          <h2>Welcome! Pick your first deck</h2>
+          <NewDeckPanel app={app} onCreated={() => {}} onOpenPack={openPack} />
+        </section>
       ) : (
         <>
-          <h2>Decks</h2>
-          <ul className="list">
+          <h2>Your decks</h2>
+          <div className="deck-grid">
             {decks.map((deck) => {
               const due = app.dueCardIds([deck.id], now).length;
               return (
-                <li key={deck.id}>
-                  <button className="list-item" onClick={() => onOpenDeck(deck.id)}>
-                    <span>
-                      {deck.name} <ExamChip deck={deck} now={now} />
-                    </span>
+                <button
+                  key={deck.id}
+                  className={`deck-slot${due > 0 ? " has-due" : ""}`}
+                  onClick={() => onOpenDeck(deck.id)}
+                >
+                  <DeckStack cardBack={cardBackOf(deck)} cardCount={deck.cardIds.length} />
+                  <span className="deck-info">
+                    <span className="deck-name">{deck.name}</span>
                     <span className="muted">
-                      {deck.cardIds.length} cards
-                      {due > 0 && <strong className="due"> · {due} due</strong>}
+                      {deck.cardIds.length} {deck.cardIds.length === 1 ? "card" : "cards"}
                     </span>
-                  </button>
-                </li>
+                    {due > 0 && <span className="due-badge">{due} due</span>}
+                    {deck.examDate && (
+                      <span>
+                        <ExamChip deck={deck} now={now} />
+                      </span>
+                    )}
+                  </span>
+                </button>
               );
             })}
-          </ul>
+            <button className="deck-slot add" onClick={() => setSheetOpen(true)}>
+              <span className="plus">+</span> New deck
+            </button>
+          </div>
         </>
       )}
-
-      <form className="inline-form" onSubmit={handleAddDeck}>
-        <input
-          value={newDeckName}
-          onChange={(e) => setNewDeckName(e.target.value)}
-          placeholder="New deck name"
-          aria-label="New deck name"
-        />
-        <button type="submit" disabled={!newDeckName.trim()}>
-          Add deck
-        </button>
-      </form>
 
       {archived.length > 0 && (
         <>
@@ -130,7 +137,7 @@ export function HomeScreen({ app, onOpenDeck, onStudy }: Props) {
           {showArchived && (
             <ul className="list">
               {archived.map((deck) => (
-                <li key={deck.id} className="card-row">
+                <li key={deck.id} className="panel archived-row">
                   <button className="link" onClick={() => onOpenDeck(deck.id)}>
                     {deck.name}
                   </button>
@@ -142,6 +149,33 @@ export function HomeScreen({ app, onOpenDeck, onStudy }: Props) {
             </ul>
           )}
         </>
+      )}
+
+      {sheetOpen && (
+        <div className="sheet-backdrop" onClick={() => setSheetOpen(false)}>
+          <div
+            className="sheet"
+            role="dialog"
+            aria-label="New deck"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="sheet-header">
+              <h2>New deck</h2>
+              <button className="small" onClick={() => setSheetOpen(false)}>
+                Close
+              </button>
+            </div>
+            <NewDeckPanel app={app} onCreated={() => setSheetOpen(false)} onOpenPack={openPack} />
+          </div>
+        </div>
+      )}
+
+      {opening && (
+        <PackOpening
+          packName={opening.packName}
+          cardBack={opening.cardBack}
+          onDone={() => setOpening(null)}
+        />
       )}
     </div>
   );

@@ -1,0 +1,412 @@
+/* Decks on the table: slots, stacks, card backs, and opening packs. */
+
+/* ---------- The slot grid on Home ----------
+   As many decks as you like: up to 3 per row on wide screens, 1 on phones. */
+
+.deck-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.deck-slot {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 112px;
+  padding: 14px 16px;
+  text-align: left;
+  border-radius: 16px;
+  border: 2px solid var(--panel-border);
+  background: var(--panel);
+}
+
+/* Decks with cards due glow gold */
+.deck-slot.has-due {
+  border-color: var(--accent);
+  box-shadow:
+    0 3px 0 rgba(0, 0, 0, 0.45),
+    0 0 18px rgba(255, 200, 61, 0.25);
+}
+
+.deck-slot.has-due .deck-stack {
+  animation: deck-glow 2.4s ease-in-out infinite;
+}
+
+@keyframes deck-glow {
+  50% {
+    filter: brightness(1.15) drop-shadow(0 0 6px rgba(255, 200, 61, 0.6));
+  }
+}
+
+.deck-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.deck-name {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.due-badge {
+  align-self: flex-start;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--accent-text);
+  background: var(--accent);
+}
+
+/* The empty slot with a plus: makes a new deck */
+.deck-slot.add {
+  justify-content: center;
+  border-style: dashed;
+  background: rgba(0, 0, 0, 0.12);
+  box-shadow: none;
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+}
+
+.deck-slot.add .plus {
+  font-size: 2.2rem;
+  line-height: 1;
+  color: var(--accent);
+}
+
+/* ---------- Stacks and card backs ---------- */
+
+.deck-stack {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  width: 56px;
+  height: 78px;
+  border-radius: 7px;
+}
+
+.deck-stack.large {
+  width: 84px;
+  height: 118px;
+  border-radius: 10px;
+}
+
+/* Every card back has a thin light frame inside its edge */
+.card-back::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  border-radius: 5px;
+}
+
+.back-garnet {
+  background-color: #9b1c2e;
+  background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.16) 0 5px, transparent 5px 10px);
+}
+
+.back-lagoon {
+  background-color: #0e7c86;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.35) 1.6px, transparent 2.2px);
+  background-size: 9px 9px;
+}
+
+.back-meadow {
+  background-color: #2d7a3a;
+  background-image:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.18) 25%, transparent 25%),
+    linear-gradient(225deg, rgba(255, 255, 255, 0.18) 25%, transparent 25%);
+  background-size: 12px 12px;
+  background-position: -6px 0;
+}
+
+.back-amethyst {
+  background-color: #5b2a86;
+  background-image:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.16) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.16) 75%),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.16) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.16) 75%);
+  background-size: 14px 14px;
+  background-position: 0 0, 7px 7px;
+}
+
+.back-sunrise {
+  background-color: #d9661f;
+  background-image: repeating-conic-gradient(rgba(255, 255, 255, 0.2) 0 10deg, transparent 10deg 20deg);
+}
+
+.back-midnight {
+  background-color: #1b2350;
+  background-image:
+    radial-gradient(circle, #ffffff 1px, transparent 1.6px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.55) 0.8px, transparent 1.3px);
+  background-size: 16px 16px;
+  background-position: 0 0, 8px 8px;
+}
+
+/* Card-back picker on the Deck screen */
+.back-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.back-swatch {
+  position: relative;
+  width: 46px;
+  height: 64px;
+  min-height: 0;
+  padding: 0;
+  border-radius: 7px;
+  border: none;
+}
+
+.back-swatch.selected {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.deck-header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+/* ---------- New deck sheet ---------- */
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  animation: fade-in 0.15s;
+}
+
+.sheet {
+  width: min(100%, 640px);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 18px 18px calc(22px + env(safe-area-inset-bottom));
+  border-radius: 20px 20px 0 0;
+  background: var(--felt-dark);
+  border: 1px solid var(--panel-border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: sheet-up 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.05);
+}
+
+@media (min-width: 700px) {
+  .sheet-backdrop {
+    align-items: center;
+  }
+
+  .sheet {
+    border-radius: 20px;
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+}
+
+.sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sheet-header h2 {
+  margin: 0;
+}
+
+.new-deck {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.new-deck p {
+  margin: 0;
+}
+
+/* ---------- Pack tiles ---------- */
+
+.pack-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.pack-tile {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  text-align: left;
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+.pack-tile-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.pack-tile-text strong {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* The little foil pack on each tile */
+.foil-strip {
+  flex-shrink: 0;
+  width: 38px;
+  border-radius: 6px;
+  background: linear-gradient(160deg, #e6e7ef, #8e92a9 35%, #f6f6fb 52%, #9da1b8 70%, #dfe0ea);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.5);
+}
+
+/* ---------- Pack opening ---------- */
+
+.pack-opening {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.7);
+  cursor: pointer;
+  animation: fade-out 0.3s 1.8s forwards;
+}
+
+.pack-opening > * {
+  grid-area: 1 / 1;
+}
+
+.foil-pack {
+  position: relative;
+  width: 170px;
+  height: 240px;
+  animation:
+    pack-shake 0.4s ease-in-out,
+    fade-out 0.35s 0.95s forwards;
+}
+
+.foil-top,
+.foil-body {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: linear-gradient(135deg, #e6e7ef, #8e92a9 30%, #f6f6fb 50%, #9da1b8 70%, #dfe0ea);
+}
+
+.foil-top {
+  top: 0;
+  height: 36px;
+  border-radius: 10px 10px 0 0;
+  /* zig-zag bottom edge, where it tears */
+  clip-path: polygon(0 0, 100% 0, 100% 70%, 90% 100%, 80% 70%, 70% 100%, 60% 70%, 50% 100%, 40% 70%, 30% 100%, 20% 70%, 10% 100%, 0 70%);
+  animation: tear-off 0.4s 0.4s ease-in forwards;
+}
+
+.foil-body {
+  top: 27px;
+  bottom: 0;
+  border-radius: 0 0 10px 10px;
+  clip-path: polygon(0 0, 10% 25px, 20% 0, 30% 25px, 40% 0, 50% 25px, 60% 0, 70% 25px, 80% 0, 90% 25px, 100% 0, 100% 100%, 0 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  text-align: center;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+}
+
+.fan {
+  position: relative;
+  width: 110px;
+  height: 154px;
+}
+
+.fan-card {
+  position: absolute;
+  inset: 0;
+  border-radius: 9px;
+  opacity: 0;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.45);
+  animation: fan-out 0.55s calc(0.75s + (var(--i) + 2) * 0.06s) cubic-bezier(0.2, 0.9, 0.3, 1.2) forwards;
+}
+
+.pack-hint {
+  align-self: end;
+  margin-bottom: 40px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+@keyframes pack-shake {
+  25% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(4deg) scale(1.03);
+  }
+  75% {
+    transform: rotate(-2deg);
+  }
+}
+
+@keyframes tear-off {
+  to {
+    transform: translate(70px, -90px) rotate(28deg);
+    opacity: 0;
+  }
+}
+
+@keyframes fan-out {
+  from {
+    transform: translateY(70px) scale(0.85);
+    opacity: 0;
+  }
+  to {
+    transform: translate(calc(var(--i) * 48px), var(--lift)) rotate(calc(var(--i) * 12deg));
+    opacity: 1;
+  }
+}
+
+/* ---------- Calm mode ---------- */
+
+.calm .deck-slot.has-due .deck-stack {
+  animation: none;
+}
+
+.deck-info .chip {
+  margin-left: 0;
+}
+
+/* On narrow screens the name box gets its own line above the button */
+.new-deck .inline-form {
+  flex-wrap: wrap;
+}
+
+.new-deck .inline-form input {
+  flex: 1 1 200px;
+}

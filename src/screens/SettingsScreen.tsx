@@ -10,7 +10,8 @@ export function SettingsScreen({ app }: { app: AppActions }) {
   const [message, setMessage] = useState("");
   const deckCount = app.data.decks.length;
   const cardCount = Object.keys(app.data.cards).length;
-  const sessionMinutes = app.data.profile.settings.sessionMinutes;
+  const settings = app.data.profile.settings;
+  const sessionMinutes = settings.sessionMinutes;
 
   async function handleImport(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -40,8 +41,39 @@ export function SettingsScreen({ app }: { app: AppActions }) {
   }
 
   return (
-    <div className="screen">
+    <div className="screen narrow">
       <h1>Settings</h1>
+
+      <section className="panel">
+        <h2>Look and sound</h2>
+        <label className="toggle-row">
+          <span>
+            Sound effects
+            <br />
+            <small className="muted">Soft card sounds, played at low volume.</small>
+          </span>
+          <input
+            type="checkbox"
+            checked={settings.sound}
+            onChange={(e) => app.updateSettings({ sound: e.target.checked })}
+          />
+        </label>
+        <label className="toggle-row">
+          <span>
+            Calm mode
+            <br />
+            <small className="muted">
+              No floating, tilting, shaking or particles: cards simply fade. Turns on by itself if
+              your device asks for reduced motion.
+            </small>
+          </span>
+          <input
+            type="checkbox"
+            checked={settings.calmMode}
+            onChange={(e) => app.updateSettings({ calmMode: e.target.checked })}
+          />
+        </label>
+      </section>
 
       <section className="panel">
         <h2>Session length</h2>
