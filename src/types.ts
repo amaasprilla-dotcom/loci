@@ -7,7 +7,6 @@ export type Deck = {
   packId?: string; // set when the deck came from a built-in pack
   examDate?: string; // "2026-12-01": exam mode is on while this is set (v0.2)
   archived?: boolean; // hidden from studying, e.g. after an exam (v0.2)
-  cardBack?: string; // card-back design id, see cardBacks.ts (v0.2)
 };
 
 export type Flashcard = {
@@ -85,5 +84,4 @@ export type Profile = {
   coins: number;
   unlockedCardBacks: string[];
   badges: string[];
-  goalCelebratedOn?: string; // "2026-10-15": the daily-goal moment was shown that day
 };

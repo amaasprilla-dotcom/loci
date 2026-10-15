@@ -65,10 +65,6 @@ export function useAppData() {
     updateDeck(deckId, archived ? { archived: true } : { archived: false, examDate: undefined });
   }
 
-  function setCardBack(deckId: string, cardBack: string) {
-    updateDeck(deckId, { cardBack });
-  }
-
   // Adds a built-in pack as a new deck, giving each card a fresh id.
   // Returns the new deck (the pack-opening animation shows its card back).
   function addPack(pack: Pack): Deck {
@@ -300,11 +296,6 @@ export function useAppData() {
     }));
   }
 
-  // Remember that today's daily-goal moment has been shown, so it shows once a day.
-  function markGoalCelebrated(day: string) {
-    setData((d) => ({ ...d, profile: { ...d.profile, goalCelebratedOn: day } }));
-  }
-
   // Swaps in imported data (from a backup file).
   function replaceData(newData: AppData) {
     setData(newData);
@@ -321,7 +312,6 @@ export function useAppData() {
     deleteDeck,
     setExamDate,
     setArchived,
-    setCardBack,
     addPack,
     addFlashcard,
     setFlashcardChoice,
@@ -333,7 +323,6 @@ export function useAppData() {
     practiceCardIds,
     nextDueDate,
     updateSettings,
-    markGoalCelebrated,
     replaceData,
     resetData,
   };

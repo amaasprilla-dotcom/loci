@@ -2,7 +2,6 @@
 // review log and the card schedules, so the charts always match the log.
 
 import { startOfDay } from "./exam";
-import { studyMs } from "./goal";
 import { State } from "./scheduler";
 import type { AppData } from "./storage";
 import { dayKey } from "./storage";
@@ -10,6 +9,14 @@ import type { ReviewLogEntry } from "./types";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const SOLID_STABILITY_DAYS = 21;
+
+// A card left open while you make tea shouldn't count as 20 minutes of study.
+const MAX_COUNTED_PER_CARD_MS = 3 * 60 * 1000;
+
+// The study time one log entry counts for, in milliseconds.
+function studyMs(entry: ReviewLogEntry): number {
+  return Math.min(entry.durationMs, MAX_COUNTED_PER_CARD_MS);
+}
 
 // A review that was actually answered (skips don't count).
 function answered(entry: ReviewLogEntry): boolean {

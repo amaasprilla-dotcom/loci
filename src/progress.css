@@ -1,19 +1,21 @@
-/* The Progress screen's charts. Colors were checked with a palette validator
-   against the felt (see the chart colors below). */
+/* The Progress screen's charts. The colors were checked with a palette
+   validator against the white background (contrast, one hue per scale,
+   visible steps). */
 
 :root {
-  --chart-bar: #bb8a2a; /* one series: deep gold, inside the dark-mode lightness band */
-  --chart-grid: rgba(255, 255, 255, 0.14);
-  /* Heatmap: one hue, dim to bright */
-  --heat-0: rgba(255, 255, 255, 0.07);
-  --heat-1: #6b6440;
-  --heat-2: #9c7f2c;
-  --heat-3: #cfa232;
-  --heat-4: #ffd45e;
+  --chart-bar: #3593d6; /* one series: light blue, deep enough to read on white */
+  --chart-bar-hover: #1670ad;
+  --chart-grid: #e1e7ee;
+  /* Heatmap: one hue, light to dark; days without reviews are plain gray */
+  --heat-0: #eef2f6;
+  --heat-1: #78bcec;
+  --heat-2: #4aa3e0;
+  --heat-3: #2181c6;
+  --heat-4: #0e5f99;
   /* Mastery: an ordered scale, New -> Learning -> Solid */
-  --stage-fresh: #6b6440;
-  --stage-learning: #c99a2e;
-  --stage-solid: #ffd45e;
+  --stage-fresh: #78bcec;
+  --stage-learning: #2f8fd3;
+  --stage-solid: #0e5f99;
 }
 
 .progress-grid {
@@ -73,9 +75,8 @@
   fill: transparent;
 }
 
-.chart .hit:hover + .bar,
 .chart g:hover .bar {
-  fill: #d29d33;
+  fill: var(--chart-bar-hover);
 }
 
 .chart .marker {
@@ -194,6 +195,7 @@
   font-size: 3.4rem;
   font-weight: 700;
   line-height: 1;
+  letter-spacing: -0.03em;
 }
 
 .retention-detail {
@@ -207,7 +209,7 @@
 }
 
 .trend.down span[aria-hidden] {
-  color: var(--again);
+  color: var(--bad);
 }
 
 /* Tooltip */
@@ -220,9 +222,9 @@
   font-size: 0.82rem;
   white-space: nowrap;
   pointer-events: none;
-  color: var(--ink);
-  background: var(--paper);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  color: #ffffff;
+  background: var(--text);
+  box-shadow: var(--shadow-md);
 }
 
 /* "Show the numbers" */
@@ -233,5 +235,6 @@
 
 .numbers summary {
   cursor: pointer;
-  color: var(--accent);
+  color: var(--blue-ink);
+  font-weight: 550;
 }

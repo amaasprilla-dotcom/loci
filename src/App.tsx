@@ -40,7 +40,7 @@ export default function App() {
       {screen.name !== "study" && (
         <header className="topbar">
           <nav>
-            <span className="brand">Study App</span>
+            <span className="brand">Echomathia</span>
             {NAV_ITEMS.map((item) => (
               <button
                 key={item.label}

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { DeckStack } from "../components/DeckStack";
 import { ExamChip } from "../components/ExamChip";
-import { CARD_BACKS, cardBackOf } from "../cardBacks";
 import { daysUntilExam, intervalCapDays } from "../exam";
 import { formatInterval, isDue, State } from "../scheduler";
 import type { AppActions } from "../useAppData";
@@ -58,15 +57,13 @@ export function DeckScreen({ app, deckId, onBack, onStudy }: Props) {
     return `due in ${formatInterval(now, schedule.due)}`;
   }
 
-  const cardBack = cardBackOf(deck);
-
   return (
     <div className="screen narrow">
       <button className="link" onClick={onBack}>
         ← All decks
       </button>
       <div className="deck-header">
-        <DeckStack cardBack={cardBack} cardCount={deck.cardIds.length} size="large" />
+        <DeckStack cardCount={deck.cardIds.length} size="large" />
         <h1>
           {deck.name} <ExamChip deck={deck} now={now} />
         </h1>
@@ -119,22 +116,6 @@ export function DeckScreen({ app, deckId, onBack, onStudy }: Props) {
               ? `Exam mode is on: no card is scheduled more than ${formatDays(intervalCapDays(daysLeft))} ahead, new cards are spread out until 3 days before, and every card comes up in the last 2 days.`
               : "The exam date has passed."}
         </p>
-      </section>
-
-      <section className="panel">
-        <h2>Card back</h2>
-        <div className="back-picker">
-          {CARD_BACKS.map((back) => (
-            <button
-              key={back.id}
-              className={`back-swatch card-back back-${back.id}${back.id === cardBack ? " selected" : ""}`}
-              title={back.name}
-              aria-label={back.name}
-              aria-pressed={back.id === cardBack}
-              onClick={() => app.setCardBack(deck.id, back.id)}
-            />
-          ))}
-        </div>
       </section>
 
       <h2>Add flashcard</h2>

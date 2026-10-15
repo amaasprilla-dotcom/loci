@@ -1,4 +1,4 @@
-# Study App
+# Echomathia
 
 The flashcard app where cards can be problems. See [SPEC.md](SPEC.md) for the plan.
 
@@ -41,13 +41,12 @@ Data stays in each visitor's own browser, so a deployed copy starts empty for ev
 - `src/exam.ts`: exam mode rules (interval cap, new-card pacing, final days)
 - `src/streak.ts`: the day streak
 - `src/points.ts`: points and the combo multiplier
-- `src/goal.ts`: the daily goal
 - `src/progress.ts`: the numbers behind the Progress charts (all from the review log)
 - `src/useAppData.ts`: all app data plus the actions that change it
 - `src/packs/`: built-in packs as JSON files (add a pack by adding a file and listing it in `index.ts`)
 - `src/screens/`: one file per screen (Home, Deck, Study, Progress, Settings)
-- `src/components/`: pieces shared between screens (playing card, deck stack, pack opening, math text, rating buttons, card reviews)
-- `src/index.css`, `src/cards.css`, `src/decks.css`: the look (theme colors are variables at the top of `index.css`)
+- `src/components/`: pieces shared between screens (study card, deck stack, pack animation, charts, math text, rating buttons, card reviews)
+- `src/index.css`, `src/cards.css`, `src/decks.css`, `src/progress.css`: the look (brand colors white, black and light blue are variables at the top of `index.css`)
 - `src/sound.ts`: sound effects, synthesized in code
 - `src/motion.ts`: Calm mode (switched on in Settings)
 - `ASSETS.md`: where every font, sound and design comes from, and its license

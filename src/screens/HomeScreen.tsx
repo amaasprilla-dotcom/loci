@@ -1,12 +1,9 @@
 import { useState } from "react";
 import { DeckStack } from "../components/DeckStack";
 import { ExamChip } from "../components/ExamChip";
-import { GoalPanel } from "../components/GoalPanel";
 import { NewDeckPanel } from "../components/NewDeckPanel";
 import { PackOpening } from "../components/PackOpening";
-import { cardBackOf } from "../cardBacks";
 import { daysUntilExam } from "../exam";
-import { dailyGoal } from "../goal";
 import { isCalm } from "../motion";
 import type { Pack } from "../packs";
 import { formatInterval } from "../scheduler";
@@ -23,7 +20,7 @@ type Props = {
 
 export function HomeScreen({ app, onOpenDeck, onStudy }: Props) {
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [opening, setOpening] = useState<{ packName: string; cardBack: string } | null>(null);
+  const [opening, setOpening] = useState<string | null>(null); // name of the pack being added
   const [showArchived, setShowArchived] = useState(false);
   const decks = app.data.decks.filter((d) => !d.archived);
   const archived = app.data.decks.filter((d) => d.archived);
@@ -40,14 +37,13 @@ export function HomeScreen({ app, onOpenDeck, onStudy }: Props) {
   const nextDue = app.nextDueDate(deckIds, now);
   const canPractice = app.practiceCardIds(deckIds).length > 0;
   const examsOver = decks.filter((d) => d.examDate && daysUntilExam(d.examDate, now) < 0);
-  const goal = dailyGoal(app.data.reviewLog, dueNow, app.data.profile.settings.sessionMinutes, now);
 
   // Opening a pack: the deck is created right away; the animation is just for show.
   function openPack(pack: Pack) {
-    const deck = app.addPack(pack);
+    app.addPack(pack);
     setSheetOpen(false);
     if (isCalm()) sounds.packOpen();
-    else setOpening({ packName: pack.name, cardBack: cardBackOf(deck) });
+    else setOpening(pack.name);
   }
 
   return (
@@ -59,7 +55,7 @@ export function HomeScreen({ app, onOpenDeck, onStudy }: Props) {
         </div>
         <div className="stat">
           <strong>{streak}</strong>
-          <span className="muted">day streak{streak > 0 && " 🔥"}</span>
+          <span className="muted">day streak</span>
         </div>
       </div>
 
@@ -77,8 +73,6 @@ export function HomeScreen({ app, onOpenDeck, onStudy }: Props) {
       {dueNow === 0 && canPractice && (
         <button onClick={() => onStudy(deckIds, true)}>Practice anyway</button>
       )}
-
-      {!isNewUser && <GoalPanel goal={goal} />}
 
       {examsOver.map((deck) => (
         <section key={deck.id} className="panel">
@@ -111,7 +105,7 @@ export function HomeScreen({ app, onOpenDeck, onStudy }: Props) {
                   className={`deck-slot${due > 0 ? " has-due" : ""}`}
                   onClick={() => onOpenDeck(deck.id)}
                 >
-                  <DeckStack cardBack={cardBackOf(deck)} cardCount={deck.cardIds.length} />
+                  <DeckStack cardCount={deck.cardIds.length} />
                   <span className="deck-info">
                     <span className="deck-name">{deck.name}</span>
                     <span className="muted">
@@ -176,11 +170,7 @@ export function HomeScreen({ app, onOpenDeck, onStudy }: Props) {
       )}
 
       {opening && (
-        <PackOpening
-          packName={opening.packName}
-          cardBack={opening.cardBack}
-          onDone={() => setOpening(null)}
-        />
+<PackOpening packName={opening} onDone={() => setOpening(null)} />
       )}
     </div>
   );

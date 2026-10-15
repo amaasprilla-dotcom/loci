@@ -3,16 +3,15 @@ import { sounds } from "../sound";
 
 type Props = {
   packName: string;
-  cardBack: string;
   onDone: () => void;
 };
 
 const FAN = [-2, -1, 0, 1, 2]; // five cards, from left to right
 const DURATION_MS = 2100;
 
-// The pack-opening moment: the foil pack shakes, its top tears off, and its
-// cards fan out. Tap anywhere to skip. (The timing lives in decks.css.)
-export function PackOpening({ packName, cardBack, onDone }: Props) {
+// The moment a pack is added: the pack's flap lifts off and its cards fan out.
+// Tap anywhere to skip. (The timing lives in decks.css.)
+export function PackOpening({ packName, onDone }: Props) {
   // Keep the latest onDone without restarting the timers.
   const done = useRef(onDone);
   useEffect(() => {
@@ -33,7 +32,7 @@ export function PackOpening({ packName, cardBack, onDone }: Props) {
       <div className="fan">
         {FAN.map((i) => {
           const style = { "--i": i, "--lift": `${Math.abs(i) * 12 - 40}px` } as React.CSSProperties;
-          return <span key={i} className={`fan-card card-back back-${cardBack}`} style={style} />;
+          return <span key={i} className="fan-card" style={style} />;
         })}
       </div>
       <div className="foil-pack">

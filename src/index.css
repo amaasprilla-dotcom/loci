@@ -1,47 +1,40 @@
-/* Theme and general layout. Cards live in cards.css, decks and packs in decks.css.
-   Every color is a variable here, so the whole look can be retuned in one place. */
+/* Echomathia: theme and general layout.
+   Cards live in cards.css, decks and packs in decks.css, charts in progress.css.
+   Brand colors: white, black and light blue. Every color is a variable here. */
 
 :root {
-  /* The table: dark green felt */
-  --felt: #134a37;
-  --felt-dark: #0a2c20;
-  --panel: rgba(0, 0, 0, 0.28); /* boxes sitting on the felt */
-  --panel-border: rgba(255, 255, 255, 0.12);
-  --text: #f4efe1;
-  --muted: #b9c8bd;
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-muted: #f5f8fb; /* quiet backgrounds: panels, inputs */
+  --border: #e1e7ee;
+  --border-strong: #c9d3de;
+  --text: #0b0f14; /* black */
+  --muted: #5a6573;
 
-  /* Gold accent for the main actions */
-  --accent: #ffc83d;
-  --accent-dark: #c38f0c;
-  --accent-text: #2b1d00;
+  /* Light blue: the brand accent. The "ink" shade is for blue text and focus. */
+  --blue: #7cc8f8;
+  --blue-soft: #e7f5fe;
+  --blue-ink: #1670ad;
 
-  /* Card paper */
-  --paper: #fbf6e9;
-  --paper-edge: #e4d9bd;
-  --ink: #1f1c16;
-  --ink-muted: #6b6455;
+  /* Only for right / wrong feedback */
+  --good: #1e9e5a;
+  --good-soft: #e6f6ed;
+  --bad: #d4443b;
+  --bad-soft: #fdeceb;
 
-  /* Card types (each also has a suit icon) */
-  --type-flashcard: #2f7fe0;
-  --type-formula: #e4572e;
-  --type-table: #8a4fd0;
+  --radius: 12px;
+  --shadow-sm: 0 1px 2px rgba(11, 15, 20, 0.05);
+  --shadow-md: 0 2px 4px rgba(11, 15, 20, 0.04), 0 10px 28px rgba(11, 15, 20, 0.08);
 
-  /* Ratings */
-  --again: #e5483b;
-  --hard: #f29b18;
-  --good: #29b765;
-  --easy: #2e8fe0;
+  --font: "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
 
-  /* Fonts: a pixel display font for headings and numbers, a highly legible one for reading */
-  --font-display: "Pixelify Sans", system-ui, sans-serif;
-  --font-text: "Atkinson Hyperlegible", system-ui, "Segoe UI", Roboto, sans-serif;
-
-  font-family: var(--font-text);
-  font-size: 17px;
-  line-height: 1.5;
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.55;
   color: var(--text);
-  background: var(--felt-dark);
-  color-scheme: dark;
+  background: var(--bg);
+  color-scheme: light;
+  font-feature-settings: "cv11", "ss01"; /* Inter: clearer 1, l and a */
 }
 
 * {
@@ -51,26 +44,22 @@
 body {
   margin: 0;
   min-height: 100vh;
-  /* A soft spotlight on the felt */
-  background:
-    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.08), transparent 60%),
-    radial-gradient(ellipse at 50% 40%, var(--felt), var(--felt-dark) 85%);
-  background-attachment: fixed;
+  background: var(--bg);
 }
 
 .app {
-  max-width: 880px;
+  max-width: 920px;
   margin: 0 auto;
-  padding: 16px 16px calc(32px + env(safe-area-inset-bottom));
+  padding: 24px 20px calc(40px + env(safe-area-inset-bottom));
 }
 
 .screen {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
-/* Reading-width screens (forms, settings) stay narrower than the deck table */
+/* Reading-width screens (forms, settings) stay narrower */
 .screen.narrow {
   max-width: 640px;
   width: 100%;
@@ -78,21 +67,21 @@ body {
 }
 
 h1,
-h2 {
-  font-family: var(--font-display);
-  font-weight: 600;
-  letter-spacing: 0.02em;
+h2,
+h3 {
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
 }
 
 h1 {
-  margin: 8px 0;
-  font-size: 2rem;
-  line-height: 1.15;
+  margin: 4px 0;
+  font-size: 1.75rem;
 }
 
 h2 {
-  margin: 16px 0 0;
-  font-size: 1.25rem;
+  margin: 12px 0 0;
+  font-size: 1.15rem;
 }
 
 .muted {
@@ -104,65 +93,67 @@ h2 {
   margin: 0;
 }
 
-/* ---------- Buttons: chunky, with a "pressable" bottom edge ---------- */
+/* ---------- Buttons ---------- */
 
 button {
   font: inherit;
+  font-weight: 550;
   padding: 10px 16px;
   min-height: 44px;
-  border-radius: 12px;
-  border: 1px solid var(--panel-border);
-  background: rgba(0, 0, 0, 0.35);
+  border-radius: 10px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
   color: var(--text);
   cursor: pointer;
-  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.45);
-  transition: transform 0.08s, box-shadow 0.08s, background 0.15s;
+  transition: background 0.15s, border-color 0.15s, transform 0.08s, box-shadow 0.15s;
   -webkit-tap-highlight-color: transparent;
 }
 
 button:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--surface-muted);
 }
 
 button:active:not(:disabled) {
-  transform: translateY(2px);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
+  transform: translateY(1px);
 }
 
 button:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: default;
 }
 
 button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
-select:focus-visible {
-  outline: 3px solid var(--accent);
+select:focus-visible,
+summary:focus-visible {
+  outline: 3px solid var(--blue);
   outline-offset: 2px;
 }
 
+/* The main action on a screen: black */
 button.primary {
-  background: var(--accent);
-  border-color: var(--accent-dark);
-  color: var(--accent-text);
-  font-weight: 700;
-  box-shadow: 0 4px 0 var(--accent-dark);
+  background: var(--text);
+  border-color: var(--text);
+  color: #ffffff;
 }
 
 button.primary:hover:not(:disabled) {
-  background: #ffd45e;
+  background: #263240;
 }
 
-button.primary:active:not(:disabled) {
-  box-shadow: 0 1px 0 var(--accent-dark);
+/* Nothing to do yet (e.g. "All caught up"): quiet, not a gray block */
+button.primary:disabled {
+  opacity: 1;
+  color: var(--muted);
+  background: var(--surface-muted);
+  border-color: var(--border);
 }
 
 button.big {
-  padding: 16px;
-  font-family: var(--font-display);
-  font-size: 1.35rem;
-  letter-spacing: 0.03em;
+  padding: 14px 18px;
+  font-size: 1.05rem;
+  font-weight: 600;
 }
 
 button.link {
@@ -170,9 +161,9 @@ button.link {
   min-height: 0;
   border: none;
   background: none;
-  box-shadow: none;
   padding: 4px 0;
-  color: var(--accent);
+  color: var(--blue-ink);
+  font-weight: 550;
 }
 
 button.link:hover:not(:disabled) {
@@ -181,13 +172,13 @@ button.link:hover:not(:disabled) {
 }
 
 button.danger {
-  color: #ff9b91;
+  color: var(--bad);
   align-self: flex-start;
 }
 
 button.small {
   min-height: 0;
-  padding: 4px 10px;
+  padding: 5px 10px;
   font-size: 0.85rem;
 }
 
@@ -204,20 +195,22 @@ textarea,
 select {
   font: inherit;
   width: 100%;
-  padding: 10px;
+  padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid var(--panel-border);
-  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
   color: var(--text);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--blue);
 }
 
 select {
   width: auto;
   align-self: flex-start;
-}
-
-input[type="date"] {
-  color-scheme: dark;
 }
 
 .inline-form {
@@ -232,7 +225,7 @@ input[type="date"] {
 .card-form {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .card-form label {
@@ -240,7 +233,7 @@ input[type="date"] {
   flex-direction: column;
   gap: 4px;
   font-size: 0.9rem;
-  color: var(--muted);
+  font-weight: 550;
 }
 
 .card-form button {
@@ -257,13 +250,14 @@ input[type="date"] {
 .check input {
   width: auto;
   margin-top: 4px;
+  accent-color: var(--blue-ink);
 }
 
 .preview {
   padding: 10px 12px;
   border-radius: 10px;
-  background: var(--paper);
-  color: var(--ink);
+  border: 1px dashed var(--border-strong);
+  background: var(--surface-muted);
 }
 
 .hint {
@@ -277,38 +271,55 @@ input[type="date"] {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: rgba(8, 34, 25, 0.85);
-  backdrop-filter: blur(6px);
-  border-bottom: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
 }
 
 .topbar nav {
-  max-width: 880px;
+  max-width: 920px;
   margin: 0 auto;
-  padding: 8px 16px;
+  padding: 8px 20px;
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
 .topbar .brand {
-  font-family: var(--font-display);
-  font-size: 1.3rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-right: auto;
-  color: var(--accent);
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* A small light-blue mark before the name */
+.topbar .brand::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--blue);
+  box-shadow: 4px 4px 0 var(--text);
 }
 
 .topbar nav button {
   border: none;
   background: none;
-  box-shadow: none;
   padding: 8px 12px;
   color: var(--muted);
 }
 
+.topbar nav button:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface-muted);
+}
+
 .topbar nav button.active {
   color: var(--text);
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--blue-soft);
 }
 
 /* ---------- Panels, lists, stats ---------- */
@@ -317,10 +328,10 @@ input[type="date"] {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 16px;
-  border: 1px solid var(--panel-border);
-  border-radius: 14px;
-  background: var(--panel);
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
 }
 
 .panel h2 {
@@ -348,29 +359,32 @@ input[type="date"] {
 .stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 12px;
 }
 
 .stat {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 10px;
-  border: 1px solid var(--panel-border);
-  border-radius: 14px;
-  background: var(--panel);
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-muted);
 }
 
 .stat strong {
-  font-family: var(--font-display);
-  font-size: 2rem;
-  line-height: 1.1;
-  color: var(--accent);
+  font-size: 1.75rem;
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.stat .muted {
+  font-size: 0.88rem;
 }
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 10px;
 }
 
@@ -380,38 +394,43 @@ input[type="date"] {
   padding: 1px 8px;
   border-radius: 999px;
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: 600;
   vertical-align: middle;
-  color: var(--accent-text);
-  background: var(--accent);
+  color: var(--text);
+  background: var(--blue-soft);
+  border: 1px solid var(--blue);
 }
 
 .chip.urgent {
-  color: #fff;
-  background: var(--again);
+  color: #ffffff;
+  background: var(--text);
+  border-color: var(--text);
 }
 
 .notice {
   margin: 0;
   padding: 10px 14px;
   border-radius: 10px;
-  background: rgba(255, 200, 61, 0.15);
-  border: 1px solid rgba(255, 200, 61, 0.35);
+  background: var(--blue-soft);
+  border: 1px solid var(--blue);
 }
 
 .notice.warning {
-  background: rgba(229, 72, 59, 0.2);
-  border-color: rgba(229, 72, 59, 0.5);
+  background: var(--bad-soft);
+  border-color: var(--bad);
 }
 
 /* A label styled like a button; the real file input inside is hidden. */
 .file-button {
   padding: 10px 16px;
-  border-radius: 12px;
-  border: 1px solid var(--panel-border);
-  background: rgba(0, 0, 0, 0.35);
-  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.45);
+  border-radius: 10px;
+  border: 1px solid var(--border-strong);
+  font-weight: 550;
   cursor: pointer;
+}
+
+.file-button:hover {
+  background: var(--surface-muted);
 }
 
 .file-button input {
@@ -427,9 +446,9 @@ input[type="date"] {
 }
 
 .toggle-row input {
-  width: 22px;
-  height: 22px;
-  accent-color: var(--accent);
+  width: 20px;
+  height: 20px;
+  accent-color: var(--blue-ink);
 }
 
 /* ---------- Deck screen: list of cards ---------- */
@@ -438,26 +457,11 @@ input[type="date"] {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px;
-  border-radius: 12px;
-  background: var(--paper);
-  color: var(--ink);
-  border-left: 6px solid var(--type-color, var(--paper-edge));
-}
-
-.card-row .muted {
-  color: var(--ink-muted);
-}
-
-.card-row button {
-  color: var(--ink);
-  background: rgba(0, 0, 0, 0.06);
-  border-color: rgba(0, 0, 0, 0.12);
-  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.15);
-}
-
-.card-row button.danger {
-  color: #b42318;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--blue);
+  background: var(--surface);
 }
 
 .card-row-text {
@@ -479,7 +483,13 @@ button.toggle {
   align-self: flex-start;
 }
 
-/* ---------- Review history (Settings) ---------- */
+.archived-row {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* ---------- Tables (review history, chart numbers) ---------- */
 
 .table-scroll {
   overflow-x: auto;
@@ -490,29 +500,30 @@ button.toggle {
   border-collapse: collapse;
   font-size: 0.85rem;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .history th,
 .history td {
   text-align: left;
   padding: 6px 8px;
-  border-bottom: 1px solid var(--panel-border);
+  border-bottom: 1px solid var(--border);
 }
 
 .history th {
   color: var(--muted);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 /* ---------- Phones ---------- */
 
 @media (max-width: 480px) {
   .app {
-    padding: 12px 12px calc(24px + env(safe-area-inset-bottom));
+    padding: 16px 14px calc(28px + env(safe-area-inset-bottom));
   }
 
   h1 {
-    font-size: 1.6rem;
+    font-size: 1.5rem;
   }
 
   .card-row {
@@ -524,26 +535,4 @@ button.toggle {
     justify-content: space-between;
     align-items: center;
   }
-}
-
-/* ---------- Daily goal (Home) ---------- */
-
-.goal-panel.met {
-  border-color: rgba(41, 183, 101, 0.6);
-  background: rgba(41, 183, 101, 0.14);
-}
-
-.goal-done {
-  margin-left: 6px;
-  padding: 1px 10px;
-  border-radius: 999px;
-  font-size: 0.9rem;
-  color: #fff;
-  background: var(--good);
-}
-
-.goal-bar {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
 }

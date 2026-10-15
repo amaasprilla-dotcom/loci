@@ -2,14 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { ChoiceReview } from "../components/ChoiceReview";
 import { CountUp } from "../components/CountUp";
 import { FlashcardReview } from "../components/FlashcardReview";
-import { dailyGoal } from "../goal";
 import { isCalm } from "../motion";
 import { formatMultiplier, nextMultiplier, pointsFor } from "../points";
 import { isMultipleChoice } from "../questions";
 import { orderSession, requeue } from "../queue";
 import { previewDueDates, Rating, State, type Grade } from "../scheduler";
 import { sounds } from "../sound";
-import { dayKey } from "../storage";
 import type { ReviewResult } from "../types";
 import type { AppActions } from "../useAppData";
 
@@ -197,7 +195,7 @@ export function StudyScreen({ app, deckIds, practice, onExit }: Props) {
 
   if (!card || finished) {
     return (
-      <SessionSummary app={app} stats={stats} startedAt={startedAt} practice={practice} onExit={onExit} />
+      <SessionSummary stats={stats} startedAt={startedAt} practice={practice} onExit={onExit} />
     );
   }
 
@@ -315,10 +313,10 @@ export function StudyScreen({ app, deckIds, practice, onExit }: Props) {
   );
 }
 
-const PARTICLE_COLORS = ["var(--accent)", "var(--good)", "#ffffff", "var(--type-flashcard)", "#ff7ab6"];
+const PARTICLE_COLORS = ["var(--blue)", "var(--blue-ink)", "var(--text)"];
 
 // Confetti flying out in all directions.
-function makeParticles(count = 22): Particle[] {
+function makeParticles(count = 14): Particle[] {
   return Array.from({ length: count }, (_, i) => {
     const angle = (i / count) * Math.PI * 2 + Math.random() * 0.5;
     const distance = 90 + Math.random() * 90;
@@ -331,7 +329,6 @@ function makeParticles(count = 22): Particle[] {
 }
 
 type SummaryProps = {
-  app: AppActions;
   stats: Stats;
   startedAt: number;
   practice: boolean;
@@ -339,41 +336,12 @@ type SummaryProps = {
 };
 
 // The end-of-session screen: the score counts up, then the stats.
-function SessionSummary({ app, stats, startedAt, practice, onExit }: SummaryProps) {
+function SessionSummary({ stats, startedAt, practice, onExit }: SummaryProps) {
   const [endedAt] = useState(() => Date.now());
   const seconds = Math.round((endedAt - startedAt) / 1000);
   const accuracy = stats.checked > 0 ? Math.round((stats.correct / stats.checked) * 100) : null;
   const nothingDone = stats.reviewed + stats.skipped === 0;
   const bonus = stats.score - stats.points;
-
-  // Did this session complete today's goal? Then it gets its moment (once a day).
-  const [goalJustMet] = useState(() => {
-    const now = new Date(endedAt);
-    const activeDecks = app.data.decks.filter((d) => !d.archived).map((d) => d.id);
-    const goal = dailyGoal(
-      app.data.reviewLog,
-      app.dueCardIds(activeDecks, now).length,
-      app.data.profile.settings.sessionMinutes,
-      now,
-    );
-    return goal.met && app.data.profile.goalCelebratedOn !== dayKey(now);
-  });
-  const [goalParticles] = useState(() => makeParticles(30));
-
-  // Remember it's been celebrated today (only once, even as the data changes).
-  const marked = useRef(false);
-  useEffect(() => {
-    if (!goalJustMet || marked.current) return;
-    marked.current = true;
-    app.markGoalCelebrated(dayKey(new Date()));
-  }, [goalJustMet, app]);
-
-  // The fanfare plays after the score has counted up.
-  useEffect(() => {
-    if (!goalJustMet) return;
-    const timer = window.setTimeout(sounds.goal, 2300);
-    return () => window.clearTimeout(timer);
-  }, [goalJustMet]);
 
   if (nothingDone) {
     return (
@@ -413,26 +381,6 @@ function SessionSummary({ app, stats, startedAt, practice, onExit }: SummaryProp
           </strong>
         </div>
       </div>
-
-      {goalJustMet && (
-        <section className="goal-moment">
-          {goalParticles.map((particle, i) => {
-            const style = {
-              "--dx": `${particle.dx}px`,
-              "--dy": `${particle.dy}px`,
-              "--particle-color": particle.color,
-            } as React.CSSProperties;
-            return <span key={i} className="particle" style={style} />;
-          })}
-          <span className="goal-check" aria-hidden="true">
-            ✓
-          </span>
-          <div>
-            <h2>Daily goal complete!</h2>
-            <p>That's today's retrieval practice done. Tomorrow's cards will thank you.</p>
-          </div>
-        </section>
-      )}
 
       <div className="summary-grid">
         <SummaryItem value={stats.reviewed} label="cards reviewed" />

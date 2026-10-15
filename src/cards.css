@@ -1,8 +1,8 @@
-/* Playing cards: their look, and how they move.
+/* Study cards: their look, and how they move.
    Movement uses only `transform` and `opacity`, which phones can animate smoothly.
 
    A card is built from nested wrappers, so each kind of movement has its own layer:
-     .playing-card   deal in, play into the tray, discard, shake
+     .playing-card   deal in, play into the tray, discard, shake, hop
        .card-float   slow idle float
          .card-tilt  leans toward the pointer (desktop)
            .card-flip  the 3D flip between front and back
@@ -22,31 +22,31 @@
   position: relative;
   /* As wide as fits, but short enough that the answer buttons stay on screen */
   width: min(84vw, 320px, calc(50vh * 5 / 7));
-  animation: deal 0.38s cubic-bezier(0.2, 0.9, 0.3, 1.15) both;
+  animation: deal 0.35s cubic-bezier(0.2, 0.8, 0.3, 1) both;
   /* Card text can't be selected: tapping and double-clicking should feel like handling a card */
   user-select: none;
   -webkit-user-select: none;
 }
 
 .card-float {
-  perspective: 1000px;
-  animation: float 5.5s ease-in-out infinite;
+  perspective: 1200px;
+  animation: float 6s ease-in-out infinite;
 }
 
 .card-tilt {
   transform-style: preserve-3d;
   transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
-  transition: transform 0.18s ease-out;
+  transition: transform 0.2s ease-out;
 }
 
 /* Both sides sit in the same grid cell. Every card has exactly the same
-   playing-card shape; long text shrinks to fit instead of stretching the card. */
+   shape; long text shrinks to fit instead of stretching the card. */
 .card-flip {
   display: grid;
   aspect-ratio: 5 / 7;
   min-height: 0;
   transform-style: preserve-3d;
-  transition: transform 0.55s cubic-bezier(0.3, 0.7, 0.25, 1.15);
+  transition: transform 0.5s cubic-bezier(0.3, 0.7, 0.25, 1.05);
 }
 
 .card-flip.flipped {
@@ -60,27 +60,25 @@
   position: relative;
   min-height: 0;
   overflow: hidden;
-  padding: 40px 22px;
-  border-radius: 18px;
-  background: var(--paper);
-  color: var(--ink);
-  line-height: 1.4;
+  padding: 46px 22px 28px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--blue);
+  background: var(--surface);
+  color: var(--text);
+  line-height: 1.45;
   text-align: center;
   display: flex;
   flex-direction: column;
-  /* A thin colored frame inside the paper edge, plus the drop shadow */
-  box-shadow:
-    inset 0 0 0 7px var(--paper),
-    inset 0 0 0 9px var(--type-color),
-    0 3px 0 var(--paper-edge),
-    0 14px 28px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--shadow-md);
 }
 
 .card-side.back {
   transform: rotateY(180deg);
+  background: var(--surface-muted);
 }
 
-/* The text area: its font size is set by PlayingCard so the text fits.
+/* The text area: its font size is set by FitText so the text fits.
    The inner box centers short text and lets very long text scroll. */
 .card-content {
   flex: 1;
@@ -101,7 +99,7 @@
 .card-side hr {
   width: 100%;
   border: none;
-  border-top: 2px dashed var(--paper-edge);
+  border-top: 1px solid var(--border);
   margin: 4px 0;
 }
 
@@ -112,73 +110,46 @@
 
 .card-side .small-text {
   font-size: 0.78em;
-  color: var(--ink-muted);
+  color: var(--muted);
 }
 
 .card-side .solution {
   font-size: 0.82em;
-  color: var(--ink-muted);
+  color: var(--muted);
 }
 
-/* Card types: the frame color and the suit icon in the corners */
-.type-flashcard { --type-color: var(--type-flashcard); }
-.type-formula { --type-color: var(--type-formula); }
-.type-table { --type-color: var(--type-table); }
-
-.corner {
+/* The card type, top left: icon + name */
+.card-label {
   position: absolute;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  color: var(--type-color);
-  font-family: var(--font-display);
-  font-size: 0.75rem;
-  line-height: 1;
-}
-
-.corner svg {
-  width: 20px;
-  height: 20px;
-}
-
-.corner.top {
   top: 14px;
   left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
-.corner.bottom {
-  bottom: 14px;
-  right: 16px;
-  transform: rotate(180deg);
+.card-label svg {
+  width: 14px;
+  height: 14px;
+  color: var(--blue-ink);
 }
 
-/* Right answer: green glow, a hop, a shine sweeping across, and a stamp */
-.playing-card.celebrate .card-side {
-  box-shadow:
-    inset 0 0 0 7px var(--paper),
-    inset 0 0 0 9px var(--good),
-    0 0 0 4px rgba(41, 183, 101, 0.55),
-    0 14px 28px rgba(0, 0, 0, 0.45);
-}
-
-.stamp {
-  font-family: var(--font-display);
-  font-size: 1.2rem;
-  font-weight: 700;
-}
-
-.stamp.correct {
-  color: #178a48;
-  border: 3px solid currentColor;
-  border-radius: 8px;
-  padding: 0 12px;
-  transform: rotate(-6deg);
-  animation: stamp 0.35s cubic-bezier(0.2, 1.5, 0.4, 1) both;
-}
+/* ---------- A right answer: a light-blue ring, a small hop, a sheen, a check ---------- */
 
 .playing-card.celebrate {
-  animation: hop 0.55s cubic-bezier(0.3, 1.4, 0.5, 1);
+  animation: hop 0.5s cubic-bezier(0.3, 1.3, 0.5, 1);
+}
+
+.playing-card.celebrate .card-side {
+  border-color: var(--blue);
+  box-shadow:
+    0 0 0 3px var(--blue-soft),
+    var(--shadow-md);
 }
 
 .playing-card.celebrate .card-side.front::after {
@@ -186,17 +157,94 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.85) 48%, transparent 60%);
+  background: linear-gradient(115deg, transparent 38%, rgba(124, 200, 248, 0.35) 50%, transparent 62%);
   background-size: 260% 100%;
   animation: shine 0.8s ease-out forwards;
 }
 
-@keyframes hop {
-  35% {
-    transform: translateY(-20px) scale(1.05) rotate(-2deg);
+.stamp {
+  font-weight: 650;
+  font-size: 0.85em;
+}
+
+.stamp.correct {
+  padding: 2px 12px;
+  border-radius: 999px;
+  color: var(--good);
+  background: var(--good-soft);
+  animation: stamp 0.3s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+.stamp.wrong {
+  color: var(--bad);
+}
+
+/* ---------- Motion ---------- */
+
+@keyframes deal {
+  from {
+    transform: translateY(24px) scale(0.97);
+    opacity: 0;
   }
-  65% {
-    transform: translateY(3px) scale(0.99) rotate(1deg);
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+/* Played: lifts up toward the tray and fades */
+@keyframes play {
+  0% {
+    transform: none;
+  }
+  20% {
+    transform: translateY(6px);
+  }
+  100% {
+    transform: translateY(-40vh) scale(0.4);
+    opacity: 0;
+  }
+}
+
+/* Discarded (Again or skipped): slides off to the side */
+@keyframes discard {
+  to {
+    transform: translateX(-60vw) rotate(-6deg);
+    opacity: 0;
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-8px);
+  }
+  40% {
+    transform: translateX(7px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(2px);
+  }
+}
+
+@keyframes hop {
+  40% {
+    transform: translateY(-10px) scale(1.02);
+  }
+  70% {
+    transform: translateY(2px);
   }
 }
 
@@ -211,81 +259,29 @@
 
 @keyframes stamp {
   from {
-    transform: scale(2.4) rotate(-16deg);
+    transform: scale(1.6);
     opacity: 0;
   }
 }
 
-.stamp.wrong {
-  color: #c0392b;
-}
-
-/* ---------- Motion ---------- */
-
-@keyframes deal {
+@keyframes fade-in {
   from {
-    transform: translate(60px, 80px) rotate(10deg) scale(0.9);
     opacity: 0;
   }
 }
 
-@keyframes float {
-  0%,
-  100% {
-    transform: translateY(0) rotate(-0.4deg);
-  }
-  50% {
-    transform: translateY(-7px) rotate(0.4deg);
-  }
-}
-
-/* Played: dips, then flies up into the tray at the top */
-@keyframes play {
-  0% {
-    transform: none;
-  }
-  25% {
-    transform: translateY(10px) scale(1.02);
-  }
-  100% {
-    transform: translateY(-75vh) scale(0.2) rotate(-8deg);
-    opacity: 0;
-  }
-}
-
-/* Discarded (Again or skipped): slides off to the side */
-@keyframes discard {
+@keyframes fade-out {
   to {
-    transform: translateX(-110vw) rotate(-18deg);
     opacity: 0;
-  }
-}
-
-@keyframes shake {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-  20% {
-    transform: translateX(-12px) rotate(-1.5deg);
-  }
-  40% {
-    transform: translateX(10px) rotate(1.5deg);
-  }
-  60% {
-    transform: translateX(-7px);
-  }
-  80% {
-    transform: translateX(4px);
   }
 }
 
 .card-slot.exit-play .playing-card {
-  animation: play 0.5s cubic-bezier(0.5, 0, 0.75, 0) forwards;
+  animation: play 0.45s cubic-bezier(0.5, 0, 0.75, 0) forwards;
 }
 
 .card-slot.exit-discard .playing-card {
-  animation: discard 0.42s cubic-bezier(0.5, 0, 0.75, 0) forwards;
+  animation: discard 0.4s cubic-bezier(0.5, 0, 0.75, 0) forwards;
 }
 
 /* The buttons under the card fade while it leaves */
@@ -297,37 +293,96 @@
 }
 
 .playing-card.shake {
-  animation: shake 0.42s ease-in-out;
+  animation: shake 0.4s ease-in-out;
 }
 
-/* ---------- Points popping off a card ---------- */
+/* ---------- Points, combo and particles over the card ---------- */
+
+.study {
+  position: relative;
+}
+
+.pop-layer {
+  position: absolute;
+  inset: 90px 0 auto 0;
+  height: 260px;
+  pointer-events: none;
+  z-index: 6;
+}
 
 .points-pop {
   position: absolute;
   top: 30%;
   left: 50%;
-  z-index: 5;
-  pointer-events: none;
-  font-family: var(--font-display);
-  font-size: 2.4rem;
-  color: var(--accent);
-  text-shadow:
-    0 3px 0 var(--accent-dark),
-    0 6px 14px rgba(0, 0, 0, 0.5);
+  font-size: 1.9rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--blue-ink);
   animation: points-pop 0.9s ease-out forwards;
+}
+
+.points-pop small {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: center;
 }
 
 @keyframes points-pop {
   0% {
-    transform: translate(-50%, 0) scale(0.5);
+    transform: translate(-50%, 0) scale(0.7);
     opacity: 0;
   }
   20% {
-    transform: translate(-50%, -10px) scale(1.25);
+    transform: translate(-50%, -8px) scale(1.08);
     opacity: 1;
   }
   100% {
-    transform: translate(-50%, -110px) scale(1);
+    transform: translate(-50%, -90px) scale(1);
+    opacity: 0;
+  }
+}
+
+.combo-pop {
+  position: absolute;
+  top: 6%;
+  left: 50%;
+  padding: 4px 14px;
+  border-radius: 999px;
+  font-size: 1rem;
+  font-weight: 650;
+  white-space: nowrap;
+  color: var(--text);
+  background: var(--blue);
+  box-shadow: var(--shadow-md);
+  animation: combo-pop 1.1s ease-out forwards;
+}
+
+.combo-pop.lost {
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+@keyframes combo-pop {
+  0% {
+    transform: translate(-50%, 8px) scale(0.6);
+    opacity: 0;
+  }
+  18% {
+    transform: translate(-50%, 0) scale(1.06);
+    opacity: 1;
+  }
+  30% {
+    transform: translate(-50%, 0) scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -24px);
     opacity: 0;
   }
 }
@@ -336,18 +391,17 @@
   position: absolute;
   top: 40%;
   left: 50%;
-  z-index: 4;
-  width: 9px;
-  height: 9px;
-  border-radius: 2px;
-  background: var(--particle-color, var(--accent));
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--particle-color, var(--blue));
   pointer-events: none;
-  animation: burst 0.75s ease-out forwards;
+  animation: burst 0.7s ease-out forwards;
 }
 
 @keyframes burst {
   to {
-    transform: translate(var(--dx), var(--dy)) rotate(200deg) scale(0.2);
+    transform: translate(var(--dx), var(--dy)) scale(0.3);
     opacity: 0;
   }
 }
@@ -361,57 +415,90 @@
   gap: 12px;
 }
 
-/* The tray: where played cards go */
+/* The tray: cards played so far */
 .tray {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 12px 4px 6px;
-  border-radius: 12px;
-  background: rgba(0, 0, 0, 0.35);
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
-  font-family: var(--font-display);
-  font-size: 1.2rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .tray-card {
-  width: 22px;
-  height: 30px;
-  border-radius: 4px;
-  background: var(--paper);
-  box-shadow:
-    2px 2px 0 var(--paper-edge),
-    4px 4px 0 rgba(0, 0, 0, 0.3);
+  width: 12px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1.5px solid var(--text);
+  box-shadow: 2px 2px 0 var(--blue);
 }
 
 .tray-count {
   display: inline-block;
-  min-width: 1.5em;
-  animation: bump 0.35s ease-out;
+  min-width: 1.2em;
+  animation: bump 0.3s ease-out;
 }
 
 @keyframes bump {
   40% {
-    transform: scale(1.35) translateY(-3px);
-    color: var(--accent);
+    transform: scale(1.25);
+    color: var(--blue-ink);
   }
 }
 
+.score {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.score-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  min-width: 2.5ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.multiplier {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 650;
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+/* A combo going: the multiplier turns light blue and bumps when it changes */
+.multiplier.hot {
+  color: var(--text);
+  background: var(--blue);
+  border-color: var(--blue);
+  animation: bump 0.3s ease-out;
+}
+
 .practice-tag {
-  font-family: var(--font-display);
-  color: var(--accent);
+  color: var(--blue-ink);
 }
 
 .progress {
-  height: 8px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.35);
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
   overflow: hidden;
 }
 
 .progress div {
   height: 100%;
-  background: linear-gradient(90deg, var(--accent-dark), var(--accent));
+  background: var(--blue);
   transition: width 0.3s;
 }
 
@@ -425,7 +512,7 @@
 
 .feedback {
   margin: 0;
-  font-weight: 700;
+  font-weight: 650;
 }
 
 .feedback.correct {
@@ -433,7 +520,7 @@
 }
 
 .feedback.wrong {
-  color: var(--again);
+  color: var(--bad);
 }
 
 button.link.skip {
@@ -441,12 +528,18 @@ button.link.skip {
   color: var(--muted);
 }
 
-/* ---------- Answer options: little paper tiles ---------- */
+/* ---------- Answer options ----------
+   Two equal columns that never stretch for wide content (minmax(0, 1fr));
+   long answers switch to one per row. */
 
 .options {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.options.stacked {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .option {
@@ -454,99 +547,104 @@ button.link.skip {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  min-height: 60px;
-  padding: 12px 10px;
-  font-size: 1.15rem;
+  min-width: 0;
+  min-height: 58px;
+  padding: 12px 14px 12px 32px;
   border-radius: 12px;
-  border: 2px solid var(--paper-edge);
-  background: var(--paper);
-  color: var(--ink);
-  box-shadow: 0 4px 0 var(--paper-edge);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 500;
+  box-shadow: var(--shadow-sm);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.options.stacked .option {
+  justify-content: flex-start;
+  text-align: left;
 }
 
 .option:hover:not(:disabled) {
-  background: #fffdf5;
-  transform: translateY(-2px);
+  border-color: var(--blue);
+  background: var(--blue-soft);
 }
 
 .option:disabled {
   opacity: 1;
 }
 
-.option.correct {
-  border-color: var(--good);
-  background: #e3f7ea;
-  box-shadow: 0 4px 0 var(--good);
-  animation: option-pop 0.4s cubic-bezier(0.3, 1.6, 0.5, 1);
-}
-
-@keyframes option-pop {
-  40% {
-    transform: scale(1.08);
-  }
-}
-
-.options,
-.grade-row,
-.tray,
-.score {
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-.option.wrong {
-  border-color: var(--again);
-  background: #fde6e3;
-  box-shadow: 0 4px 0 var(--again);
+.option-text {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .option-key {
   position: absolute;
-  top: 5px;
-  left: 7px;
-  font-family: var(--font-display);
-  font-size: 0.75rem;
-  color: var(--ink-muted);
+  top: 50%;
+  left: 10px;
+  transform: translateY(-50%);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
 }
 
-/* ---------- Rating buttons ---------- */
+.option.correct {
+  border-color: var(--good);
+  background: var(--good-soft);
+  animation: option-pop 0.35s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+
+.option.wrong {
+  border-color: var(--bad);
+  background: var(--bad-soft);
+}
+
+@keyframes option-pop {
+  40% {
+    transform: scale(1.04);
+  }
+}
+
+/* ---------- Rating buttons: neutral, with the suggested one in light blue ---------- */
 
 .grade-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .grade {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 10px 4px;
-  font-weight: 700;
-  color: #fff;
-  border: none;
-  background: var(--grade-color);
-  box-shadow: 0 4px 0 color-mix(in srgb, var(--grade-color) 60%, black);
-}
-
-.grade:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--grade-color) 85%, white);
+  padding: 9px 4px;
+  font-weight: 600;
 }
 
 .grade small {
-  font-weight: 400;
-  opacity: 0.85;
+  font-weight: 500;
+  color: var(--muted);
 }
 
-.grade-1 { --grade-color: var(--again); }
-.grade-2 { --grade-color: var(--hard); }
-.grade-3 { --grade-color: var(--good); }
-.grade-4 { --grade-color: var(--easy); }
+/* A thin line under each label, so the four read apart at a glance */
+.grade span {
+  border-bottom: 2px solid var(--grade-color);
+  padding-bottom: 1px;
+}
+
+.grade-1 { --grade-color: var(--bad); }
+.grade-2 { --grade-color: var(--muted); }
+.grade-3 { --grade-color: var(--blue); }
+.grade-4 { --grade-color: var(--text); }
 
 .grade.selected {
-  outline: 3px solid var(--text);
-  outline-offset: 2px;
+  border-color: var(--blue);
+  background: var(--blue-soft);
+  box-shadow: 0 0 0 3px var(--blue-soft);
 }
 
 /* ---------- Pause and summary screens ---------- */
@@ -562,20 +660,52 @@ button.link.skip {
   margin: 0 0 12px;
 }
 
+.score-sum {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+
+.sum-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.sum-row strong {
+  font-size: 1.3rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.sum-row.total {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-strong);
+  font-weight: 650;
+}
+
+.sum-row.total strong {
+  font-size: 2.2rem;
+  letter-spacing: -0.02em;
+}
+
 /* ---------- Calm mode (switched on in Settings) ----------
-   No float, tilt, shake or particles; cards just fade in and out. */
+   No float, tilt, shake or particles; cards simply fade in and out. */
 
 .calm .card-float,
 .calm .playing-card.shake,
 .calm .playing-card.celebrate,
 .calm .tray-count,
 .calm .stamp,
-.calm .option.correct {
+.calm .option.correct,
+.calm .multiplier.hot {
   animation: none;
-}
-
-.calm .playing-card.celebrate .card-side.front::after {
-  display: none;
 }
 
 .calm .card-tilt {
@@ -587,7 +717,8 @@ button.link.skip {
   transition: none;
 }
 
-.calm .particle {
+.calm .particle,
+.calm .playing-card.celebrate .card-side.front::after {
   display: none;
 }
 
@@ -605,17 +736,12 @@ button.link.skip {
   transform: translate(-50%, -40px);
 }
 
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
+.calm .combo-pop {
+  transform: translate(-50%, 0);
+  animation: fade-out 1.2s ease-in forwards;
 }
 
-@keyframes fade-out {
-  to {
-    opacity: 0;
-  }
-}
+/* ---------- Phones ---------- */
 
 @media (max-width: 480px) {
   /* A little squatter on phones, so the answer buttons fit below it */
@@ -624,216 +750,9 @@ button.link.skip {
   }
 
   .card-side {
-    padding: 36px 18px;
+    padding: 42px 18px 22px;
   }
-}
 
-/* Points and particles float above the card area */
-.study {
-  position: relative;
-}
-
-.pop-layer {
-  position: absolute;
-  inset: 90px 0 auto 0;
-  height: 260px;
-  pointer-events: none;
-  z-index: 6;
-}
-
-/* ---------- Score and combo ---------- */
-
-.score {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--font-display);
-}
-
-.score-value {
-  font-size: 1.35rem;
-  color: var(--accent);
-  min-width: 2.5ch;
-  text-align: right;
-}
-
-.multiplier {
-  padding: 1px 7px;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  color: var(--muted);
-  background: rgba(0, 0, 0, 0.35);
-}
-
-/* A combo going: the multiplier glows and pops when it changes */
-.multiplier.hot {
-  color: #2b0a00;
-  background: linear-gradient(180deg, #ffb347, #ff6a3d);
-  box-shadow: 0 0 12px rgba(255, 106, 61, 0.6);
-  animation: bump 0.35s ease-out;
-}
-
-.points-pop small {
-  display: block;
-  font-size: 0.9rem;
-  color: var(--text);
-  text-align: center;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
-}
-
-.combo-pop {
-  position: absolute;
-  top: 6%;
-  left: 50%;
-  z-index: 6;
-  padding: 4px 14px;
-  border-radius: 999px;
-  font-family: var(--font-display);
-  font-size: 1.3rem;
-  white-space: nowrap;
-  color: #2b0a00;
-  background: linear-gradient(180deg, #ffd45e, #ff8a3d);
-  box-shadow: 0 4px 0 #b4561c, 0 8px 18px rgba(0, 0, 0, 0.4);
-  animation: combo-pop 1.1s ease-out forwards;
-}
-
-.combo-pop.lost {
-  color: var(--text);
-  background: rgba(0, 0, 0, 0.6);
-  box-shadow: none;
-  font-size: 1rem;
-}
-
-@keyframes combo-pop {
-  0% {
-    transform: translate(-50%, 10px) scale(0.4) rotate(-8deg);
-    opacity: 0;
-  }
-  18% {
-    transform: translate(-50%, 0) scale(1.15) rotate(3deg);
-    opacity: 1;
-  }
-  30% {
-    transform: translate(-50%, 0) scale(1) rotate(0);
-  }
-  80% {
-    opacity: 1;
-  }
-  100% {
-    transform: translate(-50%, -30px);
-    opacity: 0;
-  }
-}
-
-/* ---------- End of session: the score adding up ---------- */
-
-.score-sum {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 16px 18px;
-  border-radius: 16px;
-  background: var(--panel);
-  border: 1px solid var(--panel-border);
-}
-
-.sum-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
-}
-
-.sum-row strong {
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-}
-
-.sum-row.total {
-  margin-top: 6px;
-  padding-top: 10px;
-  border-top: 2px dashed var(--panel-border);
-  font-family: var(--font-display);
-  font-size: 1.2rem;
-}
-
-.sum-row.total strong {
-  font-size: 2.6rem;
-  color: var(--accent);
-  text-shadow: 0 3px 0 var(--accent-dark);
-}
-
-/* The daily-goal moment */
-.goal-moment {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 16px 18px;
-  border-radius: 16px;
-  color: var(--accent-text);
-  background: linear-gradient(135deg, #ffe08a, var(--accent));
-  box-shadow: 0 4px 0 var(--accent-dark), 0 0 30px rgba(255, 200, 61, 0.45);
-  animation: goal-in 0.6s 2.2s cubic-bezier(0.2, 1.4, 0.4, 1) both;
-}
-
-.goal-moment h2 {
-  margin: 0;
-}
-
-.goal-moment p {
-  margin: 2px 0 0;
-}
-
-.goal-check {
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  font-size: 1.8rem;
-  color: #fff;
-  background: var(--good);
-  box-shadow: 0 3px 0 #178a48;
-}
-
-.goal-moment .particle {
-  top: 50%;
-  opacity: 0; /* hidden until it bursts */
-  animation: goal-burst 0.9s 2.4s ease-out;
-}
-
-@keyframes goal-burst {
-  from {
-    opacity: 1;
-    transform: none;
-  }
-  to {
-    opacity: 0;
-    transform: translate(var(--dx), var(--dy)) rotate(200deg) scale(0.2);
-  }
-}
-
-@keyframes goal-in {
-  from {
-    transform: scale(0.6);
-    opacity: 0;
-  }
-}
-
-.calm .multiplier.hot,
-.calm .combo-pop,
-.calm .goal-moment {
-  animation: none;
-}
-
-.calm .combo-pop {
-  transform: translate(-50%, 0);
-  animation: fade-out 1.2s ease-in forwards;
-}
-
-@media (max-width: 480px) {
   .study-top {
     gap: 6px;
   }

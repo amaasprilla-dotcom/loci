@@ -1,6 +1,6 @@
 import type { Card } from "../types";
 
-// Original "suit" icons, one per card type (drawn for this app):
+// Small original icons, one per card type (drawn for this app):
 //   flashcard = spark (four-pointed star), formula = prism (hollow triangle),
 //   table = tiles (four small diamonds).
 const PATHS: Record<Card["type"], string> = {

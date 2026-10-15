@@ -84,12 +84,6 @@ export const sounds = {
   },
   wrong: () => note(200, { length: 0.3, wave: "sawtooth", volume: 0.3, glideTo: 140 }),
   tick: () => note(1400, { length: 0.04, wave: "square", volume: 0.25 }),
-  // A little fanfare for finishing the daily goal.
-  goal: () => {
-    [523, 659, 784, 1047].forEach((frequency, i) =>
-      note(frequency, { at: i * 0.11, length: i === 3 ? 0.5 : 0.16, wave: "triangle" }),
-    );
-  },
   packOpen: () => {
     swish({ length: 0.35, from: 700, to: 4500, volume: 1.2 });
     note(523, { at: 0.35, length: 0.15, wave: "triangle" });

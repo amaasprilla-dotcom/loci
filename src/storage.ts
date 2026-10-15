@@ -15,6 +15,8 @@ export type AppData = {
   profile: Profile;
 };
 
+// These keys keep the app's original working name on purpose: renaming them
+// would make every browser "forget" the data already saved under them.
 const STORAGE_KEY = "study-app-data";
 const UNREADABLE_KEY = "study-app-data-unreadable";
 // A copy of the data exactly as it was before it was upgraded to a newer version.
@@ -121,7 +123,7 @@ export function downloadBackup(data: AppData): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `study-app-backup-${dayKey(new Date())}.json`;
+  link.download = `echomathia-backup-${dayKey(new Date())}.json`;
   link.click();
   URL.revokeObjectURL(url);
 }

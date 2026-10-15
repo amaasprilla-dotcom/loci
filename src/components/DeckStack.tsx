@@ -1,30 +1,27 @@
-// A deck drawn as a physical stack of cards: the more cards, the taller the stack.
+// A small "stack of cards" mark for a deck: the more cards, the more edges
+// show behind the top card (up to 4).
 
-const CARDS_PER_LAYER = 4;
-const MAX_LAYERS = 9;
+const CARDS_PER_EDGE = 6;
+const MAX_EDGES = 4;
 
 type Props = {
-  cardBack: string;
   cardCount: number;
   size?: "small" | "large";
 };
 
-export function DeckStack({ cardBack, cardCount, size = "small" }: Props) {
-  const layers = Math.min(MAX_LAYERS, Math.max(1, Math.ceil(cardCount / CARDS_PER_LAYER)));
+export function DeckStack({ cardCount, size = "small" }: Props) {
+  const edges = Math.min(MAX_EDGES, Math.floor(cardCount / CARDS_PER_EDGE));
 
-  // Each layer is a card edge peeking out below the top card, alternating
-  // light and dark so the edges are visible.
-  const edges = Array.from({ length: layers }, (_, i) => {
-    const offset = (i + 1) * 2;
-    const color = i % 2 === 0 ? "var(--paper-edge)" : "#b9ad8f";
-    return `${offset / 2}px ${offset}px 0 0 ${color}`;
+  // Each edge: a white card slightly smaller than its black outline, offset down and right.
+  const shadows = Array.from({ length: edges }, (_, i) => {
+    const offset = (i + 1) * 3;
+    return `${offset}px ${offset}px 0 -1.5px #ffffff, ${offset}px ${offset}px 0 0 #0b0f14`;
   });
-  const shadow = [...edges, `${layers + 2}px ${layers * 2 + 6}px 10px rgba(0, 0, 0, 0.45)`].join(", ");
 
   return (
     <span
-      className={`deck-stack card-back back-${cardBack} ${size}`}
-      style={{ boxShadow: shadow, marginBottom: layers * 2 }}
+      className={`deck-stack ${size}`}
+      style={{ boxShadow: shadows.join(", ") || undefined, marginRight: edges * 3, marginBottom: edges * 3 }}
       aria-hidden="true"
     />
   );
