@@ -4,6 +4,7 @@ import 'katex/dist/katex.min.css'
 import './index.css'
 import './cards.css'
 import './decks.css'
+import './progress.css'
 import App from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(

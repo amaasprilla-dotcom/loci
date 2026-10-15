@@ -9,6 +9,11 @@ import type { ReviewLogEntry } from "./types";
 // A card left open while you make tea shouldn't count as 20 minutes of study.
 const MAX_COUNTED_PER_CARD_MS = 3 * 60 * 1000;
 
+// The study time one log entry counts for, in milliseconds.
+export function studyMs(entry: ReviewLogEntry): number {
+  return Math.min(entry.durationMs, MAX_COUNTED_PER_CARD_MS);
+}
+
 export type DailyGoal = {
   active: boolean; // were there cards due today?
   cleared: number; // different cards reviewed today
@@ -30,8 +35,7 @@ export function dailyGoal(
   const today = log.filter((entry) => entry.at >= since && entry.result !== "skipped");
 
   const cleared = new Set(today.filter((entry) => !entry.practice).map((entry) => entry.cardId)).size;
-  const minutes =
-    today.reduce((sum, entry) => sum + Math.min(entry.durationMs, MAX_COUNTED_PER_CARD_MS), 0) / 60_000;
+  const minutes = today.reduce((sum, entry) => sum + studyMs(entry), 0) / 60_000;
 
   const active = cleared > 0 || dueLeft > 0;
   const queueDone = active && dueLeft === 0;

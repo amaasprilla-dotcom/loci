@@ -1,0 +1,237 @@
+/* The Progress screen's charts. Colors were checked with a palette validator
+   against the felt (see the chart colors below). */
+
+:root {
+  --chart-bar: #bb8a2a; /* one series: deep gold, inside the dark-mode lightness band */
+  --chart-grid: rgba(255, 255, 255, 0.14);
+  /* Heatmap: one hue, dim to bright */
+  --heat-0: rgba(255, 255, 255, 0.07);
+  --heat-1: #6b6440;
+  --heat-2: #9c7f2c;
+  --heat-3: #cfa232;
+  --heat-4: #ffd45e;
+  /* Mastery: an ordered scale, New -> Learning -> Solid */
+  --stage-fresh: #6b6440;
+  --stage-learning: #c99a2e;
+  --stage-solid: #ffd45e;
+}
+
+.progress-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 14px;
+}
+
+.chart-panel .caption {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.chart-subtitle {
+  margin: 8px 0 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.chart {
+  position: relative;
+}
+
+.chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.chart.calendar svg {
+  max-width: 420px;
+}
+
+.chart .grid {
+  stroke: var(--chart-grid);
+  stroke-width: 1;
+}
+
+.chart .tick {
+  fill: var(--muted);
+  font-size: 10px;
+}
+
+.chart .value {
+  fill: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.chart .bar {
+  fill: var(--chart-bar);
+}
+
+.chart .hit {
+  fill: transparent;
+}
+
+.chart .hit:hover + .bar,
+.chart g:hover .bar {
+  fill: #d29d33;
+}
+
+.chart .marker {
+  fill: var(--text);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.chart .marker-line {
+  stroke: var(--text);
+  stroke-width: 1;
+  opacity: 0.5;
+}
+
+/* Heatmap cells and legend swatches */
+.heat-0 { fill: var(--heat-0); background: var(--heat-0); }
+.heat-1 { fill: var(--heat-1); background: var(--heat-1); }
+.heat-2 { fill: var(--heat-2); background: var(--heat-2); }
+.heat-3 { fill: var(--heat-3); background: var(--heat-3); }
+.heat-4 { fill: var(--heat-4); background: var(--heat-4); }
+
+.chart .heat:hover {
+  stroke: var(--text);
+  stroke-width: 1.5;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-top: 8px;
+  font-size: 0.85rem;
+}
+
+.calendar .legend {
+  gap: 4px;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+/* Mastery: one stacked bar per deck, 2px gaps between the parts */
+.stage-fresh { background: var(--stage-fresh); }
+.stage-learning { background: var(--stage-learning); }
+.stage-solid { background: var(--stage-solid); }
+
+.mastery-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.mastery-name {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.92rem;
+}
+
+.stack {
+  display: flex;
+  gap: 2px;
+  height: 14px;
+  margin-top: 4px;
+}
+
+.segment {
+  flex-basis: 0;
+  min-width: 4px;
+  height: 100%;
+}
+
+.segment:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.segment:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+.segment:only-child {
+  border-radius: 4px;
+}
+
+.segment:hover {
+  filter: brightness(1.15);
+}
+
+.stack-empty {
+  flex: 1;
+  border-radius: 4px;
+  background: var(--heat-0);
+}
+
+/* Retention: one big number */
+.retention {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.hero-figure {
+  font-size: 3.4rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.retention-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.trend.up span[aria-hidden] {
+  color: var(--good);
+}
+
+.trend.down span[aria-hidden] {
+  color: var(--again);
+}
+
+/* Tooltip */
+.chart-tip {
+  position: absolute;
+  z-index: 5;
+  transform: translate(-50%, calc(-100% - 10px));
+  padding: 5px 9px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  pointer-events: none;
+  color: var(--ink);
+  background: var(--paper);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* "Show the numbers" */
+.numbers {
+  margin-top: 6px;
+  font-size: 0.9rem;
+}
+
+.numbers summary {
+  cursor: pointer;
+  color: var(--accent);
+}

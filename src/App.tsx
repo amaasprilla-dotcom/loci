@@ -6,16 +6,19 @@ import { HomeScreen } from "./screens/HomeScreen";
 import { DeckScreen } from "./screens/DeckScreen";
 import { StudyScreen } from "./screens/StudyScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
+import { ProgressScreen } from "./screens/ProgressScreen";
 
 // Which screen is showing. A plain state variable is enough; no router needed.
 type Screen =
   | { name: "home" }
+  | { name: "progress" }
   | { name: "settings" }
   | { name: "deck"; deckId: string }
   | { name: "study"; deckIds: string[]; practice: boolean; returnTo: Screen };
 
 const NAV_ITEMS: { screen: Screen; label: string }[] = [
   { screen: { name: "home" }, label: "Decks" },
+  { screen: { name: "progress" }, label: "Progress" },
   { screen: { name: "settings" }, label: "Settings" },
 ];
 
@@ -65,6 +68,7 @@ export default function App() {
             onStudy={startStudy}
           />
         )}
+        {screen.name === "progress" && <ProgressScreen app={app} />}
         {screen.name === "settings" && <SettingsScreen app={app} />}
         {screen.name === "deck" && (
           <DeckScreen app={app} deckId={screen.deckId} onBack={goHome} onStudy={startStudy} />
