@@ -63,8 +63,7 @@ export function SettingsScreen({ app }: { app: AppActions }) {
             Calm mode
             <br />
             <small className="muted">
-              No floating, tilting, shaking or particles: cards simply fade. Turns on by itself if
-              your device asks for reduced motion.
+              No floating, tilting, shaking or particles: cards simply fade.
             </small>
           </span>
           <input

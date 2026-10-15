@@ -14,6 +14,7 @@ type Props = {
   otherBacks: string[]; // for multiple-choice flashcards: wrong options
   dueDates?: Record<Grade, Date>; // missing in practice mode
   now: Date;
+  onAnswer: (correct: boolean) => void; // the moment an option is picked
   onRate: (grade: Grade, result: ReviewResult) => void;
   onSkip: () => void;
 };
@@ -21,11 +22,11 @@ type Props = {
 const SHAKE_MS = 450;
 
 // A multiple-choice card: problems (formula and table) and multiple-choice flashcards.
-//   Right answer: the card glows; problems ask Hard / Good / Easy (Good suggested),
-//                 flashcards just say Next (counts as Good).
+//   Right answer: the card hops, shines and gets a stamp; problems ask
+//                 Hard / Good / Easy (Good suggested), flashcards just say Next (counts as Good).
 //   Wrong answer: the card shakes, then flips to show the answer (and worked
 //                 solution); rated Again.
-export function ChoiceReview({ card, otherBacks, dueDates, now, onRate, onSkip }: Props) {
+export function ChoiceReview({ card, otherBacks, dueDates, now, onAnswer, onRate, onSkip }: Props) {
   // A new question (new numbers, new options) each time this component appears.
   const [question] = useState(() => makeQuestion(card, otherBacks));
   const [picked, setPicked] = useState<string | null>(null);
@@ -39,6 +40,7 @@ export function ChoiceReview({ card, otherBacks, dueDates, now, onRate, onSkip }
 
   function handlePick(option: string) {
     setPicked(option);
+    onAnswer(option === question.answer);
     if (option === question.answer) {
       sounds.correct();
       return;
@@ -68,7 +70,7 @@ export function ChoiceReview({ card, otherBacks, dueDates, now, onRate, onSkip }
         <PlayingCard
           type={card.type}
           shake={shaking}
-          correct={picked !== null && correct}
+          celebrate={picked !== null && correct}
           flipped={flipped}
           front={
             <>

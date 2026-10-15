@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { ChoiceReview } from "../components/ChoiceReview";
+import { CountUp } from "../components/CountUp";
 import { FlashcardReview } from "../components/FlashcardReview";
+import { dailyGoal } from "../goal";
 import { isCalm } from "../motion";
-import { pointsFor } from "../points";
+import { formatMultiplier, nextMultiplier, pointsFor } from "../points";
 import { isMultipleChoice } from "../questions";
 import { orderSession, requeue } from "../queue";
 import { previewDueDates, Rating, State, type Grade } from "../scheduler";
 import { sounds } from "../sound";
+import { dayKey } from "../storage";
 import type { ReviewResult } from "../types";
 import type { AppActions } from "../useAppData";
 
@@ -32,6 +35,9 @@ type Stats = {
   checked: number; // answers the app checked (multiple choice)
   correct: number; // ...of which right
   skipped: number;
+  points: number; // base points, before the multiplier
+  score: number; // points x multiplier, card by card
+  bestMultiplier: number;
 };
 
 // A calm pause screen shown between cards.
@@ -40,9 +46,10 @@ type Pause = "time-up" | "break" | null;
 // How the current card leaves: played into the tray, or discarded to the side.
 type Exit = "play" | "discard" | null;
 
-// Points popping off a played card, with a burst of particles if it was right.
+// Things that pop up over the card for a moment.
 type Particle = { dx: number; dy: number; color: string };
-type Pop = { id: number; points: number; particles: Particle[] };
+type PointsPop = { id: number; gained: number; points: number; multiplier: number };
+type ComboPop = { id: number; text: string; lost: boolean };
 
 export function StudyScreen({ app, deckIds, practice, onExit }: Props) {
   const [queue, setQueue] = useState<string[]>(() => {
@@ -60,14 +67,23 @@ export function StudyScreen({ app, deckIds, practice, onExit }: Props) {
     checked: 0,
     correct: 0,
     skipped: 0,
+    points: 0,
+    score: 0,
+    bestMultiplier: 1,
   });
   const [pause, setPause] = useState<Pause>(null);
   const [timeUpShown, setTimeUpShown] = useState(false);
   const [breakShown, setBreakShown] = useState(false);
   const [finished, setFinished] = useState(false);
 
+  // Combo multiplier, and the multiplier the current card was answered at.
+  const [multiplier, setMultiplier] = useState(1);
+  const answeredAt = useRef<number | null>(null);
+
   const [exit, setExit] = useState<Exit>(null);
-  const [pop, setPop] = useState<Pop | null>(null);
+  const [pointsPop, setPointsPop] = useState<PointsPop | null>(null);
+  const [comboPop, setComboPop] = useState<ComboPop | null>(null);
+  const [burst, setBurst] = useState<{ id: number; particles: Particle[] } | null>(null);
   const [played, setPlayed] = useState(0); // cards in the tray
   // Changes only when the next card is dealt, so the old one can finish leaving first.
   const [cardKey, setCardKey] = useState(0);
@@ -97,16 +113,29 @@ export function StudyScreen({ app, deckIds, practice, onExit }: Props) {
     }
   }
 
+  // The moment an option is picked: the combo goes up (with confetti) or breaks.
+  function handleAnswer(correct: boolean) {
+    const id = Date.now();
+    if (correct) {
+      answeredAt.current = multiplier;
+      const raised = nextMultiplier(multiplier, true);
+      setMultiplier(raised);
+      setStats((s) => ({ ...s, bestMultiplier: Math.max(s.bestMultiplier, raised) }));
+      setBurst({ id, particles: makeParticles() });
+      if (raised > multiplier) setComboPop({ id, text: `Combo ${formatMultiplier(raised)}!`, lost: false });
+    } else {
+      answeredAt.current = 1;
+      if (multiplier > 1) setComboPop({ id, text: "Combo lost", lost: true });
+      setMultiplier(1);
+    }
+  }
+
   // Animate the card away (points pop off it), then deal the next one.
-  function leave(kind: Exit, newQueue: string[], points: number, burst: boolean) {
+  function leave(kind: Exit, newQueue: string[]) {
     setExit(kind);
     if (kind === "play") {
       sounds.play();
       setPlayed((n) => n + 1);
-    }
-    if (points > 0) {
-      sounds.tick();
-      setPop({ id: Date.now(), points, particles: burst ? makeParticles() : [] });
     }
     exitTimer.current = window.setTimeout(
       () => {
@@ -124,6 +153,14 @@ export function StudyScreen({ app, deckIds, practice, onExit }: Props) {
     const durationMs = now.getTime() - shownAt.getTime();
     const next = app.reviewCard(cardId, grade, result, durationMs, practice, now);
 
+    // Score: this card's points x the multiplier it was answered at.
+    const points = pointsFor(card.type, result);
+    const usedMultiplier = answeredAt.current ?? multiplier;
+    answeredAt.current = null;
+    const gained = Math.round(points * usedMultiplier);
+    setPointsPop({ id: now.getTime(), gained, points, multiplier: usedMultiplier });
+    sounds.tick();
+
     const appChecked = result === "correct" || result === "wrong";
     setStats((s) => ({
       ...s,
@@ -131,6 +168,8 @@ export function StudyScreen({ app, deckIds, practice, onExit }: Props) {
       problemsSolved: s.problemsSolved + (result === "correct" && card.type !== "flashcard" ? 1 : 0),
       checked: s.checked + (appChecked ? 1 : 0),
       correct: s.correct + (result === "correct" ? 1 : 0),
+      points: s.points + points,
+      score: s.score + gained,
     }));
 
     // See it again later in this session? In practice: only after "Again".
@@ -139,12 +178,7 @@ export function StudyScreen({ app, deckIds, practice, onExit }: Props) {
       : next.due.getTime() <= Date.now() + LEARN_AHEAD_MINUTES * 60_000;
     const rest = queue.slice(1);
     const missed = result === "wrong" || grade === Rating.Again;
-    leave(
-      missed ? "discard" : "play",
-      comesBackSoon ? requeue(rest, cardId) : rest,
-      pointsFor(card.type, result),
-      result === "correct",
-    );
+    leave(missed ? "discard" : "play", comesBackSoon ? requeue(rest, cardId) : rest);
   }
 
   function handleSkip() {
@@ -152,7 +186,7 @@ export function StudyScreen({ app, deckIds, practice, onExit }: Props) {
     const now = new Date();
     app.skipCard(cardId, now.getTime() - shownAt.getTime(), practice, now);
     setStats((s) => ({ ...s, skipped: s.skipped + 1 }));
-    leave("discard", queue.slice(1), 0, false);
+    leave("discard", queue.slice(1));
   }
 
   // Finish early. Nothing answered yet? Then there's nothing to summarize.
@@ -162,7 +196,9 @@ export function StudyScreen({ app, deckIds, practice, onExit }: Props) {
   }
 
   if (!card || finished) {
-    return <SessionSummary stats={stats} startedAt={startedAt} practice={practice} onExit={onExit} />;
+    return (
+      <SessionSummary app={app} stats={stats} startedAt={startedAt} practice={practice} onExit={onExit} />
+    );
   }
 
   if (pause) {
@@ -205,7 +241,15 @@ export function StudyScreen({ app, deckIds, practice, onExit }: Props) {
             {played}
           </span>
         </div>
-        <span className="muted">
+        <div className="score" title="Session score">
+          <span className="score-value">
+            <CountUp value={stats.score} durationMs={400} />
+          </span>
+          <span key={multiplier} className={`multiplier${multiplier > 1 ? " hot" : ""}`}>
+            {formatMultiplier(multiplier)}
+          </span>
+        </div>
+        <span className="muted left-count">
           {practice && <strong className="practice-tag">Practice · </strong>}
           {left} left
         </span>
@@ -214,7 +258,31 @@ export function StudyScreen({ app, deckIds, practice, onExit }: Props) {
         <div style={{ width: `${progress * 100}%` }} />
       </div>
 
-      {pop && <PointsPop pop={pop} />}
+      <div className="pop-layer" aria-hidden="true">
+        {pointsPop && (
+          <span key={pointsPop.id} className="points-pop">
+            +{pointsPop.gained}
+            {pointsPop.multiplier > 1 && (
+              <small>
+                {pointsPop.points} {formatMultiplier(pointsPop.multiplier)}
+              </small>
+            )}
+          </span>
+        )}
+        {comboPop && (
+          <span key={comboPop.id} className={`combo-pop${comboPop.lost ? " lost" : ""}`}>
+            {comboPop.text}
+          </span>
+        )}
+        {burst?.particles.map((particle, i) => {
+          const style = {
+            "--dx": `${particle.dx}px`,
+            "--dy": `${particle.dy}px`,
+            "--particle-color": particle.color,
+          } as React.CSSProperties;
+          return <span key={`${burst.id}-${i}`} className="particle" style={style} />;
+        })}
+      </div>
 
       {/* The card and its buttons. A new key for every card dealt makes React
           start it fresh (new numbers, new options), even if the same card comes back. */}
@@ -226,6 +294,7 @@ export function StudyScreen({ app, deckIds, practice, onExit }: Props) {
             otherBacks={otherBacks}
             dueDates={dueDates}
             now={shownAt}
+            onAnswer={handleAnswer}
             onRate={handleRate}
             onSkip={handleSkip}
           />
@@ -246,51 +315,65 @@ export function StudyScreen({ app, deckIds, practice, onExit }: Props) {
   );
 }
 
-// "+10" floating up, plus particles bursting out.
-function PointsPop({ pop }: { pop: Pop }) {
-  return (
-    <div key={pop.id} className="pop-layer" aria-hidden="true">
-      <span className="points-pop">+{pop.points}</span>
-      {pop.particles.map((particle, i) => {
-        const style = {
-          "--dx": `${particle.dx}px`,
-          "--dy": `${particle.dy}px`,
-          "--particle-color": particle.color,
-        } as React.CSSProperties;
-        return <span key={i} className="particle" style={style} />;
-      })}
-    </div>
-  );
-}
+const PARTICLE_COLORS = ["var(--accent)", "var(--good)", "#ffffff", "var(--type-flashcard)", "#ff7ab6"];
 
-const PARTICLE_COLORS = ["var(--accent)", "var(--good)", "#ffffff", "var(--type-flashcard)"];
-
-// A dozen particles flying out in all directions.
-function makeParticles(): Particle[] {
-  return Array.from({ length: 12 }, (_, i) => {
-    const angle = (i / 12) * Math.PI * 2 + Math.random() * 0.4;
-    const distance = 70 + Math.random() * 60;
+// Confetti flying out in all directions.
+function makeParticles(count = 22): Particle[] {
+  return Array.from({ length: count }, (_, i) => {
+    const angle = (i / count) * Math.PI * 2 + Math.random() * 0.5;
+    const distance = 90 + Math.random() * 90;
     return {
       dx: Math.cos(angle) * distance,
-      dy: Math.sin(angle) * distance,
+      dy: Math.sin(angle) * distance - 30,
       color: PARTICLE_COLORS[i % PARTICLE_COLORS.length],
     };
   });
 }
 
 type SummaryProps = {
+  app: AppActions;
   stats: Stats;
   startedAt: number;
   practice: boolean;
   onExit: () => void;
 };
 
-// The end-of-session screen.
-function SessionSummary({ stats, startedAt, practice, onExit }: SummaryProps) {
+// The end-of-session screen: the score counts up, then the stats.
+function SessionSummary({ app, stats, startedAt, practice, onExit }: SummaryProps) {
   const [endedAt] = useState(() => Date.now());
   const seconds = Math.round((endedAt - startedAt) / 1000);
   const accuracy = stats.checked > 0 ? Math.round((stats.correct / stats.checked) * 100) : null;
   const nothingDone = stats.reviewed + stats.skipped === 0;
+  const bonus = stats.score - stats.points;
+
+  // Did this session complete today's goal? Then it gets its moment (once a day).
+  const [goalJustMet] = useState(() => {
+    const now = new Date(endedAt);
+    const activeDecks = app.data.decks.filter((d) => !d.archived).map((d) => d.id);
+    const goal = dailyGoal(
+      app.data.reviewLog,
+      app.dueCardIds(activeDecks, now).length,
+      app.data.profile.settings.sessionMinutes,
+      now,
+    );
+    return goal.met && app.data.profile.goalCelebratedOn !== dayKey(now);
+  });
+  const [goalParticles] = useState(() => makeParticles(30));
+
+  // Remember it's been celebrated today (only once, even as the data changes).
+  const marked = useRef(false);
+  useEffect(() => {
+    if (!goalJustMet || marked.current) return;
+    marked.current = true;
+    app.markGoalCelebrated(dayKey(new Date()));
+  }, [goalJustMet, app]);
+
+  // The fanfare plays after the score has counted up.
+  useEffect(() => {
+    if (!goalJustMet) return;
+    const timer = window.setTimeout(sounds.goal, 2300);
+    return () => window.clearTimeout(timer);
+  }, [goalJustMet]);
 
   if (nothingDone) {
     return (
@@ -305,8 +388,52 @@ function SessionSummary({ stats, startedAt, practice, onExit }: SummaryProps) {
   }
 
   return (
-    <div className="screen narrow">
+    <div className="screen narrow summary">
       <h1>{practice ? "Practice done" : "Session complete"}</h1>
+
+      <div className="score-sum">
+        <div className="sum-row">
+          <span className="muted">Points</span>
+          <strong>
+            <CountUp value={stats.points} delayMs={250} durationMs={600} />
+          </strong>
+        </div>
+        <div className="sum-row">
+          <span className="muted">
+            Combo bonus <small>(best {formatMultiplier(stats.bestMultiplier)})</small>
+          </span>
+          <strong>
+            + <CountUp value={bonus} delayMs={950} durationMs={500} />
+          </strong>
+        </div>
+        <div className="sum-row total">
+          <span>Session score</span>
+          <strong>
+            <CountUp value={stats.score} delayMs={1550} durationMs={700} />
+          </strong>
+        </div>
+      </div>
+
+      {goalJustMet && (
+        <section className="goal-moment">
+          {goalParticles.map((particle, i) => {
+            const style = {
+              "--dx": `${particle.dx}px`,
+              "--dy": `${particle.dy}px`,
+              "--particle-color": particle.color,
+            } as React.CSSProperties;
+            return <span key={i} className="particle" style={style} />;
+          })}
+          <span className="goal-check" aria-hidden="true">
+            ✓
+          </span>
+          <div>
+            <h2>Daily goal complete!</h2>
+            <p>That's today's retrieval practice done. Tomorrow's cards will thank you.</p>
+          </div>
+        </section>
+      )}
+
       <div className="summary-grid">
         <SummaryItem value={stats.reviewed} label="cards reviewed" />
         <SummaryItem value={stats.problemsSolved} label="problems solved" />

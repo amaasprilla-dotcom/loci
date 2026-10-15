@@ -525,3 +525,25 @@ button.toggle {
     align-items: center;
   }
 }
+
+/* ---------- Daily goal (Home) ---------- */
+
+.goal-panel.met {
+  border-color: rgba(41, 183, 101, 0.6);
+  background: rgba(41, 183, 101, 0.14);
+}
+
+.goal-done {
+  margin-left: 6px;
+  padding: 1px 10px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  color: #fff;
+  background: var(--good);
+}
+
+.goal-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}

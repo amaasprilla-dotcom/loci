@@ -5,6 +5,8 @@ import {
   isConstantNode,
   isFunctionNode,
   isOperatorNode,
+  isParenthesisNode,
+  isSymbolNode,
   parse,
   type ConstantNode,
   type FunctionNode,
@@ -50,9 +52,10 @@ export function makeVariant(problem: FormulaProblem): FormulaVariant {
   throw new Error(`Could not compute an answer for: ${problem.prompt}`);
 }
 
-// Three believable wrong answers. First choice: the result of a typical
-// mistake in the formula (see `mistakes` below). If there aren't enough of
-// those, use simple slips like a factor of 2 or 10.
+// Three wrong answers that are hard to rule out. They are what you'd get by
+// making a typical mistake in the formula (see `mistakes` below), and the
+// ones closest to the right answer are preferred, because those are the
+// tempting ones. If there aren't enough, small slips in one step fill the gaps.
 function wrongAnswers(
   problem: FormulaProblem,
   values: Record<string, number>,
@@ -60,28 +63,49 @@ function wrongAnswers(
   decimals: number,
 ): string[] {
   const answerText = formatNumber(answer, decimals);
-  const tolerance = problem.tolerance ?? 0.01;
-  const chosen: string[] = [];
+  // A wrong option must be clearly different, not just a rounding away from the answer.
+  const minGap = Math.max(problem.tolerance ?? 0.01, Math.abs(answer) * 0.03);
 
-  const fromMistakes = shuffle(mistakes(parse(problem.answer))).map((node) => {
-    try {
-      return node.evaluate({ ...values });
-    } catch {
-      return NaN; // this mistake doesn't make sense for these numbers
-    }
-  });
-  const fromSlips = shuffle([2, 0.5, 10, 0.1, 1.5]).map((factor) => answer * factor);
+  // How far a value is from the answer, in "times bigger or smaller": 0 = same size.
+  const distance = (value: number) => Math.abs(Math.log(Math.abs(value / answer)));
 
-  for (const value of [...fromMistakes, ...fromSlips]) {
-    if (chosen.length === 3) break;
-    if (typeof value !== "number" || !Number.isFinite(value)) continue;
-    if (Math.sign(value) !== Math.sign(answer)) continue; // a wrong sign is too easy to rule out
-    if (Math.abs(value - answer) <= tolerance) continue; // too close to count as wrong
+  function usable(value: unknown, taken: string[]): value is number {
+    if (typeof value !== "number" || !Number.isFinite(value)) return false;
+    if (Math.sign(value) !== Math.sign(answer)) return false; // a wrong sign is too easy to spot
+    if (Math.abs(value - answer) < minGap) return false;
     const text = formatNumber(value, decimals);
-    if (Number(text) === 0) continue; // rounds to 0: an obvious throwaway option
-    if (text !== answerText && !chosen.includes(text)) chosen.push(text);
+    return Number(text) !== 0 && text !== answerText && !taken.includes(text);
+  }
+
+  // 1. Results of typical mistakes, closest first. Wildly off ones (over 6x) are left out.
+  const tempting: { text: string; distance: number }[] = [];
+  for (const formula of mistakes(problem.answer)) {
+    const value = evaluateSafely(formula, values);
+    const taken = tempting.map((t) => t.text);
+    if (usable(value, taken) && distance(value) < Math.log(6)) {
+      tempting.push({ text: formatNumber(value, decimals), distance: distance(value) });
+    }
+  }
+  const chosen = tempting
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, 3)
+    .map((t) => t.text);
+
+  // 2. Not enough? Add slips: one step worked out a bit wrong.
+  for (const factor of shuffle([0.8, 1.2, 0.75, 1.25, 0.9, 1.1, 1.5, 0.5])) {
+    if (chosen.length === 3) break;
+    const value = answer * factor;
+    if (usable(value, chosen)) chosen.push(formatNumber(value, decimals));
   }
   return chosen;
+}
+
+function evaluateSafely(formula: string, values: Record<string, number>): unknown {
+  try {
+    return evaluate(formula, { ...values });
+  } catch {
+    return NaN; // this mistake doesn't make sense for these numbers
+  }
 }
 
 const OPPOSITE: Record<string, [string, string]> = {
@@ -99,26 +123,50 @@ const MIXED_UP: Record<string, string> = {
   atan: "asin",
 };
 
-// Copies of a formula, each with one typical mistake:
-// + and - swapped, * and / swapped, a fraction upside down, a square forgotten,
-// a square root forgotten, sin and cos mixed up, or 0.5 (a half) left out.
-function mistakes(formula: MathNode): MathNode[] {
-  const result: MathNode[] = [];
+// Versions of a formula, each with one typical mistake. Returned as text.
+function mistakes(expression: string): string[] {
+  const formula = parse(expression);
+  const base = formula.toString();
+  const result: string[] = [];
+
+  // A mistake at one spot (see mistakesAt).
   formula.traverse((node) => {
     for (const wrongVersion of mistakesAt(node)) {
-      result.push(formula.transform((n) => (n === node ? wrongVersion : n)));
+      result.push(formula.transform((n) => (n === node ? wrongVersion : n)).toString());
     }
   });
+
+  // Order of operations ignored: everything worked out left to right,
+  // e.g. u + a * t  ->  (u + a) * t.
+  result.push(leftToRight(formula));
+
+  // Brackets forgotten, e.g. (v - u) / t  ->  v - u / t.
+  formula.traverse((node) => {
+    if (isParenthesisNode(node)) {
+      result.push(base.replace(node.toString(), node.content.toString()));
+    }
+  });
+
   return result;
 }
 
+// Mistakes at a single spot in the formula:
+//   + and - swapped, * and / swapped, a fraction upside down,
+//   a step left out (a term or a factor missing), a power or square root forgotten,
+//   sin and cos mixed up, a half (0.5) left out, or degrees used as radians.
 function mistakesAt(node: MathNode): MathNode[] {
-  if (isOperatorNode(node) && node.args.length === 2 && !node.implicit) {
+  if (isOperatorNode(node) && node.args.length === 2) {
+    const [left, right] = node.args;
+    // "A deg": forgetting the calculator is in radians.
+    if (node.implicit) {
+      return isSymbolNode(right) && right.name === "deg" ? [left] : [];
+    }
     const result: MathNode[] = [];
     const opposite = OPPOSITE[node.op];
     if (opposite) result.push(withOperator(node, opposite[0], opposite[1]));
     if (node.op === "/") result.push(withOperator(node, "/", "divide", true)); // upside down
-    if (node.op === "^") result.push(node.args[0]); // forgot the power
+    if (["+", "-", "*"].includes(node.op)) result.push(left, right); // a step left out
+    if (node.op === "^") result.push(left); // forgot the power
     return result;
   }
   if (isFunctionNode(node)) {
@@ -132,6 +180,24 @@ function mistakesAt(node: MathNode): MathNode[] {
     return [one];
   }
   return [];
+}
+
+// The formula's operations done strictly left to right, ignoring which comes first.
+function leftToRight(formula: MathNode): string {
+  const parts: string[] = []; // e.g. ["u", "+", "a", "*", "t"]
+  function walk(node: MathNode) {
+    if (isOperatorNode(node) && node.args.length === 2 && !node.implicit) {
+      walk(node.args[0]);
+      parts.push(node.op);
+      walk(node.args[1]);
+    } else {
+      parts.push(node.toString()); // brackets and function calls stay whole
+    }
+  }
+  walk(formula);
+  let text = parts[0];
+  for (let i = 1; i < parts.length; i += 2) text = `(${text} ${parts[i]} ${parts[i + 1]})`;
+  return text;
 }
 
 // A copy of an operator node with a different operator (and optionally the two sides swapped).

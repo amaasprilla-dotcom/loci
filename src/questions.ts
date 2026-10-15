@@ -1,7 +1,7 @@
 // Turning a card into a multiple-choice question.
 // Problems are always multiple choice; flashcards only if `choice` is on.
 
-import { pickOptions } from "./choices";
+import { pickSimilarOptions } from "./choices";
 import { makeVariant } from "./formula";
 import { makeTableVariant } from "./table";
 import type { Card } from "./types";
@@ -33,7 +33,7 @@ export function makeQuestion(card: Card, otherBacks: string[]): Question {
   return {
     prompt: card.front,
     answer: card.back,
-    options: pickOptions(card.back, otherBacks),
+    options: pickSimilarOptions(card.back, otherBacks),
     askDifficulty: false,
   };
 }

@@ -40,6 +40,8 @@ Data stays in each visitor's own browser, so a deployed copy starts empty for ev
 - `src/queue.ts`: the order cards are shown in during a session
 - `src/exam.ts`: exam mode rules (interval cap, new-card pacing, final days)
 - `src/streak.ts`: the day streak
+- `src/points.ts`: points and the combo multiplier
+- `src/goal.ts`: the daily goal
 - `src/useAppData.ts`: all app data plus the actions that change it
 - `src/packs/`: built-in packs as JSON files (add a pack by adding a file and listing it in `index.ts`)
 - `src/screens/`: one file per screen (Home, Deck, Study, Settings)

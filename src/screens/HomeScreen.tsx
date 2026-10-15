@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { DeckStack } from "../components/DeckStack";
 import { ExamChip } from "../components/ExamChip";
+import { GoalPanel } from "../components/GoalPanel";
 import { NewDeckPanel } from "../components/NewDeckPanel";
 import { PackOpening } from "../components/PackOpening";
 import { cardBackOf } from "../cardBacks";
 import { daysUntilExam } from "../exam";
+import { dailyGoal } from "../goal";
 import { isCalm } from "../motion";
 import type { Pack } from "../packs";
 import { formatInterval } from "../scheduler";
@@ -38,6 +40,7 @@ export function HomeScreen({ app, onOpenDeck, onStudy }: Props) {
   const nextDue = app.nextDueDate(deckIds, now);
   const canPractice = app.practiceCardIds(deckIds).length > 0;
   const examsOver = decks.filter((d) => d.examDate && daysUntilExam(d.examDate, now) < 0);
+  const goal = dailyGoal(app.data.reviewLog, dueNow, app.data.profile.settings.sessionMinutes, now);
 
   // Opening a pack: the deck is created right away; the animation is just for show.
   function openPack(pack: Pack) {
@@ -74,6 +77,8 @@ export function HomeScreen({ app, onOpenDeck, onStudy }: Props) {
       {dueNow === 0 && canPractice && (
         <button onClick={() => onStudy(deckIds, true)}>Practice anyway</button>
       )}
+
+      {!isNewUser && <GoalPanel goal={goal} />}
 
       {examsOver.map((deck) => (
         <section key={deck.id} className="panel">

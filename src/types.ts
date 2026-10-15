@@ -85,4 +85,5 @@ export type Profile = {
   coins: number;
   unlockedCardBacks: string[];
   badges: string[];
+  goalCelebratedOn?: string; // "2026-10-15": the daily-goal moment was shown that day
 };

@@ -300,6 +300,11 @@ export function useAppData() {
     }));
   }
 
+  // Remember that today's daily-goal moment has been shown, so it shows once a day.
+  function markGoalCelebrated(day: string) {
+    setData((d) => ({ ...d, profile: { ...d.profile, goalCelebratedOn: day } }));
+  }
+
   // Swaps in imported data (from a backup file).
   function replaceData(newData: AppData) {
     setData(newData);
@@ -328,6 +333,7 @@ export function useAppData() {
     practiceCardIds,
     nextDueDate,
     updateSettings,
+    markGoalCelebrated,
     replaceData,
     resetData,
   };
