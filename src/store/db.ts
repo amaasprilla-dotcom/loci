@@ -61,3 +61,61 @@ export async function createLocus(input: {
 export async function moveLocus(id: string, x: number, y: number): Promise<void> {
   await db.loci.update(id, { x, y, updatedAt: Date.now() })
 }
+
+export async function updateLocus(id: string, patch: Pick<Locus, 'name' | 'color' | 'tagIds'>): Promise<void> {
+  await db.transaction('rw', db.loci, db.tags, async () => {
+    await db.loci.update(id, { ...patch, name: patch.name.trim(), updatedAt: Date.now() })
+    await pruneUnusedTags()
+  })
+}
+
+// Deletes the locus and everything in it: its elements, their cards and the cards' review history.
+export async function deleteLocus(id: string): Promise<void> {
+  await db.transaction('rw', [db.loci, db.elements, db.cards, db.reviews, db.tags], async () => {
+    const elementIds = await db.elements.where('locusId').equals(id).primaryKeys()
+    const cardIds = await db.cards.where('elementId').anyOf(elementIds).primaryKeys()
+    await db.reviews.where('cardId').anyOf(cardIds).delete()
+    await db.cards.bulkDelete(cardIds)
+    await db.elements.bulkDelete(elementIds)
+    await db.loci.delete(id)
+    await pruneUnusedTags()
+  })
+}
+
+// What deleting a locus would remove, for the confirmation message.
+export async function countLocusContents(id: string): Promise<{ elements: number; cards: number }> {
+  const elementIds = await db.elements.where('locusId').equals(id).primaryKeys()
+  const cards = await db.cards.where('elementId').anyOf(elementIds).count()
+  return { elements: elementIds.length, cards }
+}
+
+// ---------- Tags ----------
+
+export function tagKey(name: string): string {
+  return name.trim().toLowerCase()
+}
+
+export async function listTags(): Promise<Tag[]> {
+  const tags = await db.tags.toArray()
+  return tags.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+}
+
+// Returns the tag with this name, matching case-insensitively, creating it if needed.
+export async function findOrCreateTag(name: string): Promise<Tag> {
+  return db.transaction('rw', db.tags, async () => {
+    const key = tagKey(name)
+    const existing = await db.tags.where('key').equals(key).first()
+    if (existing) return existing
+    const tag: Tag = { id: crypto.randomUUID(), name: name.trim(), key, updatedAt: Date.now() }
+    await db.tags.add(tag)
+    return tag
+  })
+}
+
+// Tags only exist through the loci that carry them: once no locus uses a tag,
+// it leaves the filter bar and the tag list.
+async function pruneUnusedTags(): Promise<void> {
+  const used = new Set((await db.loci.toArray()).flatMap((l) => l.tagIds))
+  const unused = (await db.tags.toCollection().primaryKeys()).filter((id) => !used.has(id))
+  await db.tags.bulkDelete(unused)
+}

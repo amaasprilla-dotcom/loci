@@ -24,17 +24,22 @@ export function spiralPoint(index: number, width: number, height: number): { x: 
 
 const STEP_MS = 1000 / 60 // physics runs at 60 steps a second whatever the screen's refresh rate
 const DRAG_THRESHOLD = 8 // px a press must move before it counts as a drag
+const LONG_PRESS_MS = 500 // a press held this long without moving opens the editor
 
 export interface FieldOptions {
   onTap(locus: Locus): void
   // A bubble was dropped; x and y are its new home, normalized 0..1 of the field.
   onMove(locus: Locus, x: number, y: number): void
+  // Long-press on touch, right-click with a mouse.
+  onLongPress(locus: Locus): void
 }
 
 export interface Field {
   el: HTMLElement
   render(loci: Locus[]): void
   bubble(id: string): HTMLElement | undefined
+  // Greys out these bubbles (the tag filter). They keep their place and motion.
+  setDimmed(ids: Set<string>): void
   // Freeze the bubbles in place, e.g. while another screen covers the field.
   pause(): void
   resume(): void
@@ -48,6 +53,8 @@ interface Drag {
   offsetX: number // bubble center minus pointer, so the bubble doesn't jump under the finger
   offsetY: number
   moved: boolean
+  longPressTimer: number
+  longPressed: boolean // the long-press fired, so letting go is neither a tap nor a drop
 }
 
 export function createField(options: FieldOptions): Field {
@@ -97,7 +104,21 @@ export function createField(options: FieldOptions): Field {
       const b = bodies.get(locus.id)!
       const p = toField(e)
       node.setPointerCapture(e.pointerId)
-      drag = { pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, offsetX: b.x - p.x, offsetY: b.y - p.y, moved: false }
+      drag = {
+        pointerId: e.pointerId,
+        startX: e.clientX,
+        startY: e.clientY,
+        offsetX: b.x - p.x,
+        offsetY: b.y - p.y,
+        moved: false,
+        longPressed: false,
+        longPressTimer: window.setTimeout(() => {
+          if (!drag || drag.moved) return
+          drag.longPressed = true
+          navigator.vibrate?.(15) // a small buzz on Android, so you feel it register
+          options.onLongPress(loci.get(locus.id)!)
+        }, LONG_PRESS_MS),
+      }
       b.held = true
       b.vx = 0
       b.vy = 0
@@ -105,9 +126,11 @@ export function createField(options: FieldOptions): Field {
 
     node.addEventListener('pointermove', (e) => {
       if (!drag || e.pointerId !== drag.pointerId) return
+      if (drag.longPressed) return
       if (!drag.moved) {
         if (Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) <= DRAG_THRESHOLD) return
         drag.moved = true
+        clearTimeout(drag.longPressTimer)
         node.classList.add('dragging')
       }
       const b = bodies.get(locus.id)!
@@ -120,7 +143,8 @@ export function createField(options: FieldOptions): Field {
     // pointerup ends a tap or a drop; pointercancel (the browser took the gesture) only drops.
     const release = (e: PointerEvent, isTap: boolean) => {
       if (!drag || e.pointerId !== drag.pointerId) return
-      const { moved } = drag
+      const { moved, longPressed } = drag
+      clearTimeout(drag.longPressTimer)
       drag = null
       node.classList.remove('dragging')
       const b = bodies.get(locus.id)
@@ -134,12 +158,20 @@ export function createField(options: FieldOptions): Field {
         const y = b.y / height
         loci.set(current.id, { ...current, x, y })
         options.onMove(current, x, y)
-      } else if (isTap) {
+      } else if (isTap && !longPressed) {
         options.onTap(current)
       }
     }
     node.addEventListener('pointerup', (e) => release(e, true))
     node.addEventListener('pointercancel', (e) => release(e, false))
+
+    // A touch long-press is handled by the timer above, so only a mouse
+    // right-click (no press in progress) opens the editor here. Either way,
+    // no browser menu.
+    node.addEventListener('contextmenu', (e) => {
+      e.preventDefault()
+      if (!drag) options.onLongPress(loci.get(locus.id)!)
+    })
 
     return node
   }
@@ -239,6 +271,9 @@ export function createField(options: FieldOptions): Field {
     el,
     render,
     bubble: (id) => nodes.get(id),
+    setDimmed(ids) {
+      for (const [id, node] of nodes) node.classList.toggle('dimmed', ids.has(id))
+    },
     pause() {
       paused = true
       stop()

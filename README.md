@@ -42,7 +42,9 @@ Data stays in each visitor's own browser, so a deployed copy starts empty for ev
 - `src/home/field.ts`: the bubble field: animation loop, drag and tap, where new loci are placed
 - `src/home/physics.ts`: how bubbles float, wobble and push each other apart (the feel is tuned
   by the constants at the top)
-- `src/home/createLocus.ts`: the "New locus" sheet
+- `src/home/createLocus.ts`: the sheet for creating, editing and deleting a locus (long-press or
+  right-click a bubble to edit)
+- `src/home/filter.ts`: the tag filter bar
 - `src/colors.ts`: the locus color palette
 - `src/dom.ts`: a small helper for building page elements
 - `src/style.css`: the look (every color is a variable at the top)
