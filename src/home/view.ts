@@ -1,14 +1,23 @@
 // The home screen: the bubble field, a top bar and the + button.
+// It stays in the page while other screens cover it, so the bubbles keep their
+// places (and motion) when you come back.
 
 import { PALETTE } from '../colors'
 import { h } from '../dom'
 import { createLocus, listLoci, moveLocus } from '../store/db'
-import { createField, spiralPoint } from './field'
+import type { Locus } from '../types'
+import { createField, type Field, spiralPoint } from './field'
 import { openCreateLocusSheet } from './createLocus'
 
-export async function renderHome(root: HTMLElement): Promise<void> {
+export interface Home {
+  el: HTMLElement
+  field: Field
+  refresh(): Promise<void>
+}
+
+export function createHome(options: { onOpen(locus: Locus): void }): Home {
   const field = createField({
-    onTap: () => {}, // opens the locus view in milestone 3
+    onTap: options.onOpen,
     onMove: (locus, x, y) => void moveLocus(locus.id, x, y),
   })
   const empty = h('p', { class: 'empty' }, 'No loci yet. Tap + to create your first one.')
@@ -28,15 +37,14 @@ export async function renderHome(root: HTMLElement): Promise<void> {
     await refresh()
   }
 
-  root.replaceChildren(
-    h(
-      'div',
-      { class: 'home' },
-      h('header', { class: 'topbar' }, h('h1', { class: 'brand' }, 'Loci')),
-      field.el,
-      empty,
-      h('button', { class: 'fab', 'aria-label': 'New locus', onclick: onCreate }, '+'),
-    ),
+  const el = h(
+    'div',
+    { class: 'home' },
+    h('header', { class: 'topbar' }, h('h1', { class: 'brand' }, 'Loci')),
+    field.el,
+    empty,
+    h('button', { class: 'fab', 'aria-label': 'New locus', onclick: onCreate }, '+'),
   )
-  await refresh()
+
+  return { el, field, refresh }
 }

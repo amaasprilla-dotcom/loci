@@ -159,6 +159,114 @@ h2 {
   transform: scale(0.95);
 }
 
+/* ---------- Screens and the bubble transition ---------- */
+
+/* Other screens cover the home screen here. Empty means nothing covers it. */
+.screen-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+}
+
+.screen-layer:empty {
+  display: none;
+}
+
+/* The circle that grows out of a bubble to fill the screen (transition.ts).
+   Sits between the home screen and the screen layer. */
+.cover-circle {
+  position: fixed;
+  z-index: 2;
+  border-radius: 50%;
+  will-change: transform;
+}
+
+/* ---------- Locus view ---------- */
+
+.locus-view {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+.locus-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: calc(14px + env(safe-area-inset-top)) 20px 22px 12px;
+  background: var(--c);
+  color: var(--fg);
+}
+
+.locus-title {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding-top: 4px;
+}
+
+.locus-title h1 {
+  font-size: 1.6rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.locus-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 16%, transparent);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.icon-btn {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.icon-btn svg {
+  width: 24px;
+  height: 24px;
+}
+
+.icon-btn:hover {
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+
+.icon-btn:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.locus-body {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 24px 20px calc(96px + env(safe-area-inset-bottom));
+}
+
+.locus-empty {
+  margin: 48px 0 0;
+  text-align: center;
+  color: var(--muted);
+}
+
 /* ---------- Bottom sheet ---------- */
 
 .backdrop {

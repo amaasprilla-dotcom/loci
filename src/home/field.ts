@@ -34,6 +34,10 @@ export interface FieldOptions {
 export interface Field {
   el: HTMLElement
   render(loci: Locus[]): void
+  bubble(id: string): HTMLElement | undefined
+  // Freeze the bubbles in place, e.g. while another screen covers the field.
+  pause(): void
+  resume(): void
   destroy(): void
 }
 
@@ -195,6 +199,7 @@ export function createField(options: FieldOptions): Field {
   }
 
   let raf = 0
+  let paused = false
   let last = 0
   let pending = 0 // ms of physics not yet stepped
 
@@ -212,7 +217,7 @@ export function createField(options: FieldOptions): Field {
   }
 
   function start() {
-    if (raf || document.visibilityState === 'hidden') return
+    if (raf || paused || document.visibilityState === 'hidden') return
     last = performance.now()
     raf = requestAnimationFrame(frame)
   }
@@ -233,6 +238,15 @@ export function createField(options: FieldOptions): Field {
   return {
     el,
     render,
+    bubble: (id) => nodes.get(id),
+    pause() {
+      paused = true
+      stop()
+    },
+    resume() {
+      paused = false
+      start()
+    },
     destroy() {
       stop()
       resizeObserver.disconnect()

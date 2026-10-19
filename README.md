@@ -32,7 +32,10 @@ Data stays in each visitor's own browser, so a deployed copy starts empty for ev
 
 ## Where things are
 
-- `src/main.ts`: app start
+- `src/main.ts`: app start, and switching between screens
+- `src/router.ts`: the screen addresses (`#/`, `#/locus/…`) and the back button
+- `src/transition.ts`: the bubble growing into its locus screen, and back
+- `src/locus/view.ts`: the locus screen
 - `src/types.ts`: the stored data shapes (tags, loci, elements, cards, review log)
 - `src/store/db.ts`: the IndexedDB database (Dexie) and the functions that read and write it
 - `src/home/view.ts`: the home screen
