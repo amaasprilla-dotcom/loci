@@ -1,9 +1,11 @@
-# Echomathia
+# Loci
 
-The flashcard app where cards can be problems. See [SPEC.md](SPEC.md) for the plan.
+Your projects as colored bubbles (**loci**) floating on one screen. Each locus holds elements,
+starting with flashcard decks that use spaced repetition. See [SPEC.md](SPEC.md) for the plan
+and the build order.
 
-Everything runs in the browser and is saved in `localStorage`. Use Settings → Export now and
-then to keep a backup file.
+Everything runs in the browser and is saved on the device (IndexedDB). There is no server and no
+account. Loci replaces Echomathia; the old app is still in this repository's git history.
 
 ## Run it on your computer
 
@@ -13,15 +15,15 @@ then to keep a backup file.
 4. Open http://localhost:5173 in your browser. Keep the black window open while you use the app.
 
 To try it on your phone on the same Wi-Fi, use `npm run dev -- --host` instead and open the
-"Network" address it prints.
+"Network" address it prints. (Windows may ask to allow Node.js through the firewall: allow it on
+private networks.)
 
 ## Put it online (static site)
 
 `npm run build` creates a `dist` folder: that folder is the whole website. Any static host works.
-Two easy options:
 
-- **Netlify Drop** (no account setup beyond signing in): run `npm run build`, then drag the
-  `dist` folder onto https://app.netlify.com/drop. You get a public link right away.
+- **Netlify Drop**: run `npm run build`, then drag the `dist` folder onto
+  https://app.netlify.com/drop. You get a public link right away.
 - **GitHub Pages**: push this project to a GitHub repository, then in the repository go to
   Settings → Pages and set Source to "GitHub Actions". The workflow in
   `.github/workflows/deploy.yml` then publishes the site on every push to `main`.
@@ -30,23 +32,13 @@ Data stays in each visitor's own browser, so a deployed copy starts empty for ev
 
 ## Where things are
 
-- `src/types.ts`: the data shapes (decks, flashcards, formula and table problems)
-- `src/storage.ts`: saving to `localStorage`, backup export/import
-- `src/scheduler.ts`: spaced-repetition scheduling (wraps `ts-fsrs`)
-- `src/migrate.ts`: upgrading saved data from older versions (schema version)
-- `src/formula.ts`: making formula problems, with wrong options from typical mistakes (uses `mathjs`)
-- `src/table.ts`: making table problems
-- `src/questions.ts`, `src/choices.ts`: turning any card into a multiple-choice question
-- `src/queue.ts`: the order cards are shown in during a session
-- `src/exam.ts`: exam mode rules (interval cap, new-card pacing, final days)
-- `src/streak.ts`: the day streak
-- `src/points.ts`: points and the combo multiplier
-- `src/progress.ts`: the numbers behind the Progress charts (all from the review log)
-- `src/useAppData.ts`: all app data plus the actions that change it
-- `src/packs/`: built-in packs as JSON files (add a pack by adding a file and listing it in `index.ts`)
-- `src/screens/`: one file per screen (Home, Deck, Study, Progress, Settings)
-- `src/components/`: pieces shared between screens (study card, deck stack, pack animation, charts, math text, rating buttons, card reviews)
-- `src/index.css`, `src/cards.css`, `src/decks.css`, `src/progress.css`: the look (brand colors white, black and light blue are variables at the top of `index.css`)
-- `src/sound.ts`: sound effects, synthesized in code
-- `src/motion.ts`: Calm mode (switched on in Settings)
-- `ASSETS.md`: where every font, sound and design comes from, and its license
+- `src/main.ts`: app start
+- `src/types.ts`: the stored data shapes (tags, loci, elements, cards, review log)
+- `src/store/db.ts`: the IndexedDB database (Dexie) and the functions that read and write it
+- `src/home/view.ts`: the home screen
+- `src/home/field.ts`: the bubble field, and where new loci are placed
+- `src/home/createLocus.ts`: the "New locus" sheet
+- `src/colors.ts`: the locus color palette
+- `src/dom.ts`: a small helper for building page elements
+- `src/style.css`: the look (every color is a variable at the top)
+- `ASSETS.md`: where every font and design comes from, and its license

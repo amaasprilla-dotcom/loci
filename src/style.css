@@ -1,0 +1,294 @@
+/* Loci: theme and layout. Every color is a variable here.
+   The app chrome stays white, black and light blue so the loci colors stand out. */
+
+:root {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-muted: #f5f8fb; /* quiet backgrounds: inputs */
+  --border: #e1e7ee;
+  --border-strong: #c9d3de;
+  --text: #0b0f14; /* black */
+  --muted: #5a6573;
+
+  --blue: #7cc8f8;
+  --blue-soft: #e7f5fe;
+  --blue-ink: #1670ad; /* blue text and focus rings */
+
+  --radius: 12px;
+  --shadow-md: 0 2px 4px rgba(11, 15, 20, 0.04), 0 10px 28px rgba(11, 15, 20, 0.08);
+  --shadow-lg: 0 -4px 12px rgba(11, 15, 20, 0.05), 0 -16px 48px rgba(11, 15, 20, 0.1);
+
+  --font: "Inter Variable", system-ui, "Segoe UI", Roboto, sans-serif;
+
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+  color-scheme: light;
+  font-feature-settings: "cv11", "ss01"; /* Inter: clearer 1, l and a */
+  -webkit-tap-highlight-color: transparent;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden; /* the field is the whole screen; nothing scrolls */
+  background: var(--bg);
+}
+
+h1,
+h2 {
+  margin: 0;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+
+/* ---------- Home ---------- */
+
+.home {
+  position: fixed;
+  inset: 0;
+}
+
+.topbar {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  padding: calc(14px + env(safe-area-inset-top)) 20px 14px;
+  pointer-events: none; /* only its buttons catch taps; the field shows through */
+}
+
+.topbar > * {
+  pointer-events: auto;
+}
+
+.brand {
+  font-size: 1.4rem;
+}
+
+.field {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none; /* dragging a bubble must not scroll the page */
+}
+
+.bubble {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--c);
+  color: var(--fg);
+  box-shadow: inset 0 -6px 14px rgba(0, 0, 0, 0.12), inset 0 6px 12px rgba(255, 255, 255, 0.25),
+    0 6px 16px rgba(11, 15, 20, 0.12);
+  user-select: none;
+  cursor: pointer;
+  will-change: transform;
+}
+
+.bubble-name {
+  max-width: 80%;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.empty {
+  position: absolute;
+  inset: 50% 24px auto;
+  transform: translateY(-50%);
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.fab {
+  position: absolute;
+  right: 20px;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  z-index: 2;
+  width: 56px;
+  height: 56px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--text);
+  color: #fff;
+  font: inherit;
+  font-size: 1.9rem;
+  line-height: 1;
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+}
+
+.fab:active {
+  transform: scale(0.95);
+}
+
+/* ---------- Bottom sheet ---------- */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(11, 15, 20, 0.3);
+  animation: fade-in 0.15s ease-out;
+}
+
+.sheet {
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 10px 20px calc(20px + env(safe-area-inset-bottom));
+  border-radius: 20px 20px 0 0;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  animation: slide-up 0.2s ease-out;
+}
+
+.sheet-handle {
+  align-self: center;
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-strong);
+}
+
+.sheet h2 {
+  font-size: 1.15rem;
+}
+
+.field-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.input {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-muted);
+  color: var(--text);
+  font: inherit;
+  font-size: 1rem; /* 16px stops phones from zooming in on focus */
+}
+
+.input:focus {
+  outline: 2px solid var(--blue-ink);
+  outline-offset: -1px;
+  background: var(--surface);
+}
+
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
+  gap: 10px;
+}
+
+.swatch {
+  position: relative;
+  aspect-ratio: 1;
+  min-width: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--c);
+  cursor: pointer;
+}
+
+.swatch.selected {
+  box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--text);
+}
+
+.swatch:focus-visible {
+  outline: 2px solid var(--blue-ink);
+  outline-offset: 4px;
+}
+
+/* The custom swatch shows a rainbow until a custom color is picked. */
+.swatch-custom {
+  background: conic-gradient(#eb5757, #f2c94c, #27ae60, #2bb3c0, #4f8ef7, #9b51e0, #eb5757);
+}
+
+.swatch-custom.selected {
+  background: var(--c);
+}
+
+.swatch-custom-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.sheet-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btn {
+  padding: 10px 18px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-primary {
+  border-color: var(--text);
+  background: var(--text);
+  color: #fff;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop,
+  .sheet {
+    animation: none;
+  }
+}

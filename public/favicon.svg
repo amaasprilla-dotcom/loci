@@ -1,5 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <!-- Echomathia mark: a light-blue card with a black card behind it -->
-  <rect x="9" y="9" width="19" height="19" rx="5" fill="#0b0f14"/>
-  <rect x="4" y="4" width="19" height="19" rx="5" fill="#7cc8f8"/>
+  <!-- Loci mark: three bubbles of different sizes -->
+  <circle cx="12" cy="13" r="9" fill="#4f8ef7"/>
+  <circle cx="24" cy="20" r="6" fill="#f2994a"/>
+  <circle cx="13" cy="26.5" r="4" fill="#27ae60"/>
 </svg>
