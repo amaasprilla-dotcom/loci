@@ -36,7 +36,9 @@ Data stays in each visitor's own browser, so a deployed copy starts empty for ev
 - `src/types.ts`: the stored data shapes (tags, loci, elements, cards, review log)
 - `src/store/db.ts`: the IndexedDB database (Dexie) and the functions that read and write it
 - `src/home/view.ts`: the home screen
-- `src/home/field.ts`: the bubble field, and where new loci are placed
+- `src/home/field.ts`: the bubble field: animation loop, drag and tap, where new loci are placed
+- `src/home/physics.ts`: how bubbles float, wobble and push each other apart (the feel is tuned
+  by the constants at the top)
 - `src/home/createLocus.ts`: the "New locus" sheet
 - `src/colors.ts`: the locus color palette
 - `src/dom.ts`: a small helper for building page elements

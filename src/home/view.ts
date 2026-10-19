@@ -2,12 +2,15 @@
 
 import { PALETTE } from '../colors'
 import { h } from '../dom'
-import { createLocus, listLoci } from '../store/db'
+import { createLocus, listLoci, moveLocus } from '../store/db'
 import { createField, spiralPoint } from './field'
 import { openCreateLocusSheet } from './createLocus'
 
 export async function renderHome(root: HTMLElement): Promise<void> {
-  const field = createField()
+  const field = createField({
+    onTap: () => {}, // opens the locus view in milestone 3
+    onMove: (locus, x, y) => void moveLocus(locus.id, x, y),
+  })
   const empty = h('p', { class: 'empty' }, 'No loci yet. Tap + to create your first one.')
 
   async function refresh() {

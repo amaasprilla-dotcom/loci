@@ -56,3 +56,8 @@ export async function createLocus(input: {
   await db.loci.add(locus)
   return locus
 }
+
+// x and y are the new home position, normalized 0..1 of the field.
+export async function moveLocus(id: string, x: number, y: number): Promise<void> {
+  await db.loci.update(id, { x, y, updatedAt: Date.now() })
+}
