@@ -2,10 +2,14 @@
 // work without any extra code (SPEC.md, "Locus view and navigation").
 // More routes (deck, review, tasks) arrive with their milestones.
 
-export type Route = { name: 'home' } | { name: 'locus'; id: string }
+export type Route =
+  | { name: 'home' }
+  | { name: 'locus'; id: string }
+  | { name: 'element'; locusId: string; elementId: string }
 
 export function parseRoute(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean).map(decodeURIComponent)
+  if (parts[0] === 'locus' && parts[1] && parts[2] === 'el' && parts[3]) return { name: 'element', locusId: parts[1], elementId: parts[3] }
   if (parts[0] === 'locus' && parts[1]) return { name: 'locus', id: parts[1] }
   return { name: 'home' }
 }
@@ -23,8 +27,14 @@ export function go(hash: string): void {
 }
 
 // What a screen's back button does: step back if we came from inside the app,
-// otherwise (opened from a bookmark or after a reload) replace this page with home.
-export function back(): void {
+// otherwise (opened from a bookmark or after a reload) replace this page with
+// its parent screen.
+export function back(parent = '#/'): void {
   if ((history.state as { inApp?: boolean } | null)?.inApp) history.back()
-  else location.replace('#/')
+  else location.replace(parent)
+}
+
+// The screen that back leads to when there's no history to go back through.
+export function parentOf(route: Route): string {
+  return route.name === 'element' ? `#/locus/${encodeURIComponent(route.locusId)}` : '#/'
 }

@@ -3,6 +3,7 @@
 
 import { PALETTE } from '../colors'
 import { h } from '../dom'
+import { button, deleteConfirmation, describeCounts, openSheet, sheetActions, submitButton } from '../sheet'
 import { countLocusContents, tagKey } from '../store/db'
 import type { Locus, Tag } from '../types'
 
@@ -13,16 +14,16 @@ export interface LocusDraft {
   newTags: string[] // names of tags to create on save
 }
 
-export type LocusSheetResult = { action: 'save'; draft: LocusDraft } | { action: 'delete' } | null
+export type LocusSheetResult = { action: 'save'; draft: LocusDraft } | { action: 'delete' }
 
 const MAX_TAG_LENGTH = 30
 
 // Opens the sheet. Resolves with what the user chose, or null if they cancelled.
-export function openLocusSheet(options: { locus?: Locus; tags: Tag[]; suggestedColor: string }): Promise<LocusSheetResult> {
+export function openLocusSheet(options: { locus?: Locus; tags: Tag[]; suggestedColor: string }): Promise<LocusSheetResult | null> {
   const { locus, tags } = options
   const editing = locus != null
 
-  return new Promise((resolve) => {
+  return openSheet<LocusSheetResult>(editing ? 'Edit locus' : 'New locus', (api) => {
     let color = locus?.color ?? options.suggestedColor
     const selected = new Set(locus?.tagIds ?? [])
     const newTags: string[] = []
@@ -97,39 +98,25 @@ export function openLocusSheet(options: { locus?: Locus; tags: Tag[]; suggestedC
       renderChips()
     }
 
+    function chip(label: string, pressed: boolean, onclick: () => void) {
+      return h('button', { type: 'button', class: 'chip', 'aria-pressed': String(pressed), onclick }, label)
+    }
+
     function renderChips() {
       chips.replaceChildren(
         ...tags.map((t) =>
-          h(
-            'button',
-            {
-              type: 'button',
-              class: 'chip',
-              'aria-pressed': String(selected.has(t.id)),
-              onclick: () => {
-                if (selected.has(t.id)) selected.delete(t.id)
-                else selected.add(t.id)
-                renderChips()
-              },
-            },
-            t.name,
-          ),
+          chip(t.name, selected.has(t.id), () => {
+            if (selected.has(t.id)) selected.delete(t.id)
+            else selected.add(t.id)
+            renderChips()
+          }),
         ),
         // New tags show as selected; tapping one drops it.
         ...newTags.map((name, i) =>
-          h(
-            'button',
-            {
-              type: 'button',
-              class: 'chip',
-              'aria-pressed': 'true',
-              onclick: () => {
-                newTags.splice(i, 1)
-                renderChips()
-              },
-            },
-            name,
-          ),
+          chip(name, true, () => {
+            newTags.splice(i, 1)
+            renderChips()
+          }),
         ),
       )
       chips.hidden = chips.childElementCount === 0
@@ -137,92 +124,53 @@ export function openLocusSheet(options: { locus?: Locus; tags: Tag[]; suggestedC
 
     // ----- Form -----
 
-    const submit = h('button', { type: 'submit', class: 'btn btn-primary' }, editing ? 'Save' : 'Create')
-
-    const formBody = h(
-      'div',
-      { class: 'sheet-body' },
-      h('h2', {}, editing ? 'Edit locus' : 'New locus'),
-      h('label', { class: 'field-label' }, 'Name', nameInput),
-      h('div', { class: 'field-label' }, 'Color', h('div', { class: 'swatches' }, swatches, custom)),
-      h('div', { class: 'field-label' }, 'Tags', chips, tagInput),
-      h(
-        'div',
-        { class: 'sheet-actions' },
-        editing && h('button', { type: 'button', class: 'btn btn-danger-text', onclick: () => void confirmDelete() }, 'Delete'),
-        h('span', { class: 'spacer' }),
-        h('button', { type: 'button', class: 'btn', onclick: () => close(null) }, 'Cancel'),
-        submit,
-      ),
-    )
-
-    const form = h(
-      'form',
-      {
-        class: 'sheet',
-        role: 'dialog',
-        'aria-modal': 'true',
-        'aria-label': editing ? 'Edit locus' : 'New locus',
-        onsubmit: (e: Event) => {
-          e.preventDefault()
-          const name = nameInput.value.trim()
-          if (!name) return
-          addTag(tagInput.value) // a tag typed but not yet added with Enter still counts
-          close({ action: 'save', draft: { name, color, tagIds: [...selected], newTags: [...newTags] } })
-        },
-      },
-      h('div', { class: 'sheet-handle' }),
-      formBody,
-    )
-
-    async function confirmDelete() {
-      const { elements, cards } = await countLocusContents(locus!.id)
-      const parts = [
-        elements > 0 && `${elements} ${elements === 1 ? 'element' : 'elements'}`,
-        cards > 0 && `${cards} ${cards === 1 ? 'card' : 'cards'}`,
-      ].filter(Boolean)
-      const confirmBody = h(
-        'div',
-        { class: 'sheet-body' },
-        h('h2', {}, `Delete “${locus!.name}”?`),
-        h(
-          'p',
-          { class: 'sheet-text' },
-          parts.length > 0 ? `This also deletes its ${parts.join(' and ')}. ` : '',
-          'This can’t be undone.',
-        ),
-        h(
-          'div',
-          { class: 'sheet-actions' },
-          h('span', { class: 'spacer' }),
-          h('button', { type: 'button', class: 'btn', onclick: () => confirmBody.replaceWith(formBody) }, 'Keep it'),
-          h('button', { type: 'button', class: 'btn btn-danger', onclick: () => close({ action: 'delete' }) }, 'Delete'),
-        ),
-      )
-      formBody.replaceWith(confirmBody)
-    }
-
-    const backdrop = h('div', { class: 'backdrop', onclick: (e: Event) => e.target === backdrop && close(null) }, form)
-
+    const submit = submitButton(editing ? 'Save' : 'Create')
     function syncSubmit() {
       submit.disabled = nameInput.value.trim() === ''
     }
 
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') close(null)
-    }
+    const form = [
+      h('h2', {}, editing ? 'Edit locus' : 'New locus'),
+      h('label', { class: 'field-label' }, 'Name', nameInput),
+      h('div', { class: 'field-label' }, 'Color', h('div', { class: 'swatches' }, swatches, custom)),
+      h('div', { class: 'field-label' }, 'Tags', chips, tagInput),
+      sheetActions(
+        editing && button('Delete', () => void askDelete(), 'danger-text'),
+        button('Cancel', () => api.close(null)),
+        submit,
+      ),
+    ]
 
-    function close(result: LocusSheetResult) {
-      document.removeEventListener('keydown', onKey)
-      backdrop.remove()
-      resolve(result)
+    async function askDelete() {
+      const { elements, cards } = await countLocusContents(locus!.id)
+      const contents = describeCounts([
+        [elements, 'element', 'elements'],
+        [cards, 'card', 'cards'],
+      ])
+      api.show(
+        ...deleteConfirmation(
+          `Delete “${locus!.name}”?`,
+          contents ? `This also deletes its ${contents}.` : '',
+          () => api.show(...form),
+          () => api.close({ action: 'delete' }),
+        ),
+      )
     }
 
     pick(color)
     renderChips()
     syncSubmit()
-    document.addEventListener('keydown', onKey)
-    document.body.append(backdrop)
-    if (!editing) nameInput.focus() // editing: don't pop the phone keyboard over the sheet
+
+    return {
+      content: form,
+      onSubmit: () => {
+        const name = nameInput.value.trim()
+        if (!name) return
+        addTag(tagInput.value) // a tag typed but not yet added with Enter still counts
+        api.close({ action: 'save', draft: { name, color, tagIds: [...selected], newTags: [...newTags] } })
+      },
+      // Editing: don't pop the phone keyboard over the sheet.
+      focus: editing ? undefined : nameInput,
+    }
   })
 }

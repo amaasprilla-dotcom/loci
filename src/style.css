@@ -17,6 +17,7 @@
   --bad: #d4443b; /* destructive actions */
 
   --radius: 12px;
+  --shadow-sm: 0 1px 2px rgba(11, 15, 20, 0.05);
   --shadow-md: 0 2px 4px rgba(11, 15, 20, 0.04), 0 10px 28px rgba(11, 15, 20, 0.08);
   --shadow-lg: 0 -4px 12px rgba(11, 15, 20, 0.05), 0 -16px 48px rgba(11, 15, 20, 0.1);
 
@@ -203,7 +204,7 @@ h2 {
 }
 
 .fab {
-  position: absolute;
+  position: fixed;
   right: 20px;
   bottom: calc(20px + env(safe-area-inset-bottom));
   z-index: 2;
@@ -327,7 +328,286 @@ h2 {
 }
 
 .locus-empty {
+  grid-column: 1 / -1;
   margin: 48px 0 0;
+  text-align: center;
+  color: var(--muted);
+}
+
+.header-kicker {
+  font-size: 0.85rem;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.header-end {
+  margin-left: auto;
+}
+
+/* ---------- Element tiles ---------- */
+
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
+}
+
+.tile {
+  position: relative;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: inset 0 3px 0 var(--c), var(--shadow-sm);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.tile:hover {
+  border-color: var(--border-strong);
+}
+
+.tile:focus-visible {
+  outline: 2px solid var(--blue-ink);
+  outline-offset: 2px;
+}
+
+/* Held long enough on touch: now it can be dragged, or let go for its menu. */
+.tile.armed {
+  border-color: var(--text);
+}
+
+.tile.dragging {
+  z-index: 2;
+  border-color: var(--text);
+  box-shadow: inset 0 3px 0 var(--c), var(--shadow-md);
+  cursor: grabbing;
+}
+
+.tile-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.icon {
+  display: inline-grid;
+  place-items: center;
+}
+
+.icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.tile-title {
+  margin: 8px 0 2px;
+  font-size: 1.05rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.tile-meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.tile-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.tile-quiet {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.pill {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Due work is highlighted in the locus color. */
+.pill-due {
+  background: var(--c);
+  color: var(--fg);
+}
+
+/* The + menu */
+.type-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.type-option {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.type-option:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-muted);
+}
+
+.type-option .icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.type-option strong {
+  display: block;
+}
+
+.type-desc {
+  display: block;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* ---------- Deck screen ---------- */
+
+.deck-screen {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+.deck-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.deck-stats {
+  margin: 0;
+  color: var(--muted);
+}
+
+.deck-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.search {
+  margin-bottom: 14px;
+}
+
+.search[hidden] {
+  display: none;
+}
+
+.card-list {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.card-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.card-row:last-child {
+  border-bottom: 0;
+}
+
+.card-row:hover {
+  background: var(--surface-muted);
+}
+
+.card-row:focus-visible {
+  outline: 2px solid var(--blue-ink);
+  outline-offset: -2px;
+}
+
+.card-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.card-front,
+.card-back {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-front {
+  font-weight: 600;
+}
+
+.card-back {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.card-due {
+  color: var(--muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.card-due.due,
+.card-due.new {
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.card-due.due {
+  background: var(--c);
+  color: var(--fg);
+}
+
+.card-due.new {
+  background: var(--surface-muted);
+}
+
+.list-empty {
+  margin: 0;
+  padding: 32px 16px;
   text-align: center;
   color: var(--muted);
 }
@@ -403,6 +683,34 @@ h2 {
   font-size: 1rem; /* 16px stops phones from zooming in on focus */
 }
 
+textarea.input {
+  resize: vertical;
+}
+
+.input.mono {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 0.9rem;
+  tab-size: 4;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.sheet-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.sheet-note:empty {
+  display: none;
+}
+
 .input:focus {
   outline: 2px solid var(--blue-ink);
   outline-offset: -1px;
@@ -455,6 +763,7 @@ h2 {
 
 .sheet-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
 }

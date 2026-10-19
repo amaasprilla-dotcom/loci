@@ -89,6 +89,54 @@ export async function countLocusContents(id: string): Promise<{ elements: number
   return { elements: elementIds.length, cards }
 }
 
+// ---------- Elements ----------
+
+export async function getElement(id: string): Promise<LocusElement | undefined> {
+  return db.elements.get(id)
+}
+
+export async function listElements(locusId: string): Promise<LocusElement[]> {
+  const elements = await db.elements.where('locusId').equals(locusId).toArray()
+  return elements.sort((a, b) => a.order - b.order)
+}
+
+export async function createElement<TData>(locusId: string, type: string, title: string, data: TData): Promise<LocusElement<TData>> {
+  return db.transaction('rw', db.elements, async () => {
+    const siblings = await db.elements.where('locusId').equals(locusId).toArray()
+    const element: LocusElement<TData> = {
+      id: crypto.randomUUID(),
+      locusId,
+      type,
+      title: title.trim(),
+      order: siblings.reduce((max, e) => Math.max(max, e.order + 1), 0), // goes last
+      data,
+      updatedAt: Date.now(),
+    }
+    await db.elements.add(element)
+    return element
+  })
+}
+
+export async function updateElement(id: string, patch: Partial<Pick<LocusElement, 'title' | 'data'>>): Promise<void> {
+  await db.elements.update(id, { ...patch, ...(patch.title != null && { title: patch.title.trim() }), updatedAt: Date.now() })
+}
+
+// ids in their new order.
+export async function reorderElements(ids: string[]): Promise<void> {
+  const now = Date.now()
+  await db.elements.bulkUpdate(ids.map((id, order) => ({ key: id, changes: { order, updatedAt: now } })))
+}
+
+// Deletes the element with its cards and their review history.
+export async function deleteElement(id: string): Promise<void> {
+  await db.transaction('rw', [db.elements, db.cards, db.reviews], async () => {
+    const cardIds = await db.cards.where('elementId').equals(id).primaryKeys()
+    await db.reviews.where('cardId').anyOf(cardIds).delete()
+    await db.cards.bulkDelete(cardIds)
+    await db.elements.delete(id)
+  })
+}
+
 // ---------- Tags ----------
 
 export function tagKey(name: string): string {

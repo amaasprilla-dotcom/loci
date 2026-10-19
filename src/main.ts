@@ -4,10 +4,11 @@
 import '@fontsource-variable/inter'
 import './style.css'
 import { h } from './dom'
+import { registry } from './elements/registry'
 import { createHome } from './home/view'
 import { renderLocusView } from './locus/view'
-import { back, currentRoute, go, type Route } from './router'
-import { db, requestPersistentStorage } from './store/db'
+import { back, currentRoute, go, parentOf, type Route } from './router'
+import { db, getElement, requestPersistentStorage } from './store/db'
 import { coverFor, fadeIn, fadeOut, growFrom, motionAllowed, shrinkInto } from './transition'
 
 const DEFAULT_THEME_COLOR = '#ffffff'
@@ -38,7 +39,9 @@ async function show(route: Route): Promise<void> {
     shown = route
     await home.refresh()
     const view = screenLayer.firstElementChild as HTMLElement | null
-    const bubble = from?.name === 'locus' ? home.field.bubble(from.id) : undefined
+    // Coming back from a locus (or one of its elements): shrink into its bubble.
+    const fromLocusId = from?.name === 'locus' ? from.id : from?.name === 'element' ? from.locusId : undefined
+    const bubble = fromLocusId ? home.field.bubble(fromLocusId) : undefined
     if (view && bubble && motionAllowed()) {
       home.field.pause() // hold the bubble still while we shrink into it
       home.el.style.visibility = ''
@@ -55,13 +58,30 @@ async function show(route: Route): Promise<void> {
     return
   }
 
+  if (route.name === 'element') {
+    const el = await getElement(route.elementId)
+    const type = el && registry.get(el.type)
+    const locus = await db.loci.get(route.locusId)
+    if (!el || !type || !locus || el.locusId !== locus.id) {
+      location.replace(parentOf(route)) // deleted, or a bad link
+      return
+    }
+    shown = route
+    const view = await type.renderScreen(el)
+    setHomeVisible(false)
+    setThemeColor(locus.color)
+    screenLayer.replaceChildren(view)
+    if (motionAllowed()) await fadeIn(view)
+    return
+  }
+
   const locus = await db.loci.get(route.id)
   if (!locus) {
     location.replace('#/') // deleted, or a bad link
     return
   }
   shown = route
-  const view = await renderLocusView(locus, { onBack: back })
+  const view = await renderLocusView(locus, { onBack: () => back() })
   const bubble = from?.name === 'home' ? home.field.bubble(locus.id) : undefined
   let cover: HTMLElement | null = null
   if (bubble && motionAllowed()) {
@@ -74,6 +94,8 @@ async function show(route: Route): Promise<void> {
   if (cover) {
     await fadeIn(view)
     cover.remove()
+  } else if (from?.name === 'element' && motionAllowed()) {
+    await fadeIn(view)
   }
 }
 
@@ -87,7 +109,7 @@ window.addEventListener('hashchange', showCurrent)
 
 // Escape goes back on desktop, unless a sheet is open (it closes itself).
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && shown?.name !== 'home' && !document.querySelector('.sheet')) back()
+  if (e.key === 'Escape' && shown && shown.name !== 'home' && !document.querySelector('.sheet')) back(parentOf(shown))
 })
 
 requestPersistentStorage().catch(() => {})

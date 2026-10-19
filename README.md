@@ -35,7 +35,14 @@ Data stays in each visitor's own browser, so a deployed copy starts empty for ev
 - `src/main.ts`: app start, and switching between screens
 - `src/router.ts`: the screen addresses (`#/`, `#/locus/…`) and the back button
 - `src/transition.ts`: the bubble growing into its locus screen, and back
-- `src/locus/view.ts`: the locus screen
+- `src/locus/view.ts`: the locus screen: element tiles, the + menu, rename and delete
+- `src/locus/reorder.ts`: dragging tiles into a new order
+- `src/elements/registry.ts`: the element types (a new type is one module registered here)
+- `src/elements/flashcards/`: the Flashcards type: its tile (`type.ts`), deck screen (`editor.ts`),
+  card storage (`store.ts`) and bulk import (`import.ts`)
+- `src/sheet.ts`: bottom sheets, and the delete confirmation
+- `src/press.ts`: long-press for list rows
+- `src/icons.ts`, `src/time.ts`: small icons, and "in 3h"-style times
 - `src/types.ts`: the stored data shapes (tags, loci, elements, cards, review log)
 - `src/store/db.ts`: the IndexedDB database (Dexie) and the functions that read and write it
 - `src/home/view.ts`: the home screen
