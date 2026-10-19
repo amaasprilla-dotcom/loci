@@ -4,8 +4,11 @@ import { h } from '../../dom'
 import { db } from '../../store/db'
 import { formatIn } from '../../time'
 import type { LocusElement } from '../../types'
+import { go, reviewHash } from '../../router'
 import type { ElementType, Task } from '../registry'
 import { renderDeckScreen } from './editor'
+import { renderReviewScreen } from './review'
+import { planSession } from './session'
 import { DEFAULT_FLASHCARDS_DATA, deckStats, type FlashcardsData, isNew, listCards } from './store'
 
 const ICON =
@@ -28,6 +31,7 @@ export const flashcardsType: ElementType<FlashcardsData> = {
         : stats.due > 0 || stats.fresh > 0
           ? [stats.due > 0 && h('span', { class: 'pill pill-due' }, `${stats.due} due`), stats.fresh > 0 && h('span', { class: 'pill' }, `${stats.fresh} new`)]
           : h('span', { class: 'tile-quiet' }, stats.nextDue != null ? `Next ${formatIn(stats.nextDue - now)}` : 'All caught up')
+    const studyable = (await planSession(el, now)).length > 0
     return h(
       'div',
       { class: 'tile-content' },
@@ -35,10 +39,24 @@ export const flashcardsType: ElementType<FlashcardsData> = {
       h('h3', { class: 'tile-title' }, el.title),
       h('p', { class: 'tile-meta' }, `${stats.total} ${stats.total === 1 ? 'card' : 'cards'}`),
       h('div', { class: 'tile-status' }, status),
+      studyable &&
+        h(
+          'button',
+          {
+            type: 'button',
+            class: 'btn btn-study',
+            onclick: (e: Event) => {
+              e.stopPropagation() // straight to the review, not the deck screen
+              go(reviewHash(el))
+            },
+          },
+          'Study',
+        ),
     )
   },
 
   renderScreen: (el) => renderDeckScreen(el),
+  renderSession: (el) => renderReviewScreen(el),
 
   // Only reviews that are due make work: cards never studied don't
   // (SPEC.md leaves this open and recommends it; see the deck's "new" count).
@@ -56,7 +74,7 @@ export const flashcardsType: ElementType<FlashcardsData> = {
         label: `${due} ${due === 1 ? 'card' : 'cards'} due`,
         count: due,
         dueAt: now,
-        action: () => {}, // starts the review session in milestone 6
+        action: () => go(reviewHash(el)),
       },
     ]
   },

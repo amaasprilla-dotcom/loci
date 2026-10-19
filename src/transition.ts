@@ -33,12 +33,28 @@ function coverCircle(bubble: HTMLElement, color: string): { el: HTMLElement; bub
   return { el, bubbleScale: rect.width / 2 / R }
 }
 
+// Waits for an animation, but never much longer than it should take: if the
+// browser stops drawing frames (app sent to the background, window covered),
+// the animation is jumped to its end so navigation doesn't stall.
+function settle(animation: Animation, duration: number): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = window.setTimeout(() => animation.finish(), duration + 250)
+    animation.finished.then(
+      () => {
+        clearTimeout(timer)
+        resolve()
+      },
+      () => resolve(), // cancelled: carry on all the same
+    )
+  })
+}
+
 // Grows the bubble to fill the screen. Returns the full-screen circle; remove
 // it once the next screen is showing.
 export async function growFrom(bubble: HTMLElement, color: string): Promise<HTMLElement> {
   const { el, bubbleScale } = coverCircle(bubble, color)
   bubble.style.visibility = 'hidden'
-  await el.animate([{ transform: `scale(${bubbleScale})` }, { transform: 'scale(1)' }], { duration: GROW_MS, easing: EASE }).finished
+  await settle(el.animate([{ transform: `scale(${bubbleScale})` }, { transform: 'scale(1)' }], { duration: GROW_MS, easing: EASE }), GROW_MS)
   bubble.style.visibility = ''
   return el
 }
@@ -51,19 +67,22 @@ export function coverFor(bubble: HTMLElement, color: string): { el: HTMLElement;
 }
 
 export async function shrinkInto(bubble: HTMLElement, cover: { el: HTMLElement; bubbleScale: number }): Promise<void> {
-  await cover.el.animate([{ transform: 'scale(1)' }, { transform: `scale(${cover.bubbleScale})` }], {
-    duration: SHRINK_MS,
-    easing: EASE,
-    fill: 'forwards',
-  }).finished
+  await settle(
+    cover.el.animate([{ transform: 'scale(1)' }, { transform: `scale(${cover.bubbleScale})` }], {
+      duration: SHRINK_MS,
+      easing: EASE,
+      fill: 'forwards',
+    }),
+    SHRINK_MS,
+  )
   bubble.style.visibility = ''
   cover.el.remove()
 }
 
-export function fadeIn(el: HTMLElement): Promise<unknown> {
-  return el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: FADE_IN_MS, easing: 'ease-out' }).finished
+export function fadeIn(el: HTMLElement): Promise<void> {
+  return settle(el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: FADE_IN_MS, easing: 'ease-out' }), FADE_IN_MS)
 }
 
-export function fadeOut(el: HTMLElement): Promise<unknown> {
-  return el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: FADE_OUT_MS, easing: 'ease-in', fill: 'forwards' }).finished
+export function fadeOut(el: HTMLElement): Promise<void> {
+  return settle(el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: FADE_OUT_MS, easing: 'ease-in', fill: 'forwards' }), FADE_OUT_MS)
 }

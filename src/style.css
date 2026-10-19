@@ -824,3 +824,188 @@ textarea.input {
     animation: none;
   }
 }
+
+/* ---------- Review session ---------- */
+
+.btn-block {
+  width: 100%;
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+/* Study, on a flashcard tile */
+.btn-study {
+  margin-top: 12px;
+  padding: 6px 16px;
+  border-color: var(--text);
+  background: var(--text);
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.review-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.review-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: calc(10px + env(safe-area-inset-top)) 16px 10px 8px;
+}
+
+.review-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-count {
+  color: var(--muted);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.review-progress {
+  height: 4px;
+  background: var(--surface-muted);
+}
+
+.review-progress-fill {
+  height: 100%;
+  width: 0;
+  background: var(--c);
+  transition: width 0.25s ease-out;
+}
+
+.review-main {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  justify-content: center;
+  padding: 24px 20px;
+}
+
+.review-card {
+  width: 100%;
+  max-width: 640px;
+  margin: auto 0; /* vertically centered when short, scrolls when long */
+  padding: 32px 24px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: inset 0 4px 0 var(--c), var(--shadow-md);
+  text-align: center;
+}
+
+.review-front,
+.review-back-text {
+  font-size: 1.5rem;
+  line-height: 1.4;
+  white-space: pre-wrap; /* keep line breaks typed into a card */
+  overflow-wrap: anywhere;
+}
+
+.review-front {
+  font-weight: 650;
+}
+
+.review-divider {
+  margin: 24px auto;
+  width: 64px;
+  border: 0;
+  border-top: 2px solid var(--border);
+}
+
+.review-back[hidden] {
+  display: none;
+}
+
+.review-footer {
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 12px 20px calc(16px + env(safe-area-inset-bottom));
+}
+
+.grade-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.grade {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 4px;
+}
+
+.grade-wait {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.grade-0 {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+
+.grade-2 {
+  border-color: var(--text);
+  background: var(--text);
+  color: #fff;
+}
+
+.grade-2 .grade-wait {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* Keyboard hints, only where there's a keyboard and mouse. */
+.key-hint {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .key-hint {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 0 5px;
+    border: 1px solid currentColor;
+    border-radius: 4px;
+    font: inherit;
+    font-size: 0.7rem;
+    opacity: 0.55;
+  }
+
+  .grade .key-hint {
+    margin: 4px 0 0;
+  }
+}
+
+.review-done {
+  margin: auto 0;
+  text-align: center;
+}
+
+.review-done h2 {
+  font-size: 1.5rem;
+}
+
+.review-done p {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.btn[hidden] {
+  display: none;
+}

@@ -58,6 +58,23 @@ async function show(route: Route): Promise<void> {
     return
   }
 
+  if (route.name === 'review') {
+    const el = await getElement(route.elementId)
+    const type = el && registry.get(el.type)
+    const locus = el && (await db.loci.get(el.locusId))
+    if (!el || !type?.renderSession || !locus) {
+      location.replace('#/')
+      return
+    }
+    shown = route
+    const view = await type.renderSession(el)
+    setHomeVisible(false)
+    setThemeColor(locus.color)
+    screenLayer.replaceChildren(view)
+    if (motionAllowed()) await fadeIn(view)
+    return
+  }
+
   if (route.name === 'element') {
     const el = await getElement(route.elementId)
     const type = el && registry.get(el.type)
@@ -109,7 +126,8 @@ window.addEventListener('hashchange', showCurrent)
 
 // Escape goes back on desktop, unless a sheet is open (it closes itself).
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && shown && shown.name !== 'home' && !document.querySelector('.sheet')) back(parentOf(shown))
+  // The review screen handles its own keys, Escape included.
+  if (e.key === 'Escape' && shown && shown.name !== 'home' && shown.name !== 'review' && !document.querySelector('.sheet')) back(parentOf(shown))
 })
 
 requestPersistentStorage().catch(() => {})

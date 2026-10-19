@@ -1,21 +1,31 @@
 // Hash-based routes, so the browser's back button and Android's back gesture
 // work without any extra code (SPEC.md, "Locus view and navigation").
-// More routes (deck, review, tasks) arrive with their milestones.
+// The Tasks screen's route arrives in milestone 7.
 
 export type Route =
   | { name: 'home' }
   | { name: 'locus'; id: string }
   | { name: 'element'; locusId: string; elementId: string }
+  | { name: 'review'; elementId: string }
 
 export function parseRoute(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean).map(decodeURIComponent)
   if (parts[0] === 'locus' && parts[1] && parts[2] === 'el' && parts[3]) return { name: 'element', locusId: parts[1], elementId: parts[3] }
   if (parts[0] === 'locus' && parts[1]) return { name: 'locus', id: parts[1] }
+  if (parts[0] === 'review' && parts[1]) return { name: 'review', elementId: parts[1] }
   return { name: 'home' }
 }
 
 export function currentRoute(): Route {
   return parseRoute(location.hash)
+}
+
+export function elementHash(el: { locusId: string; id: string }): string {
+  return `#/locus/${encodeURIComponent(el.locusId)}/el/${encodeURIComponent(el.id)}`
+}
+
+export function reviewHash(el: { id: string }): string {
+  return `#/review/${encodeURIComponent(el.id)}`
 }
 
 // Navigate inside the app. The new history entry is marked, so a screen's own

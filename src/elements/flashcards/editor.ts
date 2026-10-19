@@ -5,12 +5,13 @@ import { textColorOn } from '../../colors'
 import { h } from '../../dom'
 import { backIcon, settingsIcon } from '../../icons'
 import { onLongPress } from '../../press'
-import { back } from '../../router'
+import { back, go, reviewHash } from '../../router'
 import { button, confirmDelete, deleteConfirmation, describeCounts, openSheet, sheetActions, submitButton } from '../../sheet'
 import { db, deleteElement, updateElement } from '../../store/db'
 import { formatIn } from '../../time'
 import type { Card, LocusElement } from '../../types'
 import { parseImport } from './import'
+import { planSession } from './session'
 import { addCard, addCards, deckStats, deleteCard, type FlashcardsData, isNew, listCards, updateCard } from './store'
 
 const SEARCH_FROM = 50 // the search box appears once a deck has more cards than this
@@ -36,8 +37,11 @@ export async function renderDeckScreen(initial: LocusElement<FlashcardsData>): P
     },
   })
 
+  const study = button('Study', () => go(reviewHash(deck)), 'primary')
+
   async function reload() {
     cards = await listCards(deck.id)
+    study.hidden = (await planSession(deck, Date.now())).length === 0
     renderList()
   }
 
@@ -103,6 +107,7 @@ export async function renderDeckScreen(initial: LocusElement<FlashcardsData>): P
     } else if (result) {
       deck = result
       title.textContent = deck.title
+      await reload() // the daily limits may change what's ready to study
     }
   }
 
@@ -127,7 +132,8 @@ export async function renderDeckScreen(initial: LocusElement<FlashcardsData>): P
           'div',
           { class: 'deck-actions' },
           button('Import', () => void importCards()),
-          button('Add card', () => void editCard(), 'primary'),
+          button('Add card', () => void editCard()),
+          study,
         ),
       ),
       search,

@@ -24,14 +24,12 @@ export interface ElementType<TData = unknown> {
   // The tile inside the locus view.
   renderCard(el: LocusElement<TData>, now: number): Promise<HTMLElement>
   // The element's own full screen, at #/locus/:locusId/el/:elementId.
-  // (The spec's open(el) is just navigating there; see elementHash.)
+  // (The spec's open(el) is just navigating there; see elementHash in router.ts.)
   renderScreen(el: LocusElement<TData>): Promise<HTMLElement>
   getTasks(el: LocusElement<TData>, now: number): Promise<Task[]>
+  // A study session, at #/review/:elementId, for types that have one.
+  renderSession?(el: LocusElement<TData>): Promise<HTMLElement>
 }
 
 export const registry = new Map<string, ElementType>()
 registry.set(flashcardsType.type, flashcardsType)
-
-export function elementHash(el: Pick<LocusElement, 'locusId' | 'id'>): string {
-  return `#/locus/${encodeURIComponent(el.locusId)}/el/${encodeURIComponent(el.id)}`
-}

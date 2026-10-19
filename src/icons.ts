@@ -13,6 +13,8 @@ const STROKE = stroke()
 
 export const backIcon = () => icon(`<path d="M15 5l-7 7 7 7" ${stroke(2.4)}/>`)
 
+export const closeIcon = () => icon(`<path d="M6 6l12 12M18 6L6 18" ${stroke(2.2)}/>`)
+
 // Three sliders: settings.
 export const settingsIcon = () =>
   icon(

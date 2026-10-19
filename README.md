@@ -18,6 +18,12 @@ To try it on your phone on the same Wi-Fi, use `npm run dev -- --host` instead a
 "Network" address it prints. (Windows may ask to allow Node.js through the firewall: allow it on
 private networks.)
 
+## Tests
+
+`npm test` runs the unit tests (Vitest): the scheduler, the due count at the 04:00 day boundary,
+the daily limits, the review log and bulk import. Test files sit next to the code they test
+(`*.test.ts`).
+
 ## Put it online (static site)
 
 `npm run build` creates a `dist` folder: that folder is the whole website. Any static host works.
@@ -39,7 +45,8 @@ Data stays in each visitor's own browser, so a deployed copy starts empty for ev
 - `src/locus/reorder.ts`: dragging tiles into a new order
 - `src/elements/registry.ts`: the element types (a new type is one module registered here)
 - `src/elements/flashcards/`: the Flashcards type: its tile (`type.ts`), deck screen (`editor.ts`),
-  card storage (`store.ts`) and bulk import (`import.ts`)
+  card storage (`store.ts`), bulk import (`import.ts`), the scheduler (`srs.ts`), which cards a
+  session shows (`session.ts`) and the review screen (`review.ts`)
 - `src/sheet.ts`: bottom sheets, and the delete confirmation
 - `src/press.ts`: long-press for list rows
 - `src/icons.ts`, `src/time.ts`: small icons, and "in 3h"-style times

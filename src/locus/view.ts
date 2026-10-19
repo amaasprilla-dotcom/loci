@@ -3,10 +3,10 @@
 
 import { textColorOn } from '../colors'
 import { h } from '../dom'
-import { elementHash, type ElementType, registry } from '../elements/registry'
+import { type ElementType, registry } from '../elements/registry'
 import { iconNode } from '../elements/flashcards/type'
 import { backIcon } from '../icons'
-import { go } from '../router'
+import { elementHash, go } from '../router'
 import { button, deleteConfirmation, describeCounts, openSheet, sheetActions, submitButton } from '../sheet'
 import { createElement, db, deleteElement, listElements, reorderElements, updateElement } from '../store/db'
 import type { Locus, LocusElement } from '../types'
