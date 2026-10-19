@@ -15,9 +15,15 @@ export interface Body {
   held: boolean // being dragged: the pointer moves it, physics leaves it alone
 }
 
-// Starting values from SPEC.md; tune by feel.
-const K = 0.015 // spring strength toward home
-const DAMP = 0.9 // velocity kept per step
+// Tuned by feel. A weak spring in thick "liquid": a bubble pushed away drifts
+// back to its home slowly (halfway in ~1.6s, nearly there in ~5s) and never
+// overshoots. (SPEC.md's K = 0.015, DAMP = 0.9 snapped back in 0.2s and bounced,
+// which felt magnetic.)
+const K = 0.001 // spring strength toward home
+const DAMP = 0.88 // velocity kept per step; lower = thicker liquid
+// How much of a push from another bubble carries on as momentum, so pushed
+// bubbles glide a little instead of stopping dead.
+const PUSH_MOMENTUM = 0.25
 // Drift: the spring pulls toward a point that wanders slowly around home, up to
 // WANDER px away. (A random nudge each step, as first specced, only jittered
 // bubbles by about 1px, which read as noise rather than floating.)
@@ -66,13 +72,19 @@ function separate(bodies: Body[]): void {
       const ny = dy / dist
       // A held bubble doesn't move, so the other one takes the whole push.
       const share = a.held || c.held ? overlap : overlap / 2
+      const px = nx * share
+      const py = ny * share
       if (!a.held) {
-        a.x -= nx * share
-        a.y -= ny * share
+        a.x -= px
+        a.y -= py
+        a.vx -= px * PUSH_MOMENTUM
+        a.vy -= py * PUSH_MOMENTUM
       }
       if (!c.held) {
-        c.x += nx * share
-        c.y += ny * share
+        c.x += px
+        c.y += py
+        c.vx += px * PUSH_MOMENTUM
+        c.vy += py * PUSH_MOMENTUM
       }
     }
   }

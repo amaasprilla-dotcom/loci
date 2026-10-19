@@ -131,7 +131,6 @@ export function createField(options: FieldOptions): Field {
         loci.set(current.id, { ...current, x, y })
         options.onMove(current, x, y)
       } else if (isTap) {
-        pop(node)
         options.onTap(current)
       }
     }
@@ -190,7 +189,7 @@ export function createField(options: FieldOptions): Field {
   function draw(t: number) {
     const still = reducedMotion.matches
     for (const b of list) {
-      const s = still || b.held ? 0 : wobble(b, t)
+      const s = still ? 0 : wobble(b, t) // keeps wobbling while held, so pressing doesn't snap it round
       nodes.get(b.id)!.style.transform = `translate(${b.x - b.r}px, ${b.y - b.r}px) scale(${1 + s}, ${1 - s})`
     }
   }
@@ -240,12 +239,4 @@ export function createField(options: FieldOptions): Field {
       document.removeEventListener('visibilitychange', onVisibility)
     },
   }
-}
-
-// A quick press-in on tap, so the user sees the tap registered.
-function pop(node: HTMLElement) {
-  node.classList.remove('popping')
-  void node.offsetWidth // restart the animation if it's still running
-  node.classList.add('popping')
-  node.addEventListener('animationend', () => node.classList.remove('popping'), { once: true })
 }
