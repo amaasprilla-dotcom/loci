@@ -9,10 +9,11 @@ account. Loci replaces Echomathia; the old app is still in this repository's git
 
 ## Backup, and moving between devices
 
-Your data lives only on the device you use. On the home screen, tap **⋯** (Backup):
+Your data lives only on the device you use. On the home screen, tap **⋯** (Settings), then Backup:
 
-- **Export backup** saves one file, `loci-backup-<date>.json`, with everything in it.
-- **Import…** reads such a file. **Merge** adds what's new and keeps the newer copy of anything that
+- **Export backup** saves one file, `loci-backup-<date>.zip`, with everything in it, attached
+  files included.
+- **Import…** reads such a file (older `.json` backups work too). **Merge** adds what's new and keeps the newer copy of anything that
   is on both sides; nothing on this device is lost (but something you deleted here comes back if
   the file still has it). **Replace everything** wipes this device and restores the file.
 
@@ -34,7 +35,8 @@ private networks.)
 
 `npm test` runs the unit tests (Vitest): the scheduler, the due count at the 04:00 day boundary,
 the daily limits, the review log, tasks, bulk import, backup export/import/merge, and the
-upgrade of a v1 database and v1 backups to FSRS, task ranking and sections, and links. Test files sit next to the code they test
+upgrade of a v1 database and v1 backups to FSRS, task ranking and sections, links, attachments,
+zip backups, number formats and desired retention. Test files sit next to the code they test
 (`*.test.ts`).
 
 ## Put it online (static site)
@@ -90,8 +92,13 @@ them.
 - `src/icons.ts`, `src/time.ts`: small icons, and "in 3h"-style times
 - `src/types.ts`: the stored data shapes (tags, loci, elements, cards, review log)
 - `src/store/db.ts`: the IndexedDB database (Dexie) and the functions that read and write it
-- `src/store/backup.ts`: backup files: export, checking a file, and import (merge or replace)
-- `src/home/backupSheet.ts`: the Backup sheet (⋯ on home)
+- `src/store/backup.ts`: backup files (.zip with data.json and attached files): export, checking a
+  file, and import (merge or replace)
+- `src/settings/`: the Settings screen (⋯ on home): number format, storage, backup
+- `src/store/attachments.ts`: links and files attached to notes, to-dos and goals (files stored as
+  Blobs, photos scaled down); `src/attachmentStrip.ts`: the strip that shows and adds them
+- `src/locale.ts`: number format (Auto, 1,234.5 or 1.234,5), formatting and reading numbers,
+  first day of the week
 - `vite.config.ts`: the build, plus the install manifest and offline caching (`vite-plugin-pwa`)
 - `src/home/view.ts`: the home screen
 - `src/home/field.ts`: the bubble field: animation loop, drag and tap, where new loci are placed

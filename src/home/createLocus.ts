@@ -5,7 +5,9 @@ import { PALETTE } from '../colors'
 import { h } from '../dom'
 import { button, deleteConfirmation, describeCounts, openSheet, sheetActions, submitButton } from '../sheet'
 import { DEFAULT_STUDY_DIFFICULTY, DEFAULT_STUDY_IMPORTANCE, levelPicker } from '../levels'
+import { DEFAULT_RETENTION } from '../elements/flashcards/srs'
 import { linkedItemsSection } from '../linkedItems'
+import { formatNumber } from '../locale'
 import { countLocusContents, tagKey } from '../store/db'
 import type { Level, Locus, Tag } from '../types'
 
@@ -16,6 +18,7 @@ export interface LocusDraft {
   newTags: string[] // names of tags to create on save
   studyImportance: Level
   studyDifficulty: Level
+  retention: number
 }
 
 export type LocusSheetResult = { action: 'save'; draft: LocusDraft } | { action: 'delete' }
@@ -33,6 +36,7 @@ export function openLocusSheet(options: { locus?: Locus; tags: Tag[]; suggestedC
     const newTags: string[] = []
     const importance = levelPicker('importance', locus?.studyImportance ?? DEFAULT_STUDY_IMPORTANCE)
     const difficulty = levelPicker('difficulty', locus?.studyDifficulty ?? DEFAULT_STUDY_DIFFICULTY)
+    const retention = retentionSlider(locus?.retention ?? DEFAULT_RETENTION)
 
     const nameInput = h('input', {
       class: 'input',
@@ -148,6 +152,7 @@ export function openLocusSheet(options: { locus?: Locus; tags: Tag[]; suggestedC
         h('div', { class: 'level-row' }, h('span', { class: 'level-name' }, 'Importance'), importance.el),
         h('div', { class: 'level-row' }, h('span', { class: 'level-name' }, 'Difficulty'), difficulty.el),
       ),
+      retention.el,
       editing && linkedItemsSection({ type: 'locus', id: locus.id }, () => api.close(null)),
       sheetActions(
         editing && button('Delete', () => void askDelete(), 'danger-text'),
@@ -182,10 +187,31 @@ export function openLocusSheet(options: { locus?: Locus; tags: Tag[]; suggestedC
         const name = nameInput.value.trim()
         if (!name) return
         addTag(tagInput.value) // a tag typed but not yet added with Enter still counts
-        api.close({ action: 'save', draft: { name, color, tagIds: [...selected], newTags: [...newTags], studyImportance: importance.value(), studyDifficulty: difficulty.value() } })
+        api.close({ action: 'save', draft: { name, color, tagIds: [...selected], newTags: [...newTags], studyImportance: importance.value(), studyDifficulty: difficulty.value(), retention: retention.value() } })
       },
       // Editing: don't pop the phone keyboard over the sheet.
       focus: editing ? undefined : nameInput,
     }
   })
+}
+
+// Desired retention (SPEC-v2.md, "Scheduling: FSRS"): how likely you want to be to
+// remember a card when it comes up. 80–95%; higher means more frequent reviews.
+function retentionSlider(initial: number): { el: HTMLElement; value(): number } {
+  const input = h('input', { type: 'range', min: 80, max: 95, step: 1, class: 'range', 'aria-label': 'Desired retention' })
+  input.value = String(Math.round(initial * 100))
+  const shown = h('span', { class: 'range-value' })
+  const show = () => (shown.textContent = formatNumber(Number(input.value) / 100, { style: 'percent' }))
+  input.addEventListener('input', show)
+  show()
+  return {
+    el: h(
+      'div',
+      { class: 'field-label' },
+      h('span', { class: 'range-head' }, 'Remembering target', shown),
+      h('span', { class: 'field-hint' }, 'How sure you want to be of remembering a card when it comes up. Higher means more reviews.'),
+      input,
+    ),
+    value: () => Number(input.value) / 100,
+  }
 }

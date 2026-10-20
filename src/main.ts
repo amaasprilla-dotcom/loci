@@ -7,6 +7,8 @@ import './elements/all'
 import { h } from './dom'
 import { registry, type Task } from './elements/registry'
 import { createHome } from './home/view'
+import { loadLocaleSettings } from './locale'
+import { renderSettingsScreen } from './settings/view'
 import { renderLocusView } from './locus/view'
 import { back, currentRoute, go, parentOf, type Route } from './router'
 import { db, getElement, requestPersistentStorage } from './store/db'
@@ -21,6 +23,7 @@ const root = document.getElementById('app')!
 const home = createHome({
   onOpen: (locus) => go(`#/locus/${encodeURIComponent(locus.id)}`),
   onTasks: () => go('#/tasks'),
+  onSettings: () => go('#/settings'),
 })
 // Ticking a task off changes what's due: refresh everything that shows tasks.
 const tasksScreen = createTasksScreen(() => void refreshTasks())
@@ -73,6 +76,20 @@ async function show(route: Route): Promise<void> {
     }
     setThemeColor(DEFAULT_THEME_COLOR)
     setHomeVisible(true)
+    return
+  }
+
+  if (route.name === 'settings') {
+    shown = route
+    // After an import, start the app over so every screen shows the imported data.
+    const view = await renderSettingsScreen(() => {
+      location.replace('#/')
+      location.reload()
+    })
+    setHomeVisible(false)
+    setThemeColor(DEFAULT_THEME_COLOR)
+    screenLayer.replaceChildren(view)
+    if (motionAllowed()) await fadeIn(view)
     return
   }
 
@@ -172,4 +189,8 @@ document.addEventListener('keydown', (e) => {
 })
 
 requestPersistentStorage().catch(() => {})
-home.refresh().then(showCurrent)
+// The number format must be known before anything with numbers is drawn.
+loadLocaleSettings()
+  .catch((err) => console.error(err))
+  .then(() => home.refresh())
+  .then(showCurrent)

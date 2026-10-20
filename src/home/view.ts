@@ -7,7 +7,6 @@ import { PALETTE } from '../colors'
 import { h } from '../dom'
 import { isActive, type Task } from '../elements/registry'
 import { moreIcon, tasksIcon } from '../icons'
-import { openBackupSheet } from './backupSheet'
 import { createLocus, deleteLocus, findOrCreateTag, listLoci, listTags, moveLocus, updateLocus } from '../store/db'
 import type { Locus, Tag } from '../types'
 import { type LocusDraft, openLocusSheet } from './createLocus'
@@ -22,7 +21,7 @@ export interface Home {
   setTasks(tasks: Task[]): void
 }
 
-export function createHome(options: { onOpen(locus: Locus): void; onTasks(): void }): Home {
+export function createHome(options: { onOpen(locus: Locus): void; onTasks(): void; onSettings(): void }): Home {
   const field = createField({
     onTap: options.onOpen,
     onMove: (locus, x, y) => void moveLocus(locus.id, x, y),
@@ -39,14 +38,9 @@ export function createHome(options: { onOpen(locus: Locus): void; onTasks(): voi
     {
       type: 'button',
       class: 'tasks-btn round',
-      'aria-label': 'Backup',
-      title: 'Backup',
-      onclick: async () => {
-        if (!(await openBackupSheet())) return
-        // Imported: start the app over, so every screen shows the imported data.
-        location.replace('#/')
-        location.reload()
-      },
+      'aria-label': 'Settings',
+      title: 'Settings',
+      onclick: options.onSettings,
     },
     moreIcon(),
   )
@@ -99,6 +93,7 @@ export function createHome(options: { onOpen(locus: Locus): void; onTasks(): voi
       tagIds: await resolveTagIds(draft),
       studyImportance: draft.studyImportance,
       studyDifficulty: draft.studyDifficulty,
+      retention: draft.retention,
       ...spiralPoint(count, width, height),
     })
     await refresh()
@@ -117,6 +112,7 @@ export function createHome(options: { onOpen(locus: Locus): void; onTasks(): voi
         tagIds: await resolveTagIds(draft),
         studyImportance: draft.studyImportance,
         studyDifficulty: draft.studyDifficulty,
+        retention: draft.retention,
       })
     }
     await refresh()

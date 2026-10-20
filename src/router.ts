@@ -7,6 +7,7 @@ export type Route =
   | { name: 'element'; locusId: string; elementId: string }
   | { name: 'review'; elementId: string }
   | { name: 'tasks' }
+  | { name: 'settings' }
 
 export function parseRoute(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean).map(decodeURIComponent)
@@ -14,6 +15,7 @@ export function parseRoute(hash: string): Route {
   if (parts[0] === 'locus' && parts[1]) return { name: 'locus', id: parts[1] }
   if (parts[0] === 'review' && parts[1]) return { name: 'review', elementId: parts[1] }
   if (parts[0] === 'tasks') return { name: 'tasks' }
+  if (parts[0] === 'settings') return { name: 'settings' }
   return { name: 'home' }
 }
 

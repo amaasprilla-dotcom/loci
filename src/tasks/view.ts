@@ -12,6 +12,7 @@ import { db } from '../store/db'
 import { formatIn } from '../time'
 import type { Locus } from '../types'
 import { nextUpcoming, type Section, sections } from './tasks'
+import { formatNumber } from '../locale'
 
 export interface TasksScreen {
   el: HTMLElement
@@ -64,7 +65,7 @@ export function createTasksScreen(onChanged: () => void): TasksScreen {
         : []),
     )
     filterNote.hidden = !tag
-    summary.textContent = s.now.length > 0 ? `${s.now.length} to do now` : ''
+    summary.textContent = s.now.length > 0 ? `${formatNumber(s.now.length)} to do now` : ''
 
     const row = (t: Task) => taskRow(t, locusById.get(t.locusId)!, titleById.get(t.elementId) ?? '', async () => {
       await t.complete?.()

@@ -12,6 +12,7 @@ import { planSession } from './session'
 import { studyDayStart } from './srs'
 import { DEFAULT_STUDY_DIFFICULTY, DEFAULT_STUDY_IMPORTANCE } from '../../levels'
 import { DEFAULT_FLASHCARDS_DATA, deckStats, type FlashcardsData, isNew, listCards } from './store'
+import { count, formatNumber } from '../../locale'
 
 const ICON =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="3.5" width="13" height="16" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4 7.5v10A3 3 0 0 0 7 20.5h8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>'
@@ -31,7 +32,7 @@ export const flashcardsType: ElementType<FlashcardsData> = {
       stats.total === 0
         ? h('span', { class: 'tile-quiet' }, 'No cards yet')
         : stats.due > 0 || stats.fresh > 0
-          ? [stats.due > 0 && h('span', { class: 'pill pill-due' }, `${stats.due} due`), stats.fresh > 0 && h('span', { class: 'pill' }, `${stats.fresh} new`)]
+          ? [stats.due > 0 && h('span', { class: 'pill pill-due' }, `${formatNumber(stats.due)} due`), stats.fresh > 0 && h('span', { class: 'pill' }, `${formatNumber(stats.fresh)} new`)]
           : h('span', { class: 'tile-quiet' }, stats.nextDue != null ? `Next ${formatIn(stats.nextDue - now)}` : 'All caught up')
     const studyable = (await planSession(el, now)).length > 0
     return h(
@@ -39,7 +40,7 @@ export const flashcardsType: ElementType<FlashcardsData> = {
       { class: 'tile-content' },
       h('div', { class: 'tile-head' }, iconNode(ICON), h('span', { class: 'tile-kind' }, 'Flashcards')),
       h('h3', { class: 'tile-title' }, el.title),
-      h('p', { class: 'tile-meta' }, `${stats.total} ${stats.total === 1 ? 'card' : 'cards'}`),
+      h('p', { class: 'tile-meta' }, count(stats.total, 'card', 'cards')),
       h('div', { class: 'tile-status' }, status),
       studyable &&
         h(
@@ -80,7 +81,7 @@ export const flashcardsType: ElementType<FlashcardsData> = {
         elementId: el.id,
         kind: 'review',
         state: overdue ? 'overdue' : 'due',
-        label: `${due.length} ${due.length === 1 ? 'card' : 'cards'} due`,
+        label: `${count(due.length, 'card', 'cards')} due`,
         sublabel: overdue ? `Waiting since ${new Date(oldest).toLocaleDateString(undefined, { weekday: 'long' })}` : undefined,
         importance: locus?.studyImportance ?? DEFAULT_STUDY_IMPORTANCE,
         difficulty: locus?.studyDifficulty ?? DEFAULT_STUDY_DIFFICULTY,

@@ -35,6 +35,9 @@ export function openSheet<T>(label: string, build: (api: SheetApi<T>) => SheetSp
       {
         class: 'sheet',
         role: 'dialog',
+        // Sheets check their own fields (e.g. "example.com" is a fine address here),
+        // so the browser's built-in form checks stay out of the way.
+        novalidate: true,
         'aria-modal': 'true',
         'aria-label': label,
         onsubmit: (e: Event) => {

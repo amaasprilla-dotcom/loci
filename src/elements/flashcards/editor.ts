@@ -14,6 +14,7 @@ import { linkedItemsSection } from '../../linkedItems'
 import { parseImport } from './import'
 import { planSession } from './session'
 import { addCard, addCards, deckStats, deleteCard, type FlashcardsData, isNew, listCards, updateCard } from './store'
+import { count, formatNumber } from '../../locale'
 
 const SEARCH_FROM = 50 // the search box appears once a deck has more cards than this
 
@@ -50,9 +51,9 @@ export async function renderDeckScreen(initial: LocusElement<FlashcardsData>): P
     const now = Date.now()
     const s = deckStats(cards, now)
     stats.textContent = [
-      `${s.total} ${s.total === 1 ? 'card' : 'cards'}`,
-      s.due > 0 && `${s.due} due`,
-      s.fresh > 0 && `${s.fresh} new`,
+      count(s.total, 'card', 'cards'),
+      s.due > 0 && `${formatNumber(s.due)} due`,
+      s.fresh > 0 && `${formatNumber(s.fresh)} new`,
       s.due === 0 && s.nextDue != null && `next review ${formatIn(s.nextDue - now)}`,
     ]
       .filter(Boolean)
@@ -177,7 +178,7 @@ function openCardSheet(elementId: string, card?: Card): Promise<boolean | null> 
       if (!valid()) return
       await persist()
       added++
-      note.textContent = `${added} ${added === 1 ? 'card' : 'cards'} added`
+      note.textContent = `${count(added, 'card', 'cards')} added`
       front.value = back.value = ''
       sync()
       front.focus()
@@ -257,12 +258,12 @@ function openImportSheet(elementId: string): Promise<number | null> {
     function preview() {
       const { cards, skipped } = parseImport(text.value)
       submit.disabled = cards.length === 0
-      submit.textContent = cards.length > 0 ? `Import ${cards.length} ${cards.length === 1 ? 'card' : 'cards'}` : 'Import'
+      submit.textContent = cards.length > 0 ? `Import ${count(cards.length, 'card', 'cards')}` : 'Import'
       summary.textContent =
         text.value.trim() === ''
           ? ''
-          : `${cards.length} ${cards.length === 1 ? 'card' : 'cards'} found` +
-            (skipped > 0 ? ` · ${skipped} ${skipped === 1 ? 'line' : 'lines'} skipped (need a tab between front and back)` : '')
+          : `${count(cards.length, 'card', 'cards')} found` +
+            (skipped > 0 ? ` · ${count(skipped, 'line', 'lines')} skipped (need a tab between front and back)` : '')
     }
     preview()
 

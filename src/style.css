@@ -1482,3 +1482,160 @@ details.task-section > summary {
   margin: 6px 0 0;
   color: var(--muted);
 }
+
+/* ---------- Settings ---------- */
+
+.settings-screen {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+.settings-body {
+  max-width: 640px;
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-section:last-child {
+  border-bottom: 0;
+}
+
+.settings-section h2 {
+  font-size: 1.1rem;
+}
+
+.settings-text,
+.settings-note {
+  margin: 0;
+  color: var(--muted);
+}
+
+.settings-note {
+  font-size: 0.9rem;
+}
+
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.segments-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* ---------- Retention slider ---------- */
+
+.range-head {
+  display: flex;
+  justify-content: space-between;
+}
+
+.range-value {
+  color: var(--text);
+  font-weight: 650;
+}
+
+.range {
+  width: 100%;
+  accent-color: var(--text);
+}
+
+/* ---------- Attachments ---------- */
+
+.attachments {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.attachment-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.attachment-list[hidden] {
+  display: none;
+}
+
+.attachment {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 260px;
+  padding: 6px 10px 6px 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-touch-callout: none;
+}
+
+.attachment:hover {
+  border-color: var(--border-strong);
+}
+
+.attachment-icon,
+.attachment-thumb {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background: var(--surface-muted);
+  color: var(--muted);
+}
+
+.attachment-icon {
+  display: grid;
+  place-items: center;
+}
+
+.attachment-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.attachment-thumb {
+  object-fit: cover;
+}
+
+.attachment-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.attachment-name {
+  overflow: hidden;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-detail {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.attachment-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.attachment-url {
+  overflow-wrap: anywhere;
+  font-size: 0.85rem;
+}

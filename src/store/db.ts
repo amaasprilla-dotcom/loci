@@ -2,7 +2,7 @@
 
 import Dexie, { type EntityTable, type Transaction } from 'dexie'
 import { migrateCard } from '../elements/flashcards/srs'
-import type { Card, ItemRef, Level, Link, Locus, LocusElement, ReviewLog, Tag } from '../types'
+import type { Attachment, Card, ItemRef, Level, Link, Locus, LocusElement, ReviewLog, Setting, StoredBlob, Tag } from '../types'
 
 export const db = new Dexie('loci') as Dexie & {
   tags: EntityTable<Tag, 'id'>
@@ -11,6 +11,9 @@ export const db = new Dexie('loci') as Dexie & {
   cards: EntityTable<Card, 'id'>
   reviews: EntityTable<ReviewLog, 'id'>
   links: EntityTable<Link, 'id'>
+  attachments: EntityTable<Attachment, 'id'>
+  blobs: EntityTable<StoredBlob, 'id'>
+  settings: EntityTable<Setting, 'key'>
 }
 
 db.version(1).stores({
@@ -31,6 +34,13 @@ db.version(2)
 // v2: links between any two items, findable from either end.
 db.version(3).stores({
   links: 'id, [from.type+from.id], [to.type+to.id], kind',
+})
+
+// v2: attachments on notes, to-dos and goals; their files as Blobs; app settings.
+db.version(4).stores({
+  attachments: 'id, [ownerType+ownerId]',
+  blobs: 'id',
+  settings: 'key',
 })
 
 // Runs once, when a v1 database is first opened by v2: gives every card its
@@ -70,6 +80,7 @@ export async function createLocus(input: {
   tagIds?: string[]
   studyImportance?: Level
   studyDifficulty?: Level
+  retention?: number
   x: number
   y: number
 }): Promise<Locus> {
@@ -84,6 +95,7 @@ export async function createLocus(input: {
     radius: DEFAULT_RADIUS,
     ...(input.studyImportance && { studyImportance: input.studyImportance }),
     ...(input.studyDifficulty && { studyDifficulty: input.studyDifficulty }),
+    ...(input.retention && { retention: input.retention }),
     createdAt: now,
     updatedAt: now,
   }
@@ -96,7 +108,7 @@ export async function moveLocus(id: string, x: number, y: number): Promise<void>
   await db.loci.update(id, { x, y, updatedAt: Date.now() })
 }
 
-export async function updateLocus(id: string, patch: Pick<Locus, 'name' | 'color' | 'tagIds' | 'studyImportance' | 'studyDifficulty'>): Promise<void> {
+export async function updateLocus(id: string, patch: Pick<Locus, 'name' | 'color' | 'tagIds' | 'studyImportance' | 'studyDifficulty' | 'retention'>): Promise<void> {
   await db.transaction('rw', db.loci, db.tags, async () => {
     await db.loci.update(id, { ...patch, name: patch.name.trim(), updatedAt: Date.now() })
     await pruneUnusedTags()

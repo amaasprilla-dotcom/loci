@@ -23,6 +23,8 @@ export interface Locus {
   // How the locus's study task (its due reviews) ranks among tasks. Default 3 and 2.
   studyImportance?: Level;
   studyDifficulty?: Level;
+  // FSRS desired retention for cards here: 0.8–0.95, default 0.9.
+  retention?: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -100,5 +102,39 @@ export interface Link {
   to: ItemRef;
   kind: LinkKind;
   createdAt: number;
+  updatedAt: number;
+}
+
+// Attachments (SPEC-v2.md, "Attachments"): links and files on notes, to-dos and goals.
+// Files live in the blobs table; an attachment points at one.
+export type AttachmentOwner = 'note' | 'todo' | 'goal';
+export type AttachmentKind = 'link' | 'image' | 'audio' | 'video' | 'pdf' | 'file';
+
+export interface Attachment {
+  id: string;
+  ownerType: AttachmentOwner;
+  ownerId: string;
+  kind: AttachmentKind;
+  name: string; // a link's title, or the file name
+  url?: string; // links
+  blobId?: string; // files
+  mime?: string;
+  size?: number; // bytes
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface StoredBlob {
+  id: string;
+  data: Blob;
+  mime: string;
+  size: number;
+  updatedAt: number;
+}
+
+// App-wide preferences, one row each (e.g. number format).
+export interface Setting {
+  key: string;
+  value: unknown;
   updatedAt: number;
 }

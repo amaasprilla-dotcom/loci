@@ -11,8 +11,9 @@ import { db } from '../../store/db'
 import { formatIn } from '../../time'
 import type { Card, Grade, LocusElement } from '../../types'
 import { planSession, recordReview } from './session'
-import { outcomes, waitLabel } from './srs'
+import { DEFAULT_RETENTION, outcomes, waitLabel } from './srs'
 import { type FlashcardsData, listCards } from './store'
+import { count, formatNumber } from '../../locale'
 
 const GRADES: { grade: Grade; label: string; key: string }[] = [
   { grade: 0, label: 'Again', key: '1' },
@@ -25,6 +26,7 @@ const COMES_BACK_WITHIN = 60 * 60_000 // a card due again within the hour (a lea
 
 export async function renderReviewScreen(deck: LocusElement<FlashcardsData>): Promise<HTMLElement> {
   const locus = await db.loci.get(deck.locusId)
+  const retention = locus?.retention ?? DEFAULT_RETENTION // the locus's desired retention
   const color = locus?.color ?? '#0b0f14'
   let leaving = false
   const leave = () => {
@@ -52,7 +54,7 @@ export async function renderReviewScreen(deck: LocusElement<FlashcardsData>): Pr
   let saving: Promise<void> = Promise.resolve()
   let finished = false
 
-  const count = h('span', { class: 'review-count' })
+  const leftCount = h('span', { class: 'review-count' })
   const progress = h('div', { class: 'review-progress-fill' })
   const stage = h('main', { class: 'review-main' })
   const footer = h('footer', { class: 'review-footer' })
@@ -63,7 +65,7 @@ export async function renderReviewScreen(deck: LocusElement<FlashcardsData>): Pr
 
   function updateProgress() {
     const remaining = left()
-    count.textContent = remaining > 0 ? `${remaining} left` : ''
+    leftCount.textContent = remaining > 0 ? `${formatNumber(remaining)} left` : ''
     progress.style.width = `${total === 0 ? 100 : Math.min(100, (reviewed / (reviewed + remaining)) * 100)}%`
   }
 
@@ -99,7 +101,7 @@ export async function renderReviewScreen(deck: LocusElement<FlashcardsData>): Pr
     revealed = true
     stage.querySelector<HTMLElement>('.review-back')!.hidden = false
     const now = Date.now()
-    options = outcomes(current.srs, now)
+    options = outcomes(current.srs, now, retention)
     const results = options
     footer.replaceChildren(
       h(
@@ -150,8 +152,8 @@ export async function renderReviewScreen(deck: LocusElement<FlashcardsData>): Pr
               h(
                 'p',
                 {},
-                `You studied ${cardsSeen.size} ${cardsSeen.size === 1 ? 'card' : 'cards'}` +
-                  (reviewed > cardsSeen.size ? ` (${reviewed} reviews)` : '') +
+                `You studied ${count(cardsSeen.size, 'card', 'cards')}` +
+                  (reviewed > cardsSeen.size ? ` (${count(reviewed, 'review', 'reviews')})` : '') +
                   ` in ${formatDuration(studyMs)}.`,
               ),
             ]
@@ -190,7 +192,7 @@ export async function renderReviewScreen(deck: LocusElement<FlashcardsData>): Pr
       { class: 'review-bar' },
       h('button', { class: 'icon-btn', 'aria-label': 'End session', onclick: leave }, closeIcon()),
       h('span', { class: 'review-title' }, deck.title),
-      count,
+      leftCount,
     ),
     h('div', { class: 'review-progress' }, progress),
     stage,
