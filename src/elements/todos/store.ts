@@ -1,7 +1,8 @@
 // Reading and writing to-dos and their completions.
 
-import { db, deleteAttachmentsOf, deleteLinksFor } from '../../store/db'
+import { CONTENT_TABLES, db, deleteAttachmentsOf, deleteLinksFor, removeTodoContributors } from '../../store/db'
 import type { ItemRef, Level, Todo, TodoCompletion, When } from '../../types'
+import { fireGoalTriggers, goalsCountingTodo } from '../goals/store'
 import { dueOf, resolveRepeat } from './when'
 
 export interface TodoDraft {
@@ -28,6 +29,8 @@ export async function createTodo(elementId: string, draft: TodoDraft, waitsFor: 
     await db.todos.add(todo)
     await setWaitsFor(id, waitsFor)
   })
+  // Waiting on a goal that's already far enough: fires straight away.
+  if (waitsFor?.type === 'goal') await fireGoalTriggers(waitsFor.id)
   return (await db.todos.get(id))!
 }
 
@@ -36,6 +39,7 @@ export async function updateTodo(id: string, draft: TodoDraft, waitsFor: WaitsFo
     await db.todos.update(id, { ...cleanDraft(draft), updatedAt: Date.now() })
     await setWaitsFor(id, waitsFor)
   })
+  if (waitsFor?.type === 'goal') await fireGoalTriggers(waitsFor.id)
 }
 
 function cleanDraft(d: TodoDraft): TodoDraft {
@@ -87,6 +91,8 @@ export async function completeTodo(id: string, now = Date.now()): Promise<void> 
     }
     for (const waiting of await dependents(id)) await fire(waiting, now)
   })
+  // It may have pushed a goal past a percentage another to-do waits for.
+  for (const goal of await goalsCountingTodo(id)) await fireGoalTriggers(goal.id, now)
 }
 
 // Skip this occurrence of a repeating to-do.
@@ -133,11 +139,15 @@ export async function countDependents(id: string): Promise<number> {
 // Deletes the to-do with its history, attachments and links. To-dos that waited on
 // it would wait forever, so they become due now.
 export async function deleteTodo(id: string, now = Date.now()): Promise<void> {
-  await db.transaction('rw', TABLES(), async () => {
+  await db.transaction('rw', CONTENT_TABLES(), async () => {
     for (const waiting of await dependents(id)) await fire(waiting, now)
+    await removeTodoContributors([id]) // it no longer counts toward any goal
     await deleteLinksFor([ref(id)])
     await deleteAttachmentsOf([{ type: 'todo', id }])
     await db.todoCompletions.where('todoId').equals(id).delete()
     await db.todos.delete(id)
   })
 }
+
+// Goals this to-do counts toward, for the delete prompt: deleting it removes those contributors.
+export { goalsCountingTodo }

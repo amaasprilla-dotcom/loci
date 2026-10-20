@@ -177,12 +177,62 @@ export interface Todo {
   updatedAt: number;
 }
 
-// One row per occurrence dealt with. Goals count these (A4).
+// One row per occurrence dealt with. Goals count these.
 export interface TodoCompletion {
   id: string;
   todoId: string;
   occurrenceAt: number; // the scheduled time it belonged to
   doneAt?: number; // missing = skipped / missed
   outcome: 'done' | 'skipped' | 'missed';
+  updatedAt: number;
+}
+
+export type RepeatWhen = Extract<When, { kind: 'repeat' }>;
+
+// A goal in a Goals element (SPEC-v2.md, "Goals"). Its progress is the weighted
+// average of its contributors'; it always has at least one.
+export interface Goal {
+  id: string;
+  elementId: string;
+  title: string;
+  why?: string;
+  deadline?: number; // end of that day; none = open-ended
+  startAt: number; // to-do completions count from here; pace measures from here
+  status: 'open' | 'achieved' | 'archived'; // "Ended" is an open goal past its deadline
+  notifyCheckins: boolean; // opt-in, used once notifications exist (A3)
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  doneAt?: number;
+}
+
+// What counts toward a goal, each with an exact target.
+export type Contributor = {
+  id: string;
+  goalId: string;
+  title: string; // "Violin sessions", "Weight", "How far along are you?"
+  importance: Level; // a to-do count takes these from its to-do
+  difficulty: Level;
+  weightOverride?: number;
+  order: number;
+  createdAt: number;
+  updatedAt: number;
+} & (
+  | { kind: 'todoCount'; linkId: string; target: number } // completions since the goal started
+  | { kind: 'number'; start: number; target: number; unit?: string; schedule: RepeatWhen } // e.g. 80 → 75 kg
+  | { kind: 'slider'; start: number; target: number; max: number; unit?: string; schedule: RepeatWhen } // e.g. 3 → 8 of 10
+  | { kind: 'checklist'; items: ChecklistItem[]; target: number | 'all' }
+);
+
+// One check-in answer. Progress uses the latest; the history draws the chart.
+export interface GoalEntry {
+  id: string;
+  contributorId: string;
+  at: number;
+  value: number;
   updatedAt: number;
 }

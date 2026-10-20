@@ -93,6 +93,11 @@ them.
   phrases (`when.ts`, chrono-node and rrule), storage, completions and waiting to-dos (`store.ts`),
   tasks and tile (`type.ts`), and the list screen with its sentence builder, When picker and edit
   sheet (`screens.ts`)
+- `src/elements/goals/`: the Goals type: goals with a target, made of what counts toward them
+  (to-do counts, numbers and ratings checked in on a schedule, checklists). Progress, weights,
+  pace and the chart's history (`progress.ts`), the weekly check-in a goal gets by default
+  (`defaults.ts`), storage, check-ins and the to-dos a goal sets off (`store.ts`), tasks and tile
+  (`type.ts`), and the goal list, goal screen and its sheets (`screens.ts`)
 - `src/tasks/`: every task across all loci, their ranking (score = 3 × importance − difficulty)
   and sections (`tasks.ts`), and the Tasks screen: Now, Goals and exams, Planned, Someday
   (`view.ts`). Active tasks make bubbles pulse and set the badge on home

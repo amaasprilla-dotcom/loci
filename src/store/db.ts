@@ -2,7 +2,27 @@
 
 import Dexie, { type EntityTable, type Transaction } from 'dexie'
 import { migrateCard } from '../elements/flashcards/srs'
-import type { Attachment, AttachmentOwner, Card, ItemRef, Level, Link, Locus, LocusElement, Note, ReviewLog, Setting, StoredBlob, Tag, Todo, TodoCompletion } from '../types'
+import { defaultCheckin } from '../elements/goals/defaults'
+import type {
+  Attachment,
+  AttachmentOwner,
+  Card,
+  Contributor,
+  Goal,
+  GoalEntry,
+  ItemRef,
+  Level,
+  Link,
+  Locus,
+  LocusElement,
+  Note,
+  ReviewLog,
+  Setting,
+  StoredBlob,
+  Tag,
+  Todo,
+  TodoCompletion,
+} from '../types'
 
 export const db = new Dexie('loci') as Dexie & {
   tags: EntityTable<Tag, 'id'>
@@ -17,6 +37,9 @@ export const db = new Dexie('loci') as Dexie & {
   notes: EntityTable<Note, 'id'>
   todos: EntityTable<Todo, 'id'>
   todoCompletions: EntityTable<TodoCompletion, 'id'>
+  goals: EntityTable<Goal, 'id'>
+  goalContributors: EntityTable<Contributor, 'id'>
+  goalEntries: EntityTable<GoalEntry, 'id'>
 }
 
 db.version(1).stores({
@@ -55,6 +78,13 @@ db.version(5).stores({
 db.version(6).stores({
   todos: 'id, elementId, status, when.kind',
   todoCompletions: 'id, todoId, occurrenceAt',
+})
+
+// v2: goals (Goals element), what counts toward them, and check-in answers.
+db.version(7).stores({
+  goals: 'id, elementId, status, deadline',
+  goalContributors: 'id, goalId, linkId',
+  goalEntries: 'id, contributorId, at',
 })
 
 // Runs once, when a v1 database is first opened by v2: gives every card its
@@ -141,38 +171,94 @@ export async function deleteLocus(id: string): Promise<void> {
 }
 
 // Every table that deleting a locus or an element can touch.
-const CONTENT_TABLES = () => [db.loci, db.elements, db.cards, db.reviews, db.notes, db.todos, db.todoCompletions, db.attachments, db.blobs, db.links, db.tags]
+export const CONTENT_TABLES = () => [
+  db.loci,
+  db.elements,
+  db.cards,
+  db.reviews,
+  db.notes,
+  db.todos,
+  db.todoCompletions,
+  db.goals,
+  db.goalContributors,
+  db.goalEntries,
+  db.attachments,
+  db.blobs,
+  db.links,
+  db.tags,
+]
 
-// Deletes elements and everything in them: cards with their review history, notes
-// and to-dos with their attachments and files, to-do history, and every link to any
-// of these. To-dos elsewhere that waited on a deleted to-do become due now.
-// Call inside a transaction over CONTENT_TABLES().
+// Deletes elements and everything in them: cards with their review history; notes,
+// to-dos and goals with their attachments and files; to-do history; goal
+// contributors and check-ins; and every link to any of these. To-dos elsewhere that
+// waited on a deleted to-do or goal become due now; goals elsewhere lose
+// contributors that counted a deleted to-do. Call inside a transaction over CONTENT_TABLES().
 async function deleteElementsAndContents(elementIds: string[]): Promise<void> {
   const cardIds = await db.cards.where('elementId').anyOf(elementIds).primaryKeys()
   const noteIds = await db.notes.where('elementId').anyOf(elementIds).primaryKeys()
   const todoIds = await db.todos.where('elementId').anyOf(elementIds).primaryKeys()
-  await wakeDependents(todoIds)
-  await deleteLinksFor([...refs('element', elementIds), ...refs('card', cardIds), ...refs('note', noteIds), ...refs('todo', todoIds)])
-  await deleteAttachmentsOf([...noteIds.map((id) => ({ type: 'note' as const, id })), ...todoIds.map((id) => ({ type: 'todo' as const, id }))])
+  const goalIds = await db.goals.where('elementId').anyOf(elementIds).primaryKeys()
+  await wakeDependents([...refs('todo', todoIds), ...refs('goal', goalIds)])
+  await removeTodoContributors(todoIds, new Set(goalIds))
+  await deleteGoalContents(goalIds)
+  await deleteLinksFor([...refs('element', elementIds), ...refs('card', cardIds), ...refs('note', noteIds), ...refs('todo', todoIds), ...refs('goal', goalIds)])
+  await deleteAttachmentsOf([
+    ...noteIds.map((id) => ({ type: 'note' as const, id })),
+    ...todoIds.map((id) => ({ type: 'todo' as const, id })),
+    ...goalIds.map((id) => ({ type: 'goal' as const, id })),
+  ])
   await db.reviews.where('cardId').anyOf(cardIds).delete()
   await db.cards.bulkDelete(cardIds)
   await db.notes.bulkDelete(noteIds)
   await db.todoCompletions.where('todoId').anyOf(todoIds).delete()
   await db.todos.bulkDelete(todoIds)
+  await db.goals.bulkDelete(goalIds)
   await db.elements.bulkDelete(elementIds)
 }
 
-// To-dos (outside this set) waiting on these to-dos: due now, since what they waited for is gone.
-async function wakeDependents(todoIds: string[]): Promise<void> {
-  const gone = new Set(todoIds)
+// To-dos (outside the set being deleted) waiting on these to-dos or goals: due now,
+// since what they waited for is gone.
+export async function wakeDependents(items: ItemRef[]): Promise<void> {
+  const gone = new Set(items.filter((i) => i.type === 'todo').map((i) => i.id))
   const now = Date.now()
-  for (const id of todoIds) {
-    const links = await db.links.where('[from.type+from.id]').equals(['todo', id]).filter((l) => l.kind === 'after').toArray()
+  for (const item of items) {
+    const links = await db.links.where('[from.type+from.id]').equals([item.type, item.id]).filter((l) => l.kind === 'after').toArray()
     for (const l of links) {
       if (gone.has(l.to.id)) continue
       const t = await db.todos.get(l.to.id)
-      if (t?.status === 'open' && t.when.kind === 'after') await db.todos.update(t.id, { when: { kind: 'at', at: now, hasTime: true }, updatedAt: now })
+      if (t?.status === 'open' && (t.when.kind === 'after' || t.when.kind === 'goal')) await db.todos.update(t.id, { when: { kind: 'at', at: now, hasTime: true }, updatedAt: now })
     }
+  }
+}
+
+// A goal's contributors and check-in answers (not the goal row, links or attachments).
+export async function deleteGoalContents(goalIds: string[]): Promise<void> {
+  const contributorIds = await db.goalContributors.where('goalId').anyOf(goalIds).primaryKeys()
+  await db.goalEntries.where('contributorId').anyOf(contributorIds).delete()
+  await db.goalContributors.bulkDelete(contributorIds)
+}
+
+// To-dos about to be deleted no longer count toward goals: their contributors go
+// (with their contributes links). A goal left with none gets the default check-in,
+// since a goal always has one (SPEC-v2.md). Goals in `skip` are being deleted anyway.
+export async function removeTodoContributors(todoIds: string[], skip: Set<string> = new Set()): Promise<void> {
+  const now = Date.now()
+  const touched = new Set<string>()
+  for (const todoId of todoIds) {
+    const links = await db.links.where('[from.type+from.id]').equals(['todo', todoId]).filter((l) => l.kind === 'contributes').toArray()
+    for (const link of links) {
+      const contributors = await db.goalContributors.where('linkId').equals(link.id).toArray()
+      for (const c of contributors) {
+        await db.goalEntries.where('contributorId').equals(c.id).delete()
+        await db.goalContributors.delete(c.id)
+        touched.add(c.goalId)
+      }
+      await db.links.delete(link.id)
+    }
+  }
+  for (const goalId of touched) {
+    if (skip.has(goalId)) continue
+    if ((await db.goalContributors.where('goalId').equals(goalId).count()) === 0) await db.goalContributors.add(defaultCheckin(goalId, now))
   }
 }
 
@@ -192,19 +278,20 @@ export async function deleteBlobIfUnused(blobId: string): Promise<void> {
 }
 
 // What deleting a locus would remove, for the confirmation message.
-export async function countLocusContents(id: string): Promise<{ elements: number; cards: number; notes: number; todos: number }> {
+export async function countLocusContents(id: string): Promise<{ elements: number; cards: number; notes: number; todos: number; goals: number }> {
   const elementIds = await db.elements.where('locusId').equals(id).primaryKeys()
   return { elements: elementIds.length, ...(await countElementContents(elementIds)) }
 }
 
 // What deleting these elements would also remove, for confirmation messages.
-export async function countElementContents(elementIds: string[]): Promise<{ cards: number; notes: number; todos: number }> {
-  const [cards, notes, todos] = await Promise.all([
+export async function countElementContents(elementIds: string[]): Promise<{ cards: number; notes: number; todos: number; goals: number }> {
+  const [cards, notes, todos, goals] = await Promise.all([
     db.cards.where('elementId').anyOf(elementIds).count(),
     db.notes.where('elementId').anyOf(elementIds).count(),
     db.todos.where('elementId').anyOf(elementIds).count(),
+    db.goals.where('elementId').anyOf(elementIds).count(),
   ])
-  return { cards, notes, todos }
+  return { cards, notes, todos, goals }
 }
 
 // ---------- Elements ----------

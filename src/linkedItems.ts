@@ -12,7 +12,8 @@ import type { ItemRef } from './types'
 function relation(end: LinkEnd, info: ItemInfo): string {
   const { kind } = end.link
   if (kind === 'contributes') return end.direction === 'out' ? 'Counts toward' : 'Counted by'
-  if (kind === 'after') return end.direction === 'out' ? 'Waits for' : 'Then'
+  // from: the item waited on; to: the to-do that waits.
+  if (kind === 'after') return end.direction === 'out' ? 'Then' : 'Waits for'
   if (kind === 'scope') return end.direction === 'out' ? 'Covered by exam' : 'Covers'
   return info.kind
 }
@@ -95,7 +96,7 @@ export function pickItem(exclude: ItemRef[]): Promise<ItemRef | null> {
     const search = h('input', {
       class: 'input',
       type: 'search',
-      placeholder: 'Search loci, decks, cards, notes and to-dos',
+      placeholder: 'Search loci, decks, cards, notes, to-dos and goals',
       'aria-label': 'Search',
       oninput: () => void show(),
     })
@@ -107,7 +108,7 @@ export function pickItem(exclude: ItemRef[]): Promise<ItemRef | null> {
       if (ticket !== latest) return // a newer search has started
       results.replaceChildren(
         ...(found.length === 0
-          ? [h('p', { class: 'field-hint' }, search.value.trim() ? 'Nothing matches.' : 'Type to search cards, notes and to-dos too.')]
+          ? [h('p', { class: 'field-hint' }, search.value.trim() ? 'Nothing matches.' : 'Type to search cards, notes, to-dos and goals too.')]
           : found.map((info) =>
               h(
                 'div',

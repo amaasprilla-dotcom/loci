@@ -2050,16 +2050,6 @@ details.task-section > summary {
   background: var(--surface-muted);
 }
 
-.when-option.disabled {
-  color: var(--muted);
-  cursor: default;
-  opacity: 0.6;
-}
-
-.when-option.disabled:hover {
-  background: var(--surface);
-}
-
 /* Offered last, and quietly. */
 .when-option.someday {
   color: var(--muted);
@@ -2114,4 +2104,209 @@ details.task-section > summary {
 
 .locus-items:empty {
   display: none;
+}
+
+/* ---------- Goals ---------- */
+
+.goal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.goal-card,
+.contributor,
+.goal-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.goal-card {
+  cursor: pointer;
+}
+
+.goal-card:hover {
+  border-color: var(--border-strong);
+}
+
+.goal-card:focus-visible {
+  outline: 2px solid var(--blue-ink);
+  outline-offset: 2px;
+}
+
+.goal-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.goal-card h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 650;
+}
+
+.goal-pct {
+  flex: none;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.goal-pct.small {
+  font-size: 0.9rem;
+}
+
+.goal-big {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.goal-card .progress,
+.goal-summary .progress,
+.contributor .progress {
+  height: 8px;
+  border-radius: 4px;
+}
+
+.goal-meta {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+/* Why it matters: two lines, the rest on tap. */
+.goal-why {
+  display: -webkit-box;
+  margin: 4px 0 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  font-size: 0.92rem;
+  white-space: pre-wrap;
+}
+
+.goal-why.open {
+  display: block;
+}
+
+.goal-ended {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.goal-summary .btn-small {
+  align-self: flex-start;
+  margin-top: 8px;
+}
+
+.goal-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.goal-detail .task-section {
+  margin-bottom: 0;
+}
+
+.goal-detail .note-extras {
+  margin-top: 0;
+}
+
+.goal-chart {
+  padding: 12px 8px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.goal-chart svg {
+  display: block;
+  width: 100%;
+  height: 120px;
+  overflow: visible;
+}
+
+.chart-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.chart-pace {
+  stroke: var(--muted);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+  vector-effect: non-scaling-stroke;
+}
+
+.chart-line {
+  fill: none;
+  stroke: var(--c);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.goal-checkin-row {
+  display: flex;
+}
+
+.contributors {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.contributor-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+.checklist-item input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--text);
+}
+
+.checklist-item input:checked + span {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.segments-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.schedule {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }

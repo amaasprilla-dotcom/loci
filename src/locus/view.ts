@@ -127,7 +127,7 @@ function openAddSheet(): Promise<{ type: ElementType; title: string } | null> {
 
     function nameStep(type: ElementType) {
       chosen = type
-      titleInput.placeholder = ({ flashcards: 'e.g. Spanish verbs', notes: 'e.g. Lecture notes', todos: 'e.g. Errands' } as Record<string, string>)[type.type] ?? ''
+      titleInput.placeholder = ({ flashcards: 'e.g. Spanish verbs', notes: 'e.g. Lecture notes', todos: 'e.g. Errands', goals: 'e.g. This year' } as Record<string, string>)[type.type] ?? ''
       sync()
       api.show(
         h('h2', {}, `New ${type.noun}`),
@@ -182,11 +182,12 @@ function openTileMenu(el: LocusElement): Promise<boolean | null> {
     ]
 
     async function askDelete() {
-      const { cards, notes, todos } = await countElementContents([el.id])
+      const { cards, notes, todos, goals } = await countElementContents([el.id])
       const contents = describeCounts([
         [cards, 'card', 'cards'],
         [notes, 'note', 'notes'],
         [todos, 'to-do', 'to-dos'],
+        [goals, 'goal', 'goals'],
       ])
       api.show(
         ...deleteConfirmation(

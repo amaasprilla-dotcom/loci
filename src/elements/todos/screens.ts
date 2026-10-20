@@ -16,7 +16,8 @@ import { deleteAttachmentsOf, db } from '../../store/db'
 import { sections } from '../../tasks/tasks'
 import { taskRow } from '../../tasks/view'
 import type { Level, LocusElement, Todo, When } from '../../types'
-import { archiveTodo, completeTodo, countDependents, createTodo, deleteTodo, itHappened, listTodos, reopenTodo, skipTodo, type TodoDraft, updateTodo, type WaitsFor, waitsForOf } from './store'
+import { openGoals } from '../goals/type'
+import { archiveTodo, completeTodo, countDependents, createTodo, deleteTodo, goalsCountingTodo, itHappened, listTodos, reopenTodo, skipTodo, type TodoDraft, updateTodo, type WaitsFor, waitsForOf } from './store'
 import { todoTask } from './type'
 import { dayStartOf, formatDay, makeRepeat, parseTyped, repeatText, whenText } from './when'
 
@@ -35,8 +36,8 @@ export async function renderTodoList(el: LocusElement, openId?: string): Promise
     const open = todos.filter((t) => t.status === 'open')
     const titles = new Map<string, string>()
     for (const t of open) {
-      const w = await waitsForOf(t.id)
-      if (w?.type === 'todo') titles.set(t.id, (await db.todos.get(w.id))?.title ?? '')
+      const other = await waitsForTitle(await waitsForOf(t.id))
+      if (other) titles.set(t.id, other)
     }
     // Here, tapping a to-do opens its sheet in place (no new address to go back through).
     const s = sections(
@@ -301,11 +302,10 @@ export function pickWhen(current: When | null, self: string | null): Promise<{ w
           option('Pick a date and time…', () => api.show(...dateView(current, done, () => api.show(...main())))),
           option('Repeat…', () => api.show(...repeatView(current, done, () => api.show(...main())))),
           option('After another to-do…', () => void afterView(api, self, done, () => api.show(...main()))),
-          option('When a goal reaches…', () => {}, 'disabled'),
+          option('When a goal reaches…', () => void goalView(api, current, done, () => api.show(...main()))),
           option('When something happens…', () => api.show(...conditionView(current, done, () => api.show(...main())))),
           option('Someday', () => done({ kind: 'someday' }), 'someday'),
         ),
-        h('p', { class: 'field-hint' }, 'Goals come with a later update; then a to-do can wait for one to reach a percentage.'),
         sheetActions(null, button('Cancel', () => api.close(null))),
       ]
     }
@@ -468,6 +468,50 @@ async function afterView(api: SheetApi<{ when: When; waitsFor: WaitsFor }>, self
   search.focus()
 }
 
+// Wait for an open goal to reach a percentage.
+async function goalView(api: SheetApi<{ when: When; waitsFor: WaitsFor }>, current: When | null, done: Done, backToMain: () => void) {
+  const goals = await openGoals()
+  const percent = h('input', { class: 'input every', type: 'number', min: 1, max: 100, step: 1, 'aria-label': 'Percent' })
+  percent.value = String(current?.kind === 'goal' ? current.percent : 50)
+  const error = h('p', { class: 'sheet-error', role: 'alert' })
+  const pick = (goalId: string) => {
+    const p = Math.round(Number(percent.value))
+    if (!(p >= 1 && p <= 100)) {
+      error.textContent = 'Pick a percentage from 1 to 100.'
+      return
+    }
+    done({ kind: 'goal', percent: p }, { type: 'goal', id: goalId })
+  }
+  api.show(
+    h('h2', {}, 'When a goal reaches…'),
+    h('p', { class: 'sheet-text' }, 'This one waits, and becomes due the moment the goal gets there.'),
+    h('label', { class: 'every-row' }, h('span', {}, 'Reaches'), percent, h('span', {}, '%')),
+    error,
+    h(
+      'div',
+      { class: 'linked-list picker-results' },
+      goals.length === 0
+        ? h('p', { class: 'field-hint' }, 'There are no open goals yet. Add a Goals element to a locus first.')
+        : goals.map(({ goal, list }) =>
+            h(
+              'div',
+              { class: 'linked-row' },
+              h('button', { type: 'button', class: 'linked-main', onclick: () => pick(goal.id) }, h('span', { class: 'linked-text' }, h('span', { class: 'linked-title' }, goal.title), h('span', { class: 'linked-context' }, list.title))),
+            ),
+          ),
+    ),
+    sheetActions(null, button('Back', backToMain)),
+  )
+  percent.focus()
+}
+
+// The title of what an after/goal when waits for.
+async function waitsForTitle(w: WaitsFor): Promise<string | undefined> {
+  if (w?.type === 'todo') return (await db.todos.get(w.id))?.title
+  if (w?.type === 'goal') return (await db.goals.get(w.id))?.title
+  return undefined
+}
+
 function conditionView(current: When | null, done: Done, backToMain: () => void): HTMLElement[] {
   const input = h('input', { class: 'input', type: 'text', maxlength: 120, placeholder: 'e.g. the package arrives', 'aria-label': 'When' })
   if (current?.kind === 'when') input.value = current.condition
@@ -513,7 +557,7 @@ export async function openTodoSheet(todo: Todo): Promise<void> {
     const difficulty = levelPicker('difficulty', todo.difficulty)
 
     async function showWhen() {
-      const other = waitsFor?.type === 'todo' ? (await db.todos.get(waitsFor.id))?.title : undefined
+      const other = await waitsForTitle(waitsFor)
       chip.textContent = whenText(when, Date.now(), other)
     }
     async function change() {
@@ -559,10 +603,16 @@ export async function openTodoSheet(todo: Todo): Promise<void> {
 
     async function askDelete() {
       const waiting = await countDependents(todo.id)
+      const goals = await goalsCountingTodo(todo.id)
       api.show(
         ...deleteConfirmation(
           `Delete “${todo.title}”?`,
-          waiting > 0 ? `${count(waiting, 'to-do waits', 'to-dos wait')} for it; they become due now.` : '',
+          [
+            waiting > 0 && `${count(waiting, 'to-do waits', 'to-dos wait')} for it; they become due now.`,
+            goals.length > 0 && `It stops counting toward ${goals.map((g) => `“${g.title}”`).join(', ')}.`,
+          ]
+            .filter(Boolean)
+            .join(' '),
           () => api.show(...form),
           async () => {
             await deleteTodo(todo.id)

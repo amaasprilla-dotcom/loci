@@ -20,10 +20,8 @@ async function waitingTitles(todos: Todo[]): Promise<Map<string, string>> {
   for (const t of todos) {
     if (t.when.kind !== 'after' && t.when.kind !== 'goal') continue
     const link = await db.links.where('[to.type+to.id]').equals(['todo', t.id]).filter((l) => l.kind === 'after').first()
-    if (link?.from.type === 'todo') {
-      const other = await db.todos.get(link.from.id)
-      if (other) titles.set(t.id, other.title)
-    }
+    const other = link?.from.type === 'todo' ? await db.todos.get(link.from.id) : link?.from.type === 'goal' ? await db.goals.get(link.from.id) : undefined
+    if (other) titles.set(t.id, other.title)
   }
   return titles
 }

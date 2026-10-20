@@ -5,7 +5,7 @@
 import { registry } from './elements/registry'
 import { elementHash, go, subHash } from './router'
 import { db } from './store/db'
-import type { ItemRef, Locus } from './types'
+import type { Goal, ItemRef, Locus } from './types'
 
 export interface ItemInfo {
   ref: ItemRef
@@ -79,6 +79,20 @@ export async function describeItem(ref: ItemRef): Promise<ItemInfo | null> {
         open: () => go(subHash(list, 'todo', todo.id)),
       }
     }
+    case 'goal': {
+      const goal = await db.goals.get(ref.id)
+      const list = goal && (await db.elements.get(goal.elementId))
+      if (!goal || !list) return null
+      const locus = await db.loci.get(list.locusId)
+      return {
+        ref,
+        title: goal.title,
+        kind: goalKind(goal.status),
+        context: [locus?.name, list.title].filter(Boolean).join(' › '),
+        color: locus?.color ?? NO_COLOR,
+        open: () => go(subHash(list, 'goal', goal.id)),
+      }
+    }
     default:
       return null // a type from a later milestone
   }
@@ -93,6 +107,8 @@ function locusInfo(locus: Locus): ItemInfo {
     open: () => go(`#/locus/${encodeURIComponent(locus.id)}`),
   }
 }
+
+const goalKind = (status: Goal['status']) => (status === 'achieved' ? 'Goal (achieved)' : status === 'archived' ? 'Goal (archived)' : 'Goal')
 
 const MAX_RESULTS = 40
 
@@ -161,6 +177,20 @@ export async function searchItems(query: string, exclude: ItemRef[]): Promise<It
         context: [locus?.name, list.title].filter(Boolean).join(' › '),
         color: locus?.color ?? NO_COLOR,
         open: () => go(subHash(list, 'todo', todo.id)),
+      })
+    }
+    const goals = await db.goals.filter((g) => g.status !== 'archived' && (g.title.toLowerCase().includes(q) || (g.why ?? '').toLowerCase().includes(q))).limit(MAX_RESULTS).toArray()
+    for (const goal of goals) {
+      const list = elementById.get(goal.elementId)
+      if (!list) continue
+      const locus = locusById.get(list.locusId)
+      results.push({
+        ref: { type: 'goal', id: goal.id },
+        title: goal.title,
+        kind: goalKind(goal.status),
+        context: [locus?.name, list.title].filter(Boolean).join(' › '),
+        color: locus?.color ?? NO_COLOR,
+        open: () => go(subHash(list, 'goal', goal.id)),
       })
     }
   }
