@@ -37,7 +37,9 @@ private networks.)
 the daily limits, the review log, tasks, bulk import, backup export/import/merge, and the
 upgrade of a v1 database and v1 backups to FSRS, task ranking and sections, links, attachments,
 zip backups, number formats, desired retention, and notes (text for search, pinning, cascades,
-cleanup of removed images, backup). Test files sit next to the code they test
+cleanup of removed images, backup), and to-dos (state around the 04:00 rollover and a daylight-saving
+change, recurrence and missed occurrences, typed phrases, waiting to-dos, cascades, backup). Test
+files sit next to the code they test
 (`*.test.ts`).
 
 ## Put it online (static site)
@@ -87,6 +89,10 @@ them.
   (`mathSheet.ts`, MathLive; shown with KaTeX), images inside notes (`noteImage.ts`). The editor
   loads only when a notebook is opened. `scripts/copy-mathlive-assets.mjs` copies MathLive's fonts
   into `public/` before `dev` and `build`, so math works offline
+- `src/elements/todos/`: the To-dos type: plans with a when. The when model, recurrence and typed
+  phrases (`when.ts`, chrono-node and rrule), storage, completions and waiting to-dos (`store.ts`),
+  tasks and tile (`type.ts`), and the list screen with its sentence builder, When picker and edit
+  sheet (`screens.ts`)
 - `src/tasks/`: every task across all loci, their ranking (score = 3 × importance − difficulty)
   and sections (`tasks.ts`), and the Tasks screen: Now, Goals and exams, Planned, Someday
   (`view.ts`). Active tasks make bubbles pulse and set the badge on home

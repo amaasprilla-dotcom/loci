@@ -65,6 +65,20 @@ export async function describeItem(ref: ItemRef): Promise<ItemInfo | null> {
         open: () => go(subHash(book, 'note', note.id)),
       }
     }
+    case 'todo': {
+      const todo = await db.todos.get(ref.id)
+      const list = todo && (await db.elements.get(todo.elementId))
+      if (!todo || !list) return null
+      const locus = await db.loci.get(list.locusId)
+      return {
+        ref,
+        title: todo.title,
+        kind: todo.status === 'done' ? 'To-do (done)' : 'To-do',
+        context: [locus?.name, list.title].filter(Boolean).join(' › '),
+        color: locus?.color ?? NO_COLOR,
+        open: () => go(subHash(list, 'todo', todo.id)),
+      }
+    }
     default:
       return null // a type from a later milestone
   }
@@ -133,6 +147,20 @@ export async function searchItems(query: string, exclude: ItemRef[]): Promise<It
         context: [locus?.name, book.title].filter(Boolean).join(' › '),
         color: locus?.color ?? NO_COLOR,
         open: () => go(subHash(book, 'note', note.id)),
+      })
+    }
+    const todos = await db.todos.filter((t) => t.status !== 'archived' && t.title.toLowerCase().includes(q)).limit(MAX_RESULTS).toArray()
+    for (const todo of todos) {
+      const list = elementById.get(todo.elementId)
+      if (!list) continue
+      const locus = locusById.get(list.locusId)
+      results.push({
+        ref: { type: 'todo', id: todo.id },
+        title: todo.title,
+        kind: todo.status === 'done' ? 'To-do (done)' : 'To-do',
+        context: [locus?.name, list.title].filter(Boolean).join(' › '),
+        color: locus?.color ?? NO_COLOR,
+        open: () => go(subHash(list, 'todo', todo.id)),
       })
     }
   }

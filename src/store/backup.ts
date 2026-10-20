@@ -10,7 +10,7 @@
 
 import JSZip from 'jszip'
 import { count } from '../locale'
-import type { Attachment, Card, Link, Locus, LocusElement, Note, ReviewLog, Setting, StoredBlob, Tag } from '../types'
+import type { Attachment, Card, Link, Locus, LocusElement, Note, ReviewLog, Setting, StoredBlob, Tag, Todo, TodoCompletion } from '../types'
 import { db, migrateV1Cards, tagKey } from './db'
 
 // 1: v1 (SM-2 cards, .json). 2: cards carry FSRS state (.json).
@@ -30,13 +30,15 @@ export interface Backup {
   blobs: StoredBlob[] // in data.json without `data`; the bytes are in blobs/<id>
   settings: Setting[]
   notes: Note[]
+  todos: Todo[]
+  todoCompletions: TodoCompletion[]
 }
 
-const TABLES = ['tags', 'loci', 'elements', 'cards', 'reviews', 'links', 'attachments', 'blobs', 'settings', 'notes'] as const
+const TABLES = ['tags', 'loci', 'elements', 'cards', 'reviews', 'links', 'attachments', 'blobs', 'settings', 'notes', 'todos', 'todoCompletions'] as const
 type TableName = (typeof TABLES)[number]
 // Tables added after the first backups: a file from before them simply has none.
-const ADDED_LATER = new Set<TableName>(['links', 'attachments', 'blobs', 'settings', 'notes'])
-const ALL_TABLES = () => [db.tags, db.loci, db.elements, db.cards, db.reviews, db.links, db.attachments, db.blobs, db.settings, db.notes]
+const ADDED_LATER = new Set<TableName>(['links', 'attachments', 'blobs', 'settings', 'notes', 'todos', 'todoCompletions'])
+const ALL_TABLES = () => [db.tags, db.loci, db.elements, db.cards, db.reviews, db.links, db.attachments, db.blobs, db.settings, db.notes, db.todos, db.todoCompletions]
 
 export async function exportBackup(now = Date.now()): Promise<Backup> {
   return db.transaction('r', ALL_TABLES(), async () => ({
@@ -52,6 +54,8 @@ export async function exportBackup(now = Date.now()): Promise<Backup> {
     blobs: await db.blobs.toArray(),
     settings: await db.settings.toArray(),
     notes: await db.notes.toArray(),
+    todos: await db.todos.toArray(),
+    todoCompletions: await db.todoCompletions.toArray(),
   }))
 }
 
@@ -141,6 +145,8 @@ export function parseBackup(text: string): Backup {
     blobs: b.blobs as StoredBlob[],
     settings: b.settings as Setting[],
     notes: b.notes as Note[],
+    todos: b.todos as Todo[],
+    todoCompletions: b.todoCompletions as TodoCompletion[],
   }
 }
 
@@ -182,6 +188,8 @@ export async function importBackup(backup: Backup, mode: 'replace' | 'merge'): P
     await mergeInto('attachments', backup.attachments, summary)
     await mergeInto('blobs', backup.blobs, summary)
     await mergeInto('notes', backup.notes, summary)
+    await mergeInto('todos', backup.todos, summary)
+    await mergeInto('todoCompletions', backup.todoCompletions, summary)
 
     // Settings are keyed by name; the newer value wins.
     for (const setting of backup.settings) {

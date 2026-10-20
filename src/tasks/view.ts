@@ -7,6 +7,7 @@ import { h } from '../dom'
 import type { Task } from '../elements/registry'
 import { getTagFilter, setTagFilter } from '../home/filter'
 import { backIcon, chevronIcon, closeIcon } from '../icons'
+import { levelName } from '../levels'
 import { back } from '../router'
 import { db } from '../store/db'
 import { formatIn } from '../time'
@@ -126,10 +127,19 @@ async function emptyNow(now: number, inFilter: Set<string> | undefined, tagName?
 }
 
 // One task: its locus (color dot and name), what to do, and when. Tap opens it;
-// the tick box (when the task can be completed) completes it.
-export function taskRow(t: Task, locus: Locus, elementTitle: string, onComplete: () => Promise<void>): HTMLElement {
+// the tick box (when the task can be completed) completes it; a second action
+// (e.g. "It happened") gets its own button.
+// `showLocus: false` inside a locus's own screens, where the locus goes without saying.
+export function taskRow(
+  t: Task,
+  locus: Locus,
+  elementTitle: string,
+  onComplete: () => Promise<void>,
+  { showLocus = true, onSecondary }: { showLocus?: boolean; onSecondary?: () => void | Promise<void> } = {},
+): HTMLElement {
   const title = t.kind === 'review' ? `${elementTitle} · ${t.label}` : t.label
-  const details = [locus.name, t.sublabel].filter(Boolean).join(' · ')
+  const priority = t.kind === 'todo' && t.importance >= 3 ? levelName('importance', t.importance) : ''
+  const details = [showLocus && locus.name, t.sublabel, priority].filter(Boolean).join(' · ')
   return h(
     'div',
     { class: `task-row ${t.state === 'overdue' ? 'overdue' : ''}`, style: { '--c': locus.color } },
@@ -154,5 +164,18 @@ export function taskRow(t: Task, locus: Locus, elementTitle: string, onComplete:
       ),
       chevronIcon(),
     ),
+    t.secondary &&
+      h(
+        'button',
+        {
+          type: 'button',
+          class: 'btn btn-small task-secondary',
+          onclick: async () => {
+            await t.secondary!.run()
+            await onSecondary?.()
+          },
+        },
+        t.secondary.label,
+      ),
   )
 }

@@ -21,6 +21,7 @@ export interface Task {
   progress?: number // goals, 0..1
   open(): void // tap
   complete?(): Promise<void> // tick, where it makes sense
+  secondary?: { label: string; run(): Promise<void> } // e.g. "It happened" on a waiting to-do
 }
 
 // Active tasks are the ones that need doing now: they pulse the bubble and fill "Now".

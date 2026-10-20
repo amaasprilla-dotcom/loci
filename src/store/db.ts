@@ -2,7 +2,7 @@
 
 import Dexie, { type EntityTable, type Transaction } from 'dexie'
 import { migrateCard } from '../elements/flashcards/srs'
-import type { Attachment, AttachmentOwner, Card, ItemRef, Level, Link, Locus, LocusElement, Note, ReviewLog, Setting, StoredBlob, Tag } from '../types'
+import type { Attachment, AttachmentOwner, Card, ItemRef, Level, Link, Locus, LocusElement, Note, ReviewLog, Setting, StoredBlob, Tag, Todo, TodoCompletion } from '../types'
 
 export const db = new Dexie('loci') as Dexie & {
   tags: EntityTable<Tag, 'id'>
@@ -15,6 +15,8 @@ export const db = new Dexie('loci') as Dexie & {
   blobs: EntityTable<StoredBlob, 'id'>
   settings: EntityTable<Setting, 'key'>
   notes: EntityTable<Note, 'id'>
+  todos: EntityTable<Todo, 'id'>
+  todoCompletions: EntityTable<TodoCompletion, 'id'>
 }
 
 db.version(1).stores({
@@ -47,6 +49,12 @@ db.version(4).stores({
 // v2: notes (Notes element), newest first by updatedAt, pinned ones on top.
 db.version(5).stores({
   notes: 'id, elementId, updatedAt, pinned',
+})
+
+// v2: to-dos (To-do list element) and one row per occurrence dealt with.
+db.version(6).stores({
+  todos: 'id, elementId, status, when.kind',
+  todoCompletions: 'id, todoId, occurrenceAt',
 })
 
 // Runs once, when a v1 database is first opened by v2: gives every card its
@@ -133,20 +141,39 @@ export async function deleteLocus(id: string): Promise<void> {
 }
 
 // Every table that deleting a locus or an element can touch.
-const CONTENT_TABLES = () => [db.loci, db.elements, db.cards, db.reviews, db.notes, db.attachments, db.blobs, db.links, db.tags]
+const CONTENT_TABLES = () => [db.loci, db.elements, db.cards, db.reviews, db.notes, db.todos, db.todoCompletions, db.attachments, db.blobs, db.links, db.tags]
 
 // Deletes elements and everything in them: cards with their review history, notes
-// with their attachments and files, and every link to any of these.
+// and to-dos with their attachments and files, to-do history, and every link to any
+// of these. To-dos elsewhere that waited on a deleted to-do become due now.
 // Call inside a transaction over CONTENT_TABLES().
 async function deleteElementsAndContents(elementIds: string[]): Promise<void> {
   const cardIds = await db.cards.where('elementId').anyOf(elementIds).primaryKeys()
   const noteIds = await db.notes.where('elementId').anyOf(elementIds).primaryKeys()
-  await deleteLinksFor([...refs('element', elementIds), ...refs('card', cardIds), ...refs('note', noteIds)])
-  await deleteAttachmentsOf(noteIds.map((id) => ({ type: 'note', id })))
+  const todoIds = await db.todos.where('elementId').anyOf(elementIds).primaryKeys()
+  await wakeDependents(todoIds)
+  await deleteLinksFor([...refs('element', elementIds), ...refs('card', cardIds), ...refs('note', noteIds), ...refs('todo', todoIds)])
+  await deleteAttachmentsOf([...noteIds.map((id) => ({ type: 'note' as const, id })), ...todoIds.map((id) => ({ type: 'todo' as const, id }))])
   await db.reviews.where('cardId').anyOf(cardIds).delete()
   await db.cards.bulkDelete(cardIds)
   await db.notes.bulkDelete(noteIds)
+  await db.todoCompletions.where('todoId').anyOf(todoIds).delete()
+  await db.todos.bulkDelete(todoIds)
   await db.elements.bulkDelete(elementIds)
+}
+
+// To-dos (outside this set) waiting on these to-dos: due now, since what they waited for is gone.
+async function wakeDependents(todoIds: string[]): Promise<void> {
+  const gone = new Set(todoIds)
+  const now = Date.now()
+  for (const id of todoIds) {
+    const links = await db.links.where('[from.type+from.id]').equals(['todo', id]).filter((l) => l.kind === 'after').toArray()
+    for (const l of links) {
+      if (gone.has(l.to.id)) continue
+      const t = await db.todos.get(l.to.id)
+      if (t?.status === 'open' && t.when.kind === 'after') await db.todos.update(t.id, { when: { kind: 'at', at: now, hasTime: true }, updatedAt: now })
+    }
+  }
 }
 
 // Removes the owners' attachments, and each file nothing else uses any more.
@@ -165,18 +192,19 @@ export async function deleteBlobIfUnused(blobId: string): Promise<void> {
 }
 
 // What deleting a locus would remove, for the confirmation message.
-export async function countLocusContents(id: string): Promise<{ elements: number; cards: number; notes: number }> {
+export async function countLocusContents(id: string): Promise<{ elements: number; cards: number; notes: number; todos: number }> {
   const elementIds = await db.elements.where('locusId').equals(id).primaryKeys()
   return { elements: elementIds.length, ...(await countElementContents(elementIds)) }
 }
 
 // What deleting these elements would also remove, for confirmation messages.
-export async function countElementContents(elementIds: string[]): Promise<{ cards: number; notes: number }> {
-  const [cards, notes] = await Promise.all([
+export async function countElementContents(elementIds: string[]): Promise<{ cards: number; notes: number; todos: number }> {
+  const [cards, notes, todos] = await Promise.all([
     db.cards.where('elementId').anyOf(elementIds).count(),
     db.notes.where('elementId').anyOf(elementIds).count(),
+    db.todos.where('elementId').anyOf(elementIds).count(),
   ])
-  return { cards, notes }
+  return { cards, notes, todos }
 }
 
 // ---------- Elements ----------

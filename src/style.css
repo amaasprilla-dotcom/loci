@@ -1921,3 +1921,197 @@ details.task-section > summary {
   border-radius: var(--radius);
   font-size: 1.3rem;
 }
+
+/* ---------- To-dos ---------- */
+
+/* The sentence: [When] · [action] [Add] */
+.todo-add {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: inset 0 3px 0 var(--c), var(--shadow-sm);
+}
+
+.todo-sentence {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.todo-action {
+  flex: 1;
+  min-width: 180px;
+}
+
+.todo-dot {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.when-chip {
+  flex: none;
+  max-width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--text);
+  border-radius: 999px;
+  background: var(--text);
+  color: #fff;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* No when yet: it's required, so it asks. */
+.when-chip.empty {
+  border-style: dashed;
+  border-color: var(--border-strong);
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.todo-levels {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.btn-link {
+  align-self: flex-start;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--blue-ink);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.todo-more {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.todo-more[hidden],
+.someday-nudge[hidden] {
+  display: none;
+}
+
+.someday-nudge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--blue-soft);
+  color: var(--blue-ink);
+  font-size: 0.9rem;
+}
+
+.someday-nudge > span {
+  flex-basis: 100%;
+}
+
+/* The When picker */
+.when-options {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.when-option {
+  padding: 13px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.when-option:last-child {
+  border-bottom: 0;
+}
+
+.when-option:hover {
+  background: var(--surface-muted);
+}
+
+.when-option.disabled {
+  color: var(--muted);
+  cursor: default;
+  opacity: 0.6;
+}
+
+.when-option.disabled:hover {
+  background: var(--surface);
+}
+
+/* Offered last, and quietly. */
+.when-option.someday {
+  color: var(--muted);
+}
+
+.every-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.input.every {
+  width: 76px;
+}
+
+.every-row[hidden],
+.chips[hidden],
+.field-label[hidden] {
+  display: none;
+}
+
+/* Rows */
+.task-secondary {
+  flex: none;
+  align-self: center;
+  margin-right: 12px;
+}
+
+.done-row .task-main {
+  cursor: default;
+}
+
+.done-row .task-title {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.pill-overdue {
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+
+.todo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.locus-items {
+  margin-top: 28px;
+}
+
+.locus-items:empty {
+  display: none;
+}

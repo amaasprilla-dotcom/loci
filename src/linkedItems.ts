@@ -95,7 +95,7 @@ export function pickItem(exclude: ItemRef[]): Promise<ItemRef | null> {
     const search = h('input', {
       class: 'input',
       type: 'search',
-      placeholder: 'Search loci, decks, cards and notes',
+      placeholder: 'Search loci, decks, cards, notes and to-dos',
       'aria-label': 'Search',
       oninput: () => void show(),
     })
@@ -107,7 +107,7 @@ export function pickItem(exclude: ItemRef[]): Promise<ItemRef | null> {
       if (ticket !== latest) return // a newer search has started
       results.replaceChildren(
         ...(found.length === 0
-          ? [h('p', { class: 'field-hint' }, search.value.trim() ? 'Nothing matches.' : 'Type to search cards and notes too.')]
+          ? [h('p', { class: 'field-hint' }, search.value.trim() ? 'Nothing matches.' : 'Type to search cards, notes and to-dos too.')]
           : found.map((info) =>
               h(
                 'div',

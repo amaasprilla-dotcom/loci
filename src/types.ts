@@ -152,3 +152,37 @@ export interface Note {
   createdAt: number;
   updatedAt: number;
 }
+
+// A to-do's when (SPEC-v2.md, "The when model"). "after" and "goal" wait on another
+// item through an "after" link; once that fires they become { kind: 'at', at: now }.
+export type When =
+  | { kind: 'at'; at: number; hasTime: boolean } // date-only: `at` is 04:00 that day
+  | { kind: 'repeat'; rrule: string; time?: string; next: number } // RFC 5545, with DTSTART
+  | { kind: 'after' }
+  | { kind: 'goal'; percent: number }
+  | { kind: 'when'; condition: string; firedAt?: number }
+  | { kind: 'someday' };
+
+export interface Todo {
+  id: string;
+  elementId: string;
+  title: string; // the action
+  why?: string;
+  importance: Level;
+  difficulty: Level;
+  when: When;
+  status: 'open' | 'done' | 'archived';
+  doneAt?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// One row per occurrence dealt with. Goals count these (A4).
+export interface TodoCompletion {
+  id: string;
+  todoId: string;
+  occurrenceAt: number; // the scheduled time it belonged to
+  doneAt?: number; // missing = skipped / missed
+  outcome: 'done' | 'skipped' | 'missed';
+  updatedAt: number;
+}

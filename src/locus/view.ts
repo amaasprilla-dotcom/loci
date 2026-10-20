@@ -10,6 +10,8 @@ import { linkedItemsSection } from '../linkedItems'
 import { elementHash, go } from '../router'
 import { button, deleteConfirmation, describeCounts, openSheet, sheetActions, submitButton } from '../sheet'
 import { countElementContents, createElement, db, deleteElement, listElements, reorderElements, updateElement } from '../store/db'
+import { allTasks, sections } from '../tasks/tasks'
+import { taskRow } from '../tasks/view'
 import type { Locus, LocusElement } from '../types'
 import { makeSortable } from './reorder'
 
@@ -22,10 +24,34 @@ export async function renderLocusView(locus: Locus, options: { onBack(): void })
     elements = await listElements(locus.id)
     const now = Date.now()
     if (elements.length === 0) {
-      grid.replaceChildren(h('p', { class: 'locus-empty' }, 'Nothing in this locus yet. Tap + to add a flashcard deck or a notebook.'))
-      return
+      grid.replaceChildren(h('p', { class: 'locus-empty' }, 'Nothing in this locus yet. Tap + to add a deck, a notebook or a to-do list.'))
+    } else {
+      grid.replaceChildren(...(await Promise.all(elements.map((el) => tile(el, now)))))
     }
-    grid.replaceChildren(...(await Promise.all(elements.map((el) => tile(el, now)))))
+    await renderItems(now)
+  }
+
+  // This locus's own items, in the Tasks screen's groups (SPEC-v2.md, "Tasks screen v2").
+  const items = h('div', { class: 'locus-items' })
+  async function renderItems(now: number) {
+    const s = sections((await allTasks(now)).filter((t) => t.locusId === locus.id))
+    const titles = new Map(elements.map((e) => [e.id, e.title]))
+    const row = (t: (typeof s.now)[number]) =>
+      taskRow(t, locus, titles.get(t.elementId) ?? '', async () => {
+        await t.complete?.()
+        await renderTiles()
+      }, { showLocus: false, onSecondary: renderTiles })
+    const block = (title: string, list: typeof s.now, extra = '') =>
+      list.length > 0 && h('section', { class: `task-section ${extra}` }, h('h2', { class: 'task-section-title' }, title), h('div', { class: 'task-list' }, list.map(row)))
+    items.replaceChildren(
+      ...[
+        block('Now', s.now),
+        block('Goals and exams', s.goals),
+        block('Planned', s.planned, 'muted'),
+        s.someday.length > 0 &&
+          h('details', { class: 'task-section muted' }, h('summary', { class: 'task-section-title' }, `Someday (${s.someday.length})`), h('div', { class: 'task-list' }, s.someday.map(row))),
+      ].filter((x): x is HTMLElement => x !== false),
+    )
   }
 
   async function tile(el: LocusElement, now: number): Promise<HTMLElement> {
@@ -84,7 +110,7 @@ export async function renderLocusView(locus: Locus, options: { onBack(): void })
         tags.length > 0 && h('div', { class: 'locus-tags' }, tags.map((t) => h('span', { class: 'tag' }, t.name))),
       ),
     ),
-    h('main', { class: 'locus-body' }, grid),
+    h('main', { class: 'locus-body' }, grid, items),
     h('button', { class: 'fab', 'aria-label': 'Add to this locus', onclick: () => void onAdd() }, '+'),
   )
   await renderTiles()
@@ -101,7 +127,7 @@ function openAddSheet(): Promise<{ type: ElementType; title: string } | null> {
 
     function nameStep(type: ElementType) {
       chosen = type
-      titleInput.placeholder = ({ flashcards: 'e.g. Spanish verbs', notes: 'e.g. Lecture notes' } as Record<string, string>)[type.type] ?? ''
+      titleInput.placeholder = ({ flashcards: 'e.g. Spanish verbs', notes: 'e.g. Lecture notes', todos: 'e.g. Errands' } as Record<string, string>)[type.type] ?? ''
       sync()
       api.show(
         h('h2', {}, `New ${type.noun}`),
@@ -156,10 +182,11 @@ function openTileMenu(el: LocusElement): Promise<boolean | null> {
     ]
 
     async function askDelete() {
-      const { cards, notes } = await countElementContents([el.id])
+      const { cards, notes, todos } = await countElementContents([el.id])
       const contents = describeCounts([
         [cards, 'card', 'cards'],
         [notes, 'note', 'notes'],
+        [todos, 'to-do', 'to-dos'],
       ])
       api.show(
         ...deleteConfirmation(
