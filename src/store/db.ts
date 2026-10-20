@@ -1,6 +1,7 @@
 // IndexedDB storage through Dexie. All data stays on this device.
 
-import Dexie, { type EntityTable } from 'dexie'
+import Dexie, { type EntityTable, type Transaction } from 'dexie'
+import { migrateCard } from '../elements/flashcards/srs'
 import type { Card, Locus, LocusElement, ReviewLog, Tag } from '../types'
 
 export const db = new Dexie('loci') as Dexie & {
@@ -18,6 +19,29 @@ db.version(1).stores({
   cards: 'id, elementId, [elementId+due]', // "due cards in this deck" is one range query
   reviews: 'id, cardId, at',
 })
+
+// v2: cards are scheduled by FSRS. Their due date now lives in srs.due.
+db.version(2)
+  .stores({
+    cards: 'id, elementId, [elementId+srs.due]',
+  })
+  .upgrade(migrateCardsToFsrs)
+
+// Runs once, when a v1 database is first opened by v2: gives every card its
+// FSRS state, replaying its review history where there is one.
+async function migrateCardsToFsrs(tx: Transaction): Promise<void> {
+  const cards = await tx.table<Card>('cards').toArray()
+  const logs = await tx.table<ReviewLog>('reviews').toArray()
+  await tx.table<Card>('cards').bulkPut(migrateV1Cards(cards, logs))
+}
+
+// Gives v1 cards (no srs yet) their FSRS state. Used by the upgrade above and
+// for cards arriving from an old backup file.
+export function migrateV1Cards(cards: Card[], logs: ReviewLog[]): Card[] {
+  const byCard = new Map<string, ReviewLog[]>()
+  for (const log of logs) byCard.set(log.cardId, [...(byCard.get(log.cardId) ?? []), log])
+  return cards.map((card) => (card.srs ? card : { ...card, srs: migrateCard(card, byCard.get(card.id) ?? []) }))
+}
 
 // Ask the browser not to evict our data when the device runs low on space.
 // Browsers may say no (or ask the user); the app works either way.

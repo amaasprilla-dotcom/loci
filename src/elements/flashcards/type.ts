@@ -62,7 +62,7 @@ export const flashcardsType: ElementType<FlashcardsData> = {
   // (SPEC.md leaves this open and recommends it; see the deck's "new" count).
   async getTasks(el: LocusElement<FlashcardsData>, now: number): Promise<Task[]> {
     const due = await db.cards
-      .where('[elementId+due]')
+      .where('[elementId+srs.due]')
       .between([el.id, 0], [el.id, now], true, true)
       .filter((c) => !isNew(c))
       .count()
@@ -79,14 +79,14 @@ export const flashcardsType: ElementType<FlashcardsData> = {
     ]
   },
 
-  // The [elementId+due] index is sorted by due, so the first match is the soonest.
+  // The [elementId+srs.due] index is sorted by due, so the first match is the soonest.
   async nextDueAt(el, now) {
     const next = await db.cards
-      .where('[elementId+due]')
+      .where('[elementId+srs.due]')
       .between([el.id, now], [el.id, Infinity], false, true)
       .filter((c) => !isNew(c))
       .first()
-    return next?.due ?? null
+    return next?.srs.due ?? null
   },
 }
 

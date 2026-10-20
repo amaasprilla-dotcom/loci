@@ -1,105 +1,121 @@
+import { createEmptyCard, fsrs, generatorParameters, State } from 'ts-fsrs'
 import { describe, expect, it } from 'vitest'
-import type { Card, Grade } from '../../types'
-import { DAY, MIN, formatWait, gradeLabel, schedule, studyDayStart } from './srs'
+import type { Card, Grade, ReviewLog, Srs } from '../../types'
+import { DAY, formatWait, migrateCard, MIN, newSrs, outcomes, recall, review, studyDayStart, toSrs, waitLabel } from './srs'
 
-// Fixed inputs. Local time, on a date far from daylight-saving changes.
-const NOW = new Date(2026, 0, 10, 15, 0).getTime() // 10 Jan 2026, 15:00
-const at4am = (day: number) => new Date(2026, 0, day, 4, 0).getTime()
-const NO_FUZZ = 0.5 // fuzz factor exactly 1.0
+// Fixed inputs. Local time, on dates far from daylight-saving changes.
+const at = (day: number, h: number, m = 0) => new Date(2026, 0, day, h, m).getTime()
+const NOW = at(10, 15) // 10 Jan 2026, 15:00
+const GRADES: Grade[] = [0, 1, 2, 3]
 
-function card(overrides: Partial<Card> = {}): Card {
-  return { id: 'c', elementId: 'e', front: 'f', back: 'b', due: NOW, interval: 0, ease: 2.5, reps: 0, lapses: 0, createdAt: 0, updatedAt: 0, ...overrides }
+// A card that has graduated to Review (Good, then Good again 10 minutes later).
+function reviewCard(): Srs {
+  return review(review(newSrs(NOW - DAY), 2, NOW - DAY), 2, NOW - DAY + 10 * MIN)
 }
 
-const grade = (c: Card, g: Grade) => schedule(c, g, NOW, NO_FUZZ)
+describe('new cards', () => {
+  it('start New and due straight away', () => {
+    expect(newSrs(NOW)).toMatchObject({ state: State.New, due: NOW, reps: 0, lapses: 0 })
+  })
 
-describe('schedule: a new card', () => {
-  it('Again: relearn in 10 minutes, counts a lapse, ease -0.2', () => {
-    const c = grade(card(), 0)
-    expect(c).toMatchObject({ reps: 0, lapses: 1, interval: 0, ease: 2.3, due: NOW + 10 * MIN })
+  it('learning steps are exact minutes: Again 1m, Hard 6m, Good 10m', () => {
+    const o = outcomes(newSrs(NOW), NOW)
+    expect([o[0].due - NOW, o[1].due - NOW, o[2].due - NOW]).toEqual([1 * MIN, 6 * MIN, 10 * MIN])
+    expect([0, 1, 2].map((g) => waitLabel(o[g as Grade], NOW))).toEqual(['1m', '6m', '10m'])
   })
-  it('Hard: 1 day, ease -0.15', () => {
-    expect(grade(card(), 1)).toMatchObject({ reps: 1, interval: 1, ease: 2.35, due: at4am(11) })
-  })
-  it('Good: 1 day, ease unchanged', () => {
-    expect(grade(card(), 2)).toMatchObject({ reps: 1, interval: 1, ease: 2.5, due: at4am(11) })
-  })
-  it('Easy: 4 days, ease +0.15', () => {
-    expect(grade(card(), 3)).toMatchObject({ reps: 1, interval: 4, ease: 2.65, due: at4am(14) })
+
+  it('Easy skips learning and is due at 04:00 on its day', () => {
+    const easy = outcomes(newSrs(NOW), NOW)[3]
+    expect(easy.state).toBe(State.Review)
+    expect(easy.scheduled_days).toBeGreaterThanOrEqual(1)
+    expect(new Date(easy.due).getHours()).toBe(4)
+    expect(waitLabel(easy, NOW)).toBe(`${easy.scheduled_days}d`)
   })
 })
 
-describe('schedule: second review', () => {
-  const second = card({ reps: 1, interval: 1 })
-  it('Hard 3d, Good 6d, Easy 8d', () => {
-    expect(grade(second, 1).interval).toBe(3)
-    expect(grade(second, 2).interval).toBe(6)
-    expect(grade(second, 3).interval).toBe(8)
+describe('reviews', () => {
+  it('what the buttons show is exactly what grading saves', () => {
+    for (const srs of [newSrs(NOW), reviewCard()]) {
+      const o = outcomes(srs, NOW)
+      for (const g of GRADES) expect(review(srs, g, NOW)).toEqual(o[g])
+    }
+  })
+
+  it('longer waits for better grades, and Again counts a lapse', () => {
+    const srs = reviewCard()
+    const o = outcomes(srs, NOW + 3 * DAY)
+    expect(o[1].scheduled_days).toBeLessThanOrEqual(o[2].scheduled_days)
+    expect(o[2].scheduled_days).toBeLessThan(o[3].scheduled_days)
+    expect(o[0]).toMatchObject({ state: State.Relearning, lapses: srs.lapses + 1 })
+  })
+
+  it('a day-scale review is due at 04:00, even when studied just before midnight', () => {
+    const late = at(10, 23, 30)
+    const after = review(reviewCard(), 2, late)
+    const due = new Date(after.due)
+    expect(due.getHours()).toBe(4)
+    expect(Math.round((after.due - at(10, 4)) / DAY)).toBe(after.scheduled_days)
+  })
+
+  it('recall is near 1 right after a review and falls with time', () => {
+    const srs = reviewCard()
+    const r1 = recall(srs, srs.last_review!)
+    const r2 = recall(srs, srs.last_review! + 30 * DAY)
+    expect(r1).toBeGreaterThan(0.99)
+    expect(r2).toBeLessThan(r1)
   })
 })
 
-describe('schedule: a mature card (reps 2, 6 days, ease 2.5)', () => {
-  const mature = card({ reps: 2, interval: 6 })
-  it('Hard: interval × 1.2, at least +1 day', () => {
-    expect(grade(mature, 1)).toMatchObject({ reps: 3, interval: 7, ease: 2.35 })
+describe('migrating v1 cards', () => {
+  const v1 = (o: Partial<Card> = {}): Card =>
+    ({ id: 'c', elementId: 'e', front: 'f', back: 'b', createdAt: at(1, 9), updatedAt: 0, due: at(1, 9), interval: 0, ease: 2.5, reps: 0, lapses: 0, ...o }) as Card
+  const log = (grade: Grade, when: number): ReviewLog => ({ id: String(when), cardId: 'c', at: when, grade, prevInterval: 0, updatedAt: when })
+
+  it('replays the review history in time order, v1 grades 0–3 as FSRS ratings 1–4', () => {
+    const history = [log(2, at(2, 10)), log(0, at(9, 18)), log(2, at(2, 10, 10)), log(3, at(5, 8))] // out of order on purpose
+    const migrated = migrateCard(v1({ reps: 2 }), history)
+
+    // The same reviews straight through ts-fsrs, in order, with ratings = grade + 1.
+    const f = fsrs(generatorParameters({ request_retention: 0.9, maximum_interval: 365, enable_fuzz: true }))
+    let card = createEmptyCard(at(1, 9))
+    for (const [rating, when] of [[3, at(2, 10)], [3, at(2, 10, 10)], [4, at(5, 8)], [1, at(9, 18)]] as const) card = f.next(card, when, rating).card
+    const expected = toSrs(card)
+
+    expect(migrated).toMatchObject({
+      state: expected.state,
+      stability: expected.stability,
+      difficulty: expected.difficulty,
+      reps: expected.reps,
+      lapses: expected.lapses,
+      last_review: at(9, 18),
+      due: expected.due, // the last review was Again: a 10-minute relearning step, not snapped
+    })
   })
-  it('Good: interval × ease', () => {
-    expect(grade(mature, 2)).toMatchObject({ reps: 3, interval: 15, ease: 2.5, due: at4am(25) })
+
+  it('a reviewed card without history becomes a Review card: stability ≈ interval, mid difficulty, same due', () => {
+    const due = at(20, 4)
+    expect(migrateCard(v1({ reps: 4, lapses: 1, interval: 12, due }), [])).toMatchObject({
+      state: State.Review,
+      stability: 12,
+      difficulty: 5,
+      due,
+      reps: 4,
+      lapses: 1,
+      last_review: due - 12 * DAY,
+    })
   })
-  it('Easy: interval × ease × 1.3, using the ease before this review', () => {
-    expect(grade(mature, 3)).toMatchObject({ reps: 3, interval: 20, ease: 2.65 })
-  })
-  it('never grows by less than a day', () => {
-    expect(grade(card({ reps: 3, interval: 2, ease: 1.3 }), 1).interval).toBe(3)
+
+  it('a never-reviewed card becomes a new card', () => {
+    expect(migrateCard(v1(), [])).toMatchObject({ state: State.New, due: at(1, 9), reps: 0 })
   })
 })
 
-describe('schedule: lapses', () => {
-  const mature = card({ reps: 5, interval: 30, ease: 2.5, lapses: 1 })
-  it('Again resets reps and interval, keeps counting lapses', () => {
-    expect(grade(mature, 0)).toMatchObject({ reps: 0, interval: 0, lapses: 2, ease: 2.3, due: NOW + 10 * MIN })
-  })
-  it('after a lapse, Good starts over at 1 day with the lowered ease', () => {
-    const relearned = grade(grade(mature, 0), 2)
-    expect(relearned).toMatchObject({ reps: 1, interval: 1, ease: 2.3, lapses: 2 })
-  })
-})
-
-describe('schedule: ease floor', () => {
-  it('Again never takes ease below 1.3', () => {
-    expect(grade(card({ ease: 1.35 }), 0).ease).toBe(1.3)
-  })
-  it('Hard never takes ease below 1.3', () => {
-    expect(grade(card({ ease: 1.3, reps: 3, interval: 10 }), 1).ease).toBe(1.3)
-  })
-})
-
-describe('schedule: fuzz', () => {
-  const mature = card({ reps: 2, interval: 8 }) // Good → 20 days before fuzz
-  it('spreads intervals by at most ±5%', () => {
-    expect(schedule(mature, 2, NOW, 0).interval).toBe(19)
-    expect(schedule(mature, 2, NOW, 0.9999).interval).toBe(21)
-  })
-  it('never gives less than 1 day', () => {
-    expect(schedule(card(), 2, NOW, 0).interval).toBe(1)
-  })
-})
-
-describe('due time', () => {
-  it('is 04:00 local, even for a review just before midnight', () => {
-    const late = new Date(2026, 0, 10, 23, 30).getTime()
-    expect(schedule(card(), 2, late, NO_FUZZ).due).toBe(at4am(11))
-  })
+describe('days', () => {
   it('the study day starts at 04:00', () => {
-    expect(studyDayStart(new Date(2026, 0, 10, 3, 59).getTime())).toBe(at4am(9))
-    expect(studyDayStart(at4am(10))).toBe(at4am(10))
+    expect(studyDayStart(at(10, 3, 59))).toBe(at(9, 4))
+    expect(studyDayStart(at(10, 4))).toBe(at(10, 4))
   })
-})
 
-describe('grade button labels', () => {
-  it('for a new card: 10m, 1d, 1d, 4d', () => {
-    expect(([0, 1, 2, 3] as Grade[]).map((g) => gradeLabel(card(), g, NOW, NO_FUZZ))).toEqual(['10m', '1d', '1d', '4d'])
-  })
   it('long waits read as months and years', () => {
     expect(formatWait(45 * DAY)).toBe('1.5mo')
     expect(formatWait(400 * DAY)).toBe('1.1y')

@@ -1,8 +1,8 @@
 # Loci
 
 Your projects as colored bubbles (**loci**) floating on one screen. Each locus holds elements,
-starting with flashcard decks that use spaced repetition. See [SPEC.md](SPEC.md) for the plan
-and the build order.
+starting with flashcard decks that use spaced repetition. [SPEC.md](SPEC.md) is the v1 plan;
+[SPEC-v2.md](SPEC-v2.md) is v2 (more element types, FSRS, study sessions, exams), being built now.
 
 Everything runs in the browser and is saved on the device (IndexedDB). There is no server and no
 account. Loci replaces Echomathia; the old app is still in this repository's git history.
@@ -33,7 +33,8 @@ private networks.)
 ## Tests
 
 `npm test` runs the unit tests (Vitest): the scheduler, the due count at the 04:00 day boundary,
-the daily limits, the review log, tasks, bulk import, and backup export/import/merge. Test files sit next to the code they test
+the daily limits, the review log, tasks, bulk import, backup export/import/merge, and the
+upgrade of a v1 database and v1 backups to FSRS. Test files sit next to the code they test
 (`*.test.ts`).
 
 ## Put it online (static site)
@@ -75,7 +76,8 @@ them.
 - `src/locus/reorder.ts`: dragging tiles into a new order
 - `src/elements/registry.ts`: the element types (a new type is one module registered here)
 - `src/elements/flashcards/`: the Flashcards type: its tile (`type.ts`), deck screen (`editor.ts`),
-  card storage (`store.ts`), bulk import (`import.ts`), the scheduler (`srs.ts`), which cards a
+  card storage (`store.ts`), bulk import (`import.ts`), the FSRS scheduler and the one-time
+  conversion of v1 cards (`srs.ts`), which cards a
   session shows (`session.ts`) and the review screen (`review.ts`)
 - `src/tasks/`: everything due across all loci (`tasks.ts`) and the Tasks screen (`view.ts`); the
   same list makes bubbles pulse and sets the badge on home

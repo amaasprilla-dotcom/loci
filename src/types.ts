@@ -37,22 +37,39 @@ export interface Card {
   elementId: string; // the flashcard deck
   front: string;
   back: string;
-  due: number; // next review time
-  interval: number; // days
-  ease: number; // SM-2 ease factor, starts 2.5
-  reps: number; // consecutive successful reviews
-  lapses: number;
+  srs: Srs; // spaced-repetition state (FSRS)
   createdAt: number;
   updatedAt: number;
+  // v1 SM-2 fields: still on cards made before v2, no longer read (SPEC-v2.md, "Data model changes").
+  due?: number;
+  interval?: number;
+  ease?: number;
+  reps?: number;
+  lapses?: number;
 }
 
-export type Grade = 0 | 1 | 2 | 3; // Again, Hard, Good, Easy
+// A ts-fsrs card, stored with plain millisecond timestamps instead of Dates, so
+// it can be indexed (srs.due) and survives a JSON backup unchanged.
+export interface Srs {
+  due: number;
+  stability: number;
+  difficulty: number;
+  elapsed_days: number;
+  scheduled_days: number;
+  learning_steps: number;
+  reps: number;
+  lapses: number;
+  state: 0 | 1 | 2 | 3; // New, Learning, Review, Relearning
+  last_review?: number;
+}
+
+export type Grade = 0 | 1 | 2 | 3; // Again, Hard, Good, Easy (FSRS ratings 1–4)
 
 export interface ReviewLog {
   id: string;
   cardId: string;
   at: number;
   grade: Grade;
-  prevInterval: number;
+  prevInterval: number; // days scheduled before this review
   updatedAt: number;
 }

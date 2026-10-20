@@ -2,6 +2,7 @@
 
 import { db } from '../../store/db'
 import type { Card } from '../../types'
+import { isNewSrs, newSrs } from './srs'
 
 export interface FlashcardsData {
   newPerDay: number // new cards introduced per day
@@ -10,9 +11,9 @@ export interface FlashcardsData {
 
 export const DEFAULT_FLASHCARDS_DATA: FlashcardsData = { newPerDay: 20, maxReviewsPerDay: 200 }
 
-// A card that has never been reviewed (SPEC.md: reps === 0 && lapses === 0).
+// A card that has never been reviewed.
 export function isNew(card: Card): boolean {
-  return card.reps === 0 && card.lapses === 0
+  return isNewSrs(card.srs)
 }
 
 export async function listCards(elementId: string): Promise<Card[]> {
@@ -21,8 +22,7 @@ export async function listCards(elementId: string): Promise<Card[]> {
 }
 
 function newCard(elementId: string, front: string, back: string, now: number): Card {
-  // SPEC.md new card defaults: ease 2.5, interval 0, reps 0, lapses 0, due = now.
-  return { id: crypto.randomUUID(), elementId, front, back, due: now, interval: 0, ease: 2.5, reps: 0, lapses: 0, createdAt: now, updatedAt: now }
+  return { id: crypto.randomUUID(), elementId, front, back, srs: newSrs(now), createdAt: now, updatedAt: now }
 }
 
 export async function addCard(elementId: string, front: string, back: string): Promise<Card> {
@@ -62,8 +62,8 @@ export function deckStats(cards: Card[], now: number): DeckStats {
   let nextDue: number | null = null
   for (const c of cards) {
     if (isNew(c)) fresh++
-    else if (c.due <= now) due++
-    else if (nextDue == null || c.due < nextDue) nextDue = c.due
+    else if (c.srs.due <= now) due++
+    else if (nextDue == null || c.srs.due < nextDue) nextDue = c.srs.due
   }
   return { total: cards.length, due, fresh, nextDue }
 }

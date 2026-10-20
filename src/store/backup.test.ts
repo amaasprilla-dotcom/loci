@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { recordReview } from '../elements/flashcards/session'
-import { schedule } from '../elements/flashcards/srs'
+import { review } from '../elements/flashcards/srs'
 import { addCards, DEFAULT_FLASHCARDS_DATA, listCards } from '../elements/flashcards/store'
 import { type Backup, BACKUP_VERSION, BackupError, exportBackup, importBackup, parseBackup } from './backup'
 import { createElement, createLocus, db, findOrCreateTag } from './db'
@@ -18,7 +18,7 @@ async function seed() {
   ])
   const [card] = await listCards(deck.id)
   const now = new Date(2026, 0, 10, 15).getTime()
-  await recordReview(card, schedule(card, 2, now, 0.5), 2, now)
+  await recordReview(card, { ...card, srs: review(card.srs, 2, now), updatedAt: now }, 2, now)
   return { tag, locus, deck }
 }
 
@@ -104,6 +104,32 @@ describe('merge', () => {
     await importBackup(backup, 'merge')
     expect(await db.tags.count()).toBe(1)
     expect((await db.loci.get('calc'))!.tagIds).toEqual([ours.id])
+  })
+})
+
+describe('a backup from v1', () => {
+  it('imports, with its SM-2 cards converted to FSRS (history replayed)', async () => {
+    const day = (d: number, h: number) => new Date(2026, 0, d, h).getTime()
+    const v1File = {
+      version: 1,
+      exportedAt: day(10, 12),
+      tags: [],
+      loci: [{ id: 'l', name: 'Spanish', color: '#000000', tagIds: [], x: 0.5, y: 0.5, radius: 48, createdAt: 0, updatedAt: 1 }],
+      elements: [{ id: 'e', locusId: 'l', type: 'flashcards', title: 'Verbs', order: 0, data: { newPerDay: 20, maxReviewsPerDay: 200 }, updatedAt: 1 }],
+      cards: [
+        { id: 'a', elementId: 'e', front: 'ser', back: 'to be', due: day(4, 4), interval: 1, ease: 2.5, reps: 1, lapses: 0, createdAt: day(1, 9), updatedAt: 1 },
+        { id: 'b', elementId: 'e', front: 'ir', back: 'to go', due: day(1, 9), interval: 0, ease: 2.5, reps: 0, lapses: 0, createdAt: day(1, 9), updatedAt: 1 },
+      ],
+      reviews: [{ id: 'r', cardId: 'a', at: day(3, 10), grade: 2, prevInterval: 0, updatedAt: day(3, 10) }],
+    }
+    await importBackup(parseBackup(JSON.stringify(v1File)), 'replace')
+    const [a, b] = [(await db.cards.get('a'))!, (await db.cards.get('b'))!]
+    expect(a.srs).toMatchObject({ reps: 1, last_review: day(3, 10) })
+    expect(b.srs).toMatchObject({ state: 0, reps: 0 })
+  })
+
+  it('new backups are version 2, which the v1 app refuses rather than misreads', async () => {
+    expect((await exportBackup()).version).toBe(2)
   })
 })
 

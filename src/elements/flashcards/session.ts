@@ -14,8 +14,8 @@ export async function planSession(el: LocusElement<FlashcardsData>, now: number)
   const { introducedToday, reviewedToday } = todaysCounts(logs, studyDayStart(now))
 
   const due = cards
-    .filter((c) => !isNew(c) && c.due <= now)
-    .sort((a, b) => a.due - b.due)
+    .filter((c) => !isNew(c) && c.srs.due <= now)
+    .sort((a, b) => a.srs.due - b.srs.due)
     .slice(0, Math.max(0, el.data.maxReviewsPerDay - reviewedToday))
   const fresh = cards.filter(isNew).slice(0, Math.max(0, el.data.newPerDay - introducedToday))
   return [...due, ...fresh]
@@ -35,10 +35,10 @@ export function todaysCounts(logs: ReviewLog[], dayStart: number): { introducedT
   return { introducedToday, reviewedToday: today.size - introducedToday }
 }
 
-// Saves a graded card and its review log together.
+// Saves a graded card and its review log together. `after` carries the new FSRS state.
 export async function recordReview(before: Card, after: Card, grade: ReviewLog['grade'], at: number): Promise<void> {
   await db.transaction('rw', db.cards, db.reviews, async () => {
     await db.cards.put(after)
-    await db.reviews.add({ id: crypto.randomUUID(), cardId: before.id, at, grade, prevInterval: before.interval, updatedAt: at })
+    await db.reviews.add({ id: crypto.randomUUID(), cardId: before.id, at, grade, prevInterval: before.srs.scheduled_days, updatedAt: at })
   })
 }

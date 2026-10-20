@@ -7,9 +7,10 @@
 // still has it.
 
 import type { Card, Locus, LocusElement, ReviewLog, Tag } from '../types'
-import { db, tagKey } from './db'
+import { db, migrateV1Cards, tagKey } from './db'
 
-export const BACKUP_VERSION = 1
+// 2: cards carry FSRS state (srs). Version 1 files (SM-2 cards) are converted on import.
+export const BACKUP_VERSION = 2
 
 export interface Backup {
   version: number
@@ -77,7 +78,7 @@ export function parseBackup(text: string): Backup {
     tags: (b.tags as Tag[]).map((t) => ({ ...t, key: typeof t.key === 'string' ? t.key : tagKey(String(t.name ?? '')) })),
     loci: (b.loci as Locus[]).map((l) => ({ ...l, tagIds: Array.isArray(l.tagIds) ? l.tagIds : [] })),
     elements: b.elements as LocusElement[],
-    cards: b.cards as Card[],
+    cards: migrateV1Cards(b.cards as Card[], b.reviews as ReviewLog[]),
     reviews: b.reviews as ReviewLog[],
   }
 }

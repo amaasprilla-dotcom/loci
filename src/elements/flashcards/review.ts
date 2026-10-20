@@ -11,7 +11,7 @@ import { db } from '../../store/db'
 import { formatIn } from '../../time'
 import type { Card, Grade, LocusElement } from '../../types'
 import { planSession, recordReview } from './session'
-import { AGAIN_DELAY, gradeLabel, schedule } from './srs'
+import { outcomes, waitLabel } from './srs'
 import { type FlashcardsData, listCards } from './store'
 
 const GRADES: { grade: Grade; label: string; key: string }[] = [
@@ -21,6 +21,7 @@ const GRADES: { grade: Grade; label: string; key: string }[] = [
   { grade: 3, label: 'Easy', key: '4' },
 ]
 const MAX_SECONDS_PER_CARD = 60 // a card left on screen while you make tea doesn't count as study time
+const COMES_BACK_WITHIN = 60 * 60_000 // a card due again within the hour (a learning step) returns in this session
 
 export async function renderReviewScreen(deck: LocusElement<FlashcardsData>): Promise<HTMLElement> {
   const locus = await db.loci.get(deck.locusId)
@@ -33,14 +34,18 @@ export async function renderReviewScreen(deck: LocusElement<FlashcardsData>): Pr
   }
 
   const queue = await planSession(deck, Date.now())
-  // Cards graded Again wait 10 minutes, then come back (or sooner, if nothing else is left).
+  // Cards on a learning step (Again, or new cards being learned) come back when
+  // their step is up, or sooner if nothing else is left.
   const waiting: { card: Card; showAt: number }[] = []
   const total = queue.length
-  let reviewed = 0
+  let reviewed = 0 // reviews done, repeats included
+  const cardsSeen = new Set<string>()
   let studyMs = 0
 
   let current: Card | null = null
-  let fuzz = 0 // picked once per card, so the button labels match what grading gives
+  // The four FSRS results for the current card, worked out when the answer shows:
+  // the buttons display them and grading saves the one picked.
+  let options: ReturnType<typeof outcomes> | null = null
   let shownAt = 0
   let revealed = false
   // Grades are saved in the background, one after another, so the next card shows at once.
@@ -62,14 +67,14 @@ export async function renderReviewScreen(deck: LocusElement<FlashcardsData>): Pr
     progress.style.width = `${total === 0 ? 100 : Math.min(100, (reviewed / (reviewed + remaining)) * 100)}%`
   }
 
-  // Next card: an Again card whose 10 minutes are up, else the queue, else the soonest Again card.
+  // Next card: a returning card whose step is up, else the queue, else the soonest returning card.
   function next() {
     const now = Date.now()
     waiting.sort((a, b) => a.showAt - b.showAt)
     if (waiting.length > 0 && (waiting[0].showAt <= now || queue.length === 0)) current = waiting.shift()!.card
     else current = queue.shift() ?? null
     if (!current) return void finish()
-    fuzz = Math.random()
+    options = null
     shownAt = now
     revealed = false
     showCard()
@@ -94,6 +99,8 @@ export async function renderReviewScreen(deck: LocusElement<FlashcardsData>): Pr
     revealed = true
     stage.querySelector<HTMLElement>('.review-back')!.hidden = false
     const now = Date.now()
+    options = outcomes(current.srs, now)
+    const results = options
     footer.replaceChildren(
       h(
         'div',
@@ -103,7 +110,7 @@ export async function renderReviewScreen(deck: LocusElement<FlashcardsData>): Pr
             'button',
             { type: 'button', class: `btn grade grade-${grade}`, onclick: () => answer(grade) },
             h('span', { class: 'grade-label' }, label),
-            h('span', { class: 'grade-wait' }, gradeLabel(current!, grade, now, fuzz)),
+            h('span', { class: 'grade-wait' }, waitLabel(results[grade], now)),
             keyHint(key),
           ),
         ),
@@ -112,14 +119,15 @@ export async function renderReviewScreen(deck: LocusElement<FlashcardsData>): Pr
   }
 
   function answer(grade: Grade) {
-    if (!current || !revealed) return
+    if (!current || !revealed || !options) return
     const now = Date.now()
     const before = current
-    const after = schedule(before, grade, now, fuzz)
+    const after: Card = { ...before, srs: options[grade], updatedAt: now }
     saving = saving.then(() => recordReview(before, after, grade, now)).catch((err) => console.error('Could not save review', err))
     reviewed++
+    cardsSeen.add(before.id)
     studyMs += Math.min(now - shownAt, MAX_SECONDS_PER_CARD * 1000)
-    if (grade === 0) waiting.push({ card: after, showAt: now + AGAIN_DELAY })
+    if (after.srs.due - now < COMES_BACK_WITHIN) waiting.push({ card: after, showAt: after.srs.due })
     current = null
     next()
   }
@@ -130,7 +138,7 @@ export async function renderReviewScreen(deck: LocusElement<FlashcardsData>): Pr
     await saving
     const now = Date.now()
     const cards = await listCards(deck.id)
-    const nextDue = cards.filter((c) => c.due > now).reduce<number | null>((min, c) => (min == null || c.due < min ? c.due : min), null)
+    const nextDue = cards.filter((c) => c.srs.due > now).reduce<number | null>((min, c) => (min == null || c.srs.due < min ? c.srs.due : min), null)
     const nextLine = nextDue != null ? `Next review ${formatIn(nextDue - now)}.` : ''
     stage.replaceChildren(
       h(
@@ -139,7 +147,13 @@ export async function renderReviewScreen(deck: LocusElement<FlashcardsData>): Pr
         reviewed > 0
           ? [
               h('h2', {}, 'Session complete'),
-              h('p', {}, `You reviewed ${reviewed} ${reviewed === 1 ? 'card' : 'cards'} in ${formatDuration(studyMs)}.`),
+              h(
+                'p',
+                {},
+                `You studied ${cardsSeen.size} ${cardsSeen.size === 1 ? 'card' : 'cards'}` +
+                  (reviewed > cardsSeen.size ? ` (${reviewed} reviews)` : '') +
+                  ` in ${formatDuration(studyMs)}.`,
+              ),
             ]
           : h('h2', {}, 'Nothing to study right now'),
         nextLine && h('p', { class: 'review-next' }, nextLine),

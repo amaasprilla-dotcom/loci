@@ -1,9 +1,9 @@
 import 'fake-indexeddb/auto' // an in-memory IndexedDB, so the real Dexie code runs in tests
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createElement, createLocus, db } from '../../store/db'
-import type { LocusElement } from '../../types'
+import type { Grade, LocusElement } from '../../types'
 import { planSession, recordReview } from './session'
-import { schedule } from './srs'
+import { MIN, review } from './srs'
 import { addCards, DEFAULT_FLASHCARDS_DATA, type FlashcardsData, listCards } from './store'
 import { flashcardsType } from './type'
 
@@ -17,17 +17,27 @@ beforeEach(async () => {
   deck = await createElement(locus.id, 'flashcards', 'Verbs', { ...DEFAULT_FLASHCARDS_DATA })
 })
 
-async function review(cardFront: string, grade: 0 | 1 | 2 | 3, when: number) {
-  const card = (await listCards(deck.id)).find((c) => c.front === cardFront)!
-  await recordReview(card, schedule(card, grade, when, 0.5), grade, when)
+const card = async (front: string) => (await listCards(deck.id)).find((c) => c.front === front)!
+
+async function grade(front: string, g: Grade, when: number) {
+  const c = await card(front)
+  await recordReview(c, { ...c, srs: review(c.srs, g, when), updatedAt: when }, g, when)
+}
+
+// Good, then Good again after the 10-minute learning step: the card graduates to day-scale reviews.
+async function learn(front: string, when: number) {
+  await grade(front, 2, when)
+  await grade(front, 2, when + 10 * MIN)
 }
 
 describe('due count at the 04:00 boundary', () => {
-  it('a card reviewed Good at 15:00 is due from 04:00 the next morning, not a moment before', async () => {
+  it('a learned card is due from 04:00 on its day, not a moment before', async () => {
     await addCards(deck.id, [{ front: 'hablar', back: 'to speak' }])
-    await review('hablar', 2, at(10, 15))
-    expect(await flashcardsType.getTasks(deck, at(11, 3, 59, 59, 999))).toEqual([])
-    const tasks = await flashcardsType.getTasks(deck, at(11, 4))
+    await learn('hablar', at(10, 15))
+    const due = (await card('hablar')).srs.due
+    expect(new Date(due).getHours()).toBe(4)
+    expect(await flashcardsType.getTasks(deck, due - 1)).toEqual([])
+    const tasks = await flashcardsType.getTasks(deck, due)
     expect(tasks).toHaveLength(1)
     expect(tasks[0]).toMatchObject({ count: 1, label: '1 card due', elementId: deck.id })
   })
@@ -39,14 +49,16 @@ describe('due count at the 04:00 boundary', () => {
 })
 
 describe('review log', () => {
-  it('records grade, time and the interval before the review', async () => {
+  it('records grade, time and the days scheduled before each review', async () => {
     await addCards(deck.id, [{ front: 'ser', back: 'to be' }])
-    await review('ser', 2, at(10, 15)) // interval 0 → 1
-    await review('ser', 2, at(11, 9)) // interval 1 → 6
+    await learn('ser', at(10, 15))
+    const scheduled = (await card('ser')).srs.scheduled_days
+    await grade('ser', 3, at(20, 9))
     const logs = (await db.reviews.toArray()).sort((a, b) => a.at - b.at)
     expect(logs.map((l) => [l.grade, l.at, l.prevInterval])).toEqual([
       [2, at(10, 15), 0],
-      [2, at(11, 9), 1],
+      [2, at(10, 15, 10), 0],
+      [3, at(20, 9), scheduled],
     ])
   })
 })
@@ -55,27 +67,27 @@ describe('planSession', () => {
   it('shows due reviews oldest first, then new cards up to the daily limit', async () => {
     deck.data.newPerDay = 2
     await addCards(deck.id, ['a', 'b', 'c', 'd', 'e'].map((f) => ({ front: f, back: f })))
-    await review('a', 2, at(8, 10)) // due 9 Jan 04:00
-    await review('b', 2, at(7, 10)) // due 8 Jan 04:00 (older)
-    const queue = await planSession(deck, at(10, 12))
+    await learn('a', at(2, 10))
+    await learn('b', at(1, 10)) // learned earlier, so due earlier
+    const queue = await planSession(deck, at(20, 12))
     expect(queue.map((c) => c.front)).toEqual(['b', 'a', 'c', 'd'])
   })
 
   it('new cards already introduced today count toward the limit', async () => {
     deck.data.newPerDay = 2
     await addCards(deck.id, ['a', 'b', 'c', 'd'].map((f) => ({ front: f, back: f })))
-    await review('a', 2, at(10, 9)) // introduced this morning
+    await learn('a', at(10, 9)) // introduced this morning
     expect((await planSession(deck, at(10, 12))).map((c) => c.front)).toEqual(['b'])
-    // Next study day, the limit is fresh again (and 'a' is not due until 11 Jan 04:00... which is now).
-    expect((await planSession(deck, at(11, 5))).map((c) => c.front)).toEqual(['a', 'b', 'c'])
+    // A new study day brings a fresh limit.
+    expect((await planSession(deck, at(11, 5))).map((c) => c.front).filter((f) => f !== 'a')).toEqual(['b', 'c'])
   })
 
   it('reviews already done today count toward the review limit', async () => {
     deck.data.maxReviewsPerDay = 2
     deck.data.newPerDay = 0
     await addCards(deck.id, ['a', 'b', 'c'].map((f) => ({ front: f, back: f })))
-    for (const f of ['a', 'b', 'c']) await review(f, 2, at(5, 10)) // all due 6 Jan 04:00
-    await review('a', 2, at(10, 9)) // one review done this morning
-    expect(await planSession(deck, at(10, 12))).toHaveLength(1)
+    for (const f of ['a', 'b', 'c']) await learn(f, at(1, 10))
+    await grade('a', 2, at(20, 9)) // one review done this morning
+    expect(await planSession(deck, at(20, 12))).toHaveLength(1)
   })
 })

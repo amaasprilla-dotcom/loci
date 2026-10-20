@@ -71,7 +71,7 @@ export async function renderDeckScreen(initial: LocusElement<FlashcardsData>): P
   }
 
   function cardRow(card: Card, now: number): HTMLElement {
-    const [label, kind] = isNew(card) ? ['New', 'new'] : card.due <= now ? ['Due', 'due'] : [formatIn(card.due - now), '']
+    const [label, kind] = isNew(card) ? ['New', 'new'] : card.srs.due <= now ? ['Due', 'due'] : [formatIn(card.srs.due - now), '']
     const row = h(
       'button',
       { type: 'button', class: 'card-row', onclick: () => void editCard(card) },
