@@ -20,6 +20,9 @@ export const tasksIcon = () => icon(`<path d="M4 6.5l1.6 1.6L8.5 5M4 12.5l1.6 1.
 
 export const chevronIcon = () => icon(`<path d="M9 5l7 7-7 7" ${STROKE}/>`)
 
+export const moreIcon = () =>
+  icon('<circle cx="5" cy="12" r="1.8" fill="currentColor"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><circle cx="19" cy="12" r="1.8" fill="currentColor"/>')
+
 // Three sliders: settings.
 export const settingsIcon = () =>
   icon(

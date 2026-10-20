@@ -6,7 +6,8 @@
 import { PALETTE } from '../colors'
 import { h } from '../dom'
 import type { Task } from '../elements/registry'
-import { tasksIcon } from '../icons'
+import { moreIcon, tasksIcon } from '../icons'
+import { openBackupSheet } from './backupSheet'
 import { createLocus, deleteLocus, findOrCreateTag, listLoci, listTags, moveLocus, updateLocus } from '../store/db'
 import type { Locus, Tag } from '../types'
 import { type LocusDraft, openLocusSheet } from './createLocus'
@@ -32,6 +33,23 @@ export function createHome(options: { onOpen(locus: Locus): void; onTasks(): voi
 
   const badge = h('span', { class: 'badge', hidden: true })
   const tasksButton = h('button', { type: 'button', class: 'tasks-btn', onclick: options.onTasks }, tasksIcon(), h('span', {}, 'Tasks'), badge)
+
+  const moreButton = h(
+    'button',
+    {
+      type: 'button',
+      class: 'tasks-btn round',
+      'aria-label': 'Backup',
+      title: 'Backup',
+      onclick: async () => {
+        if (!(await openBackupSheet())) return
+        // Imported: start the app over, so every screen shows the imported data.
+        location.replace('#/')
+        location.reload()
+      },
+    },
+    moreIcon(),
+  )
 
   let loci: Locus[] = []
   let tasks: Task[] = []
@@ -93,7 +111,7 @@ export function createHome(options: { onOpen(locus: Locus): void; onTasks(): voi
   const el = h(
     'div',
     { class: 'home' },
-    h('header', { class: 'topbar' }, h('div', { class: 'topbar-row' }, h('h1', { class: 'brand' }, 'Loci'), tasksButton), filter.el),
+    h('header', { class: 'topbar' }, h('div', { class: 'topbar-row' }, h('h1', { class: 'brand' }, 'Loci'), h('div', { class: 'topbar-actions' }, tasksButton, moreButton)), filter.el),
     field.el,
     empty,
     h('button', { class: 'fab', 'aria-label': 'New locus', onclick: onCreate }, '+'),

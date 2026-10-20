@@ -18,3 +18,6 @@ All original, made for this project with plain CSS or small SVG paths:
 
 - **Bubbles and the New locus sheet**: CSS in `src/style.css`
 - **Favicon** (three bubbles): `public/favicon.svg`
+- **App icons** (`public/pwa-*.png`, `maskable-icon-512x512.png`, `apple-touch-icon-180x180.png`,
+  `favicon.ico`): generated from `public/favicon.svg` by `npm run icons`
+  (`@vite-pwa/assets-generator`, MIT)
