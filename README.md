@@ -34,7 +34,7 @@ private networks.)
 
 `npm test` runs the unit tests (Vitest): the scheduler, the due count at the 04:00 day boundary,
 the daily limits, the review log, tasks, bulk import, backup export/import/merge, and the
-upgrade of a v1 database and v1 backups to FSRS. Test files sit next to the code they test
+upgrade of a v1 database and v1 backups to FSRS, task ranking and sections, and links. Test files sit next to the code they test
 (`*.test.ts`).
 
 ## Put it online (static site)
@@ -79,8 +79,12 @@ them.
   card storage (`store.ts`), bulk import (`import.ts`), the FSRS scheduler and the one-time
   conversion of v1 cards (`srs.ts`), which cards a
   session shows (`session.ts`) and the review screen (`review.ts`)
-- `src/tasks/`: everything due across all loci (`tasks.ts`) and the Tasks screen (`view.ts`); the
-  same list makes bubbles pulse and sets the badge on home
+- `src/tasks/`: every task across all loci, their ranking (score = 3 × importance − difficulty)
+  and sections (`tasks.ts`), and the Tasks screen: Now, Goals and exams, Planned, Someday
+  (`view.ts`). Active tasks make bubbles pulse and set the badge on home
+- `src/levels.ts`: importance and difficulty (four steps each) and their picker
+- `src/store/links.ts`: links between any two items; `src/linkedItems.ts`: the Linked items section
+  and the Link to… picker; `src/items.ts`: names, colors and destinations for linked items
 - `src/sheet.ts`: bottom sheets, and the delete confirmation
 - `src/press.ts`: long-press for list rows
 - `src/icons.ts`, `src/time.ts`: small icons, and "in 3h"-style times

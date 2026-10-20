@@ -1,18 +1,30 @@
 // Element types are plug-ins behind one interface (SPEC.md, "Architecture").
 // The home screen, the locus view and the Tasks screen only talk to
-// this interface; adding a type means writing one module and registering it here.
+// this interface; adding a type means writing one module and registering it in all.ts.
+// (This file imports no element type itself, so element modules can use it freely.)
 
-import type { LocusElement } from '../types'
-import { flashcardsType } from './flashcards/type'
+import type { Level, LocusElement } from '../types'
 
+// Task model v2 (SPEC-v2.md, "Task model v2"): what an element asks of you.
+// Screens split active from inactive by `state` without knowing element internals.
 export interface Task {
   locusId: string
   elementId: string
-  label: string // "12 cards due"
-  count?: number
-  dueAt: number // for sorting on the Tasks screen
-  action(): void // e.g. start the review session
+  itemId?: string // the to-do / goal / template inside the element
+  kind: 'review' | 'todo' | 'checkin' | 'goal'
+  state: 'overdue' | 'due' | 'upcoming' | 'waiting' | 'someday' | 'info'
+  label: string // "Gather receipts", "14 cards due"
+  sublabel?: string // "Sunday 10:00", "23 days left"
+  importance: Level
+  difficulty: Level
+  dueAt?: number
+  progress?: number // goals, 0..1
+  open(): void // tap
+  complete?(): Promise<void> // tick, where it makes sense
 }
+
+// Active tasks are the ones that need doing now: they pulse the bubble and fill "Now".
+export const isActive = (t: Task): boolean => t.state === 'overdue' || t.state === 'due'
 
 export interface ElementType<TData = unknown> {
   type: string // "flashcards"
@@ -34,4 +46,3 @@ export interface ElementType<TData = unknown> {
 }
 
 export const registry = new Map<string, ElementType>()
-registry.set(flashcardsType.type, flashcardsType)

@@ -7,17 +7,27 @@ import { h } from './dom'
 export interface SheetApi<T> {
   close(result: T | null): void
   // Swap what the sheet shows, e.g. a form for its delete confirmation.
-  show(...content: Node[]): void
+  show(...content: Content[]): void
 }
 
+// Sheet content; false and null entries (e.g. "only when editing") are left out.
+type Content = Node | false | null
+
+const present = (content: Content[]): Node[] => content.filter((c): c is Node => c != null && c !== false)
+
 export interface SheetSpec {
-  content: Node[]
+  content: Content[]
   onSubmit?(): void // Enter in a text field, or a submit button
   focus?: HTMLElement
 }
 
+// Open sheets, oldest first. A sheet can open another on top (e.g. a picker);
+// Escape closes only the top one.
+const openSheets: object[] = []
+
 export function openSheet<T>(label: string, build: (api: SheetApi<T>) => SheetSpec): Promise<T | null> {
   return new Promise((resolve) => {
+    const self = {}
     let onSubmit: (() => void) | undefined
     const body = h('div', { class: 'sheet-body' })
     const form = h(
@@ -38,10 +48,13 @@ export function openSheet<T>(label: string, build: (api: SheetApi<T>) => SheetSp
     const backdrop = h('div', { class: 'backdrop', onclick: (e: Event) => e.target === backdrop && close(null) }, form)
 
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') close(null)
+      if (e.key === 'Escape' && openSheets[openSheets.length - 1] === self) close(null)
     }
 
     function close(result: T | null) {
+      const i = openSheets.indexOf(self)
+      if (i < 0) return // already closed
+      openSheets.splice(i, 1)
       document.removeEventListener('keydown', onKey)
       backdrop.remove()
       resolve(result)
@@ -49,11 +62,12 @@ export function openSheet<T>(label: string, build: (api: SheetApi<T>) => SheetSp
 
     const api: SheetApi<T> = {
       close,
-      show: (...content) => body.replaceChildren(...content),
+      show: (...content) => body.replaceChildren(...present(content)),
     }
     const spec = build(api)
     onSubmit = spec.onSubmit
-    body.replaceChildren(...spec.content)
+    body.replaceChildren(...present(spec.content))
+    openSheets.push(self)
     document.addEventListener('keydown', onKey)
     document.body.append(backdrop)
     spec.focus?.focus()

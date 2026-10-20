@@ -3,6 +3,7 @@
 
 import '@fontsource-variable/inter'
 import './style.css'
+import './elements/all'
 import { h } from './dom'
 import { registry, type Task } from './elements/registry'
 import { createHome } from './home/view'
@@ -21,7 +22,8 @@ const home = createHome({
   onOpen: (locus) => go(`#/locus/${encodeURIComponent(locus.id)}`),
   onTasks: () => go('#/tasks'),
 })
-const tasksScreen = createTasksScreen()
+// Ticking a task off changes what's due: refresh everything that shows tasks.
+const tasksScreen = createTasksScreen(() => void refreshTasks())
 const screenLayer = h('div', { class: 'screen-layer' })
 root.append(home.el, screenLayer)
 

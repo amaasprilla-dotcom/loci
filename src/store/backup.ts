@@ -6,7 +6,7 @@
 // can't know about deletions: something deleted here comes back if the file
 // still has it.
 
-import type { Card, Locus, LocusElement, ReviewLog, Tag } from '../types'
+import type { Card, Link, Locus, LocusElement, ReviewLog, Tag } from '../types'
 import { db, migrateV1Cards, tagKey } from './db'
 
 // 2: cards carry FSRS state (srs). Version 1 files (SM-2 cards) are converted on import.
@@ -20,13 +20,16 @@ export interface Backup {
   elements: LocusElement[]
   cards: Card[]
   reviews: ReviewLog[]
+  links: Link[]
 }
 
-const TABLES = ['tags', 'loci', 'elements', 'cards', 'reviews'] as const
+const TABLES = ['tags', 'loci', 'elements', 'cards', 'reviews', 'links'] as const
 type TableName = (typeof TABLES)[number]
+// Tables added after the first backups: a file from before them simply has none.
+const ADDED_LATER = new Set<TableName>(['links'])
 
 export async function exportBackup(now = Date.now()): Promise<Backup> {
-  return db.transaction('r', [db.tags, db.loci, db.elements, db.cards, db.reviews], async () => ({
+  return db.transaction('r', [db.tags, db.loci, db.elements, db.cards, db.reviews, db.links], async () => ({
     version: BACKUP_VERSION,
     exportedAt: now,
     tags: await db.tags.toArray(),
@@ -34,6 +37,7 @@ export async function exportBackup(now = Date.now()): Promise<Backup> {
     elements: await db.elements.toArray(),
     cards: await db.cards.toArray(),
     reviews: await db.reviews.toArray(),
+    links: await db.links.toArray(),
   }))
 }
 
@@ -63,6 +67,7 @@ export function parseBackup(text: string): Backup {
     throw new BackupError('This backup was made by a newer version of Loci. Update the app, then try again.')
   }
   for (const table of TABLES) {
+    if (b[table] === undefined && ADDED_LATER.has(table)) b[table] = []
     const rows = b[table]
     if (!Array.isArray(rows)) throw new BackupError(`This backup is damaged: “${table}” is missing.`)
     for (const row of rows) {
@@ -80,6 +85,7 @@ export function parseBackup(text: string): Backup {
     elements: b.elements as LocusElement[],
     cards: migrateV1Cards(b.cards as Card[], b.reviews as ReviewLog[]),
     reviews: b.reviews as ReviewLog[],
+    links: b.links as Link[],
   }
 }
 
@@ -88,7 +94,7 @@ export type ImportSummary = Record<TableName, { added: number; updated: number }
 export async function importBackup(backup: Backup, mode: 'replace' | 'merge'): Promise<ImportSummary> {
   const summary = Object.fromEntries(TABLES.map((t) => [t, { added: 0, updated: 0 }])) as ImportSummary
 
-  await db.transaction('rw', [db.tags, db.loci, db.elements, db.cards, db.reviews], async () => {
+  await db.transaction('rw', [db.tags, db.loci, db.elements, db.cards, db.reviews, db.links], async () => {
     if (mode === 'replace') await Promise.all(TABLES.map((t) => db[t].clear()))
 
     // Tags: names are unique ignoring case. If both sides made "Math" separately,
@@ -115,6 +121,7 @@ export async function importBackup(backup: Backup, mode: 'replace' | 'merge'): P
     await mergeInto('elements', backup.elements, summary)
     await mergeInto('cards', backup.cards, summary)
     await mergeInto('reviews', backup.reviews, summary)
+    await mergeInto('links', backup.links, summary)
   })
   return summary
 }

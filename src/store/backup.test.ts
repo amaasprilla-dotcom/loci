@@ -100,6 +100,7 @@ describe('merge', () => {
       elements: [],
       cards: [],
       reviews: [],
+      links: [],
     }
     await importBackup(backup, 'merge')
     expect(await db.tags.count()).toBe(1)

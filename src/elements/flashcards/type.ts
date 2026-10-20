@@ -9,6 +9,8 @@ import type { ElementType, Task } from '../registry'
 import { renderDeckScreen } from './editor'
 import { renderReviewScreen } from './review'
 import { planSession } from './session'
+import { studyDayStart } from './srs'
+import { DEFAULT_STUDY_DIFFICULTY, DEFAULT_STUDY_IMPORTANCE } from '../../levels'
 import { DEFAULT_FLASHCARDS_DATA, deckStats, type FlashcardsData, isNew, listCards } from './store'
 
 const ICON =
@@ -58,23 +60,32 @@ export const flashcardsType: ElementType<FlashcardsData> = {
   renderScreen: (el) => renderDeckScreen(el),
   renderSession: (el) => renderReviewScreen(el),
 
-  // Only reviews that are due make work: cards never studied don't
-  // (SPEC.md leaves this open and recommends it; see the deck's "new" count).
+  // Only reviews that are due make work: cards never studied don't (see the deck's
+  // "new" count). Overdue means some have waited past a 04:00 rollover: yesterday's
+  // work wasn't done. Ranked by the locus's study importance and difficulty.
+  // (Milestone B4 turns these into one Study task per locus.)
   async getTasks(el: LocusElement<FlashcardsData>, now: number): Promise<Task[]> {
     const due = await db.cards
       .where('[elementId+srs.due]')
       .between([el.id, 0], [el.id, now], true, true)
       .filter((c) => !isNew(c))
-      .count()
-    if (due === 0) return []
+      .toArray()
+    if (due.length === 0) return []
+    const oldest = due[0].srs.due // the index is sorted by due
+    const overdue = oldest < studyDayStart(now)
+    const locus = await db.loci.get(el.locusId)
     return [
       {
         locusId: el.locusId,
         elementId: el.id,
-        label: `${due} ${due === 1 ? 'card' : 'cards'} due`,
-        count: due,
-        dueAt: now,
-        action: () => go(reviewHash(el)),
+        kind: 'review',
+        state: overdue ? 'overdue' : 'due',
+        label: `${due.length} ${due.length === 1 ? 'card' : 'cards'} due`,
+        sublabel: overdue ? `Waiting since ${new Date(oldest).toLocaleDateString(undefined, { weekday: 'long' })}` : undefined,
+        importance: locus?.studyImportance ?? DEFAULT_STUDY_IMPORTANCE,
+        difficulty: locus?.studyDifficulty ?? DEFAULT_STUDY_DIFFICULTY,
+        dueAt: oldest,
+        open: () => go(reviewHash(el)),
       },
     ]
   },

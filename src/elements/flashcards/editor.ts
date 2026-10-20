@@ -10,6 +10,7 @@ import { button, confirmDelete, deleteConfirmation, describeCounts, openSheet, s
 import { db, deleteElement, updateElement } from '../../store/db'
 import { formatIn } from '../../time'
 import type { Card, LocusElement } from '../../types'
+import { linkedItemsSection } from '../../linkedItems'
 import { parseImport } from './import'
 import { planSession } from './session'
 import { addCard, addCards, deckStats, deleteCard, type FlashcardsData, isNew, listCards, updateCard } from './store'
@@ -203,6 +204,7 @@ function openCardSheet(elementId: string, card?: Card): Promise<boolean | null> 
       h('label', { class: 'field-label' }, 'Front', front),
       h('label', { class: 'field-label' }, 'Back', back),
       note,
+      editing && linkedItemsSection({ type: 'card', id: card.id }, () => api.close(saved)),
       sheetActions(
         editing &&
           button(

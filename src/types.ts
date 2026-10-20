@@ -9,6 +9,9 @@ export interface Tag {
   updatedAt: number;
 }
 
+// Importance: Low, Medium, High, Critical. Difficulty: Easy, Medium, Hard, Very hard.
+export type Level = 1 | 2 | 3 | 4;
+
 export interface Locus {
   id: string;
   name: string;
@@ -17,6 +20,9 @@ export interface Locus {
   x: number; // home position, normalized 0..1 of the field
   y: number;
   radius: number; // px
+  // How the locus's study task (its due reviews) ranks among tasks. Default 3 and 2.
+  studyImportance?: Level;
+  studyDifficulty?: Level;
   createdAt: number;
   updatedAt: number;
 }
@@ -71,5 +77,28 @@ export interface ReviewLog {
   at: number;
   grade: Grade;
   prevInterval: number; // days scheduled before this review
+  updatedAt: number;
+}
+
+// Links (SPEC-v2.md, "Links"): every relationship between two items is one row.
+// Feature tables never store another item's id; they point at the link.
+export type ItemType = 'locus' | 'element' | 'todo' | 'goal' | 'note' | 'card' | 'template' | 'exam';
+export interface ItemRef {
+  type: ItemType;
+  id: string;
+}
+
+export type LinkKind =
+  | 'contributes' // to-do → goal
+  | 'after' // to-do or goal → to-do (waits for it)
+  | 'scope' // deck / problem set → exam
+  | 'related'; // any → any, made by the user
+
+export interface Link {
+  id: string;
+  from: ItemRef;
+  to: ItemRef;
+  kind: LinkKind;
+  createdAt: number;
   updatedAt: number;
 }

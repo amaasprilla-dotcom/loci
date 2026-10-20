@@ -1,6 +1,6 @@
 // Reading and writing the cards of a flashcard deck.
 
-import { db } from '../../store/db'
+import { db, deleteLinksFor } from '../../store/db'
 import type { Card } from '../../types'
 import { isNewSrs, newSrs } from './srs'
 
@@ -43,7 +43,8 @@ export async function updateCard(id: string, front: string, back: string): Promi
 }
 
 export async function deleteCard(id: string): Promise<void> {
-  await db.transaction('rw', db.cards, db.reviews, async () => {
+  await db.transaction('rw', [db.cards, db.reviews, db.links], async () => {
+    await deleteLinksFor([{ type: 'card', id }])
     await db.reviews.where('cardId').equals(id).delete()
     await db.cards.delete(id)
   })

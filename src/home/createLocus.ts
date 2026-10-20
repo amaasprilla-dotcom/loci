@@ -4,14 +4,18 @@
 import { PALETTE } from '../colors'
 import { h } from '../dom'
 import { button, deleteConfirmation, describeCounts, openSheet, sheetActions, submitButton } from '../sheet'
+import { DEFAULT_STUDY_DIFFICULTY, DEFAULT_STUDY_IMPORTANCE, levelPicker } from '../levels'
+import { linkedItemsSection } from '../linkedItems'
 import { countLocusContents, tagKey } from '../store/db'
-import type { Locus, Tag } from '../types'
+import type { Level, Locus, Tag } from '../types'
 
 export interface LocusDraft {
   name: string
   color: string
   tagIds: string[] // existing tags
   newTags: string[] // names of tags to create on save
+  studyImportance: Level
+  studyDifficulty: Level
 }
 
 export type LocusSheetResult = { action: 'save'; draft: LocusDraft } | { action: 'delete' }
@@ -27,6 +31,8 @@ export function openLocusSheet(options: { locus?: Locus; tags: Tag[]; suggestedC
     let color = locus?.color ?? options.suggestedColor
     const selected = new Set(locus?.tagIds ?? [])
     const newTags: string[] = []
+    const importance = levelPicker('importance', locus?.studyImportance ?? DEFAULT_STUDY_IMPORTANCE)
+    const difficulty = levelPicker('difficulty', locus?.studyDifficulty ?? DEFAULT_STUDY_DIFFICULTY)
 
     const nameInput = h('input', {
       class: 'input',
@@ -134,6 +140,15 @@ export function openLocusSheet(options: { locus?: Locus; tags: Tag[]; suggestedC
       h('label', { class: 'field-label' }, 'Name', nameInput),
       h('div', { class: 'field-label' }, 'Color', h('div', { class: 'swatches' }, swatches, custom)),
       h('div', { class: 'field-label' }, 'Tags', chips, tagInput),
+      h(
+        'div',
+        { class: 'field-label' },
+        'Study priority',
+        h('span', { class: 'field-hint' }, 'How reviews due here rank on the Tasks screen.'),
+        h('div', { class: 'level-row' }, h('span', { class: 'level-name' }, 'Importance'), importance.el),
+        h('div', { class: 'level-row' }, h('span', { class: 'level-name' }, 'Difficulty'), difficulty.el),
+      ),
+      editing && linkedItemsSection({ type: 'locus', id: locus.id }, () => api.close(null)),
       sheetActions(
         editing && button('Delete', () => void askDelete(), 'danger-text'),
         button('Cancel', () => api.close(null)),
@@ -167,7 +182,7 @@ export function openLocusSheet(options: { locus?: Locus; tags: Tag[]; suggestedC
         const name = nameInput.value.trim()
         if (!name) return
         addTag(tagInput.value) // a tag typed but not yet added with Enter still counts
-        api.close({ action: 'save', draft: { name, color, tagIds: [...selected], newTags: [...newTags] } })
+        api.close({ action: 'save', draft: { name, color, tagIds: [...selected], newTags: [...newTags], studyImportance: importance.value(), studyDifficulty: difficulty.value() } })
       },
       // Editing: don't pop the phone keyboard over the sheet.
       focus: editing ? undefined : nameInput,

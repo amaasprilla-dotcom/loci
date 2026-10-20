@@ -2,7 +2,7 @@
 
 import Dexie, { type EntityTable, type Transaction } from 'dexie'
 import { migrateCard } from '../elements/flashcards/srs'
-import type { Card, Locus, LocusElement, ReviewLog, Tag } from '../types'
+import type { Card, ItemRef, Level, Link, Locus, LocusElement, ReviewLog, Tag } from '../types'
 
 export const db = new Dexie('loci') as Dexie & {
   tags: EntityTable<Tag, 'id'>
@@ -10,6 +10,7 @@ export const db = new Dexie('loci') as Dexie & {
   elements: EntityTable<LocusElement, 'id'>
   cards: EntityTable<Card, 'id'>
   reviews: EntityTable<ReviewLog, 'id'>
+  links: EntityTable<Link, 'id'>
 }
 
 db.version(1).stores({
@@ -26,6 +27,11 @@ db.version(2)
     cards: 'id, elementId, [elementId+srs.due]',
   })
   .upgrade(migrateCardsToFsrs)
+
+// v2: links between any two items, findable from either end.
+db.version(3).stores({
+  links: 'id, [from.type+from.id], [to.type+to.id], kind',
+})
 
 // Runs once, when a v1 database is first opened by v2: gives every card its
 // FSRS state, replaying its review history where there is one.
@@ -62,6 +68,8 @@ export async function createLocus(input: {
   name: string
   color: string
   tagIds?: string[]
+  studyImportance?: Level
+  studyDifficulty?: Level
   x: number
   y: number
 }): Promise<Locus> {
@@ -74,6 +82,8 @@ export async function createLocus(input: {
     x: input.x,
     y: input.y,
     radius: DEFAULT_RADIUS,
+    ...(input.studyImportance && { studyImportance: input.studyImportance }),
+    ...(input.studyDifficulty && { studyDifficulty: input.studyDifficulty }),
     createdAt: now,
     updatedAt: now,
   }
@@ -86,7 +96,7 @@ export async function moveLocus(id: string, x: number, y: number): Promise<void>
   await db.loci.update(id, { x, y, updatedAt: Date.now() })
 }
 
-export async function updateLocus(id: string, patch: Pick<Locus, 'name' | 'color' | 'tagIds'>): Promise<void> {
+export async function updateLocus(id: string, patch: Pick<Locus, 'name' | 'color' | 'tagIds' | 'studyImportance' | 'studyDifficulty'>): Promise<void> {
   await db.transaction('rw', db.loci, db.tags, async () => {
     await db.loci.update(id, { ...patch, name: patch.name.trim(), updatedAt: Date.now() })
     await pruneUnusedTags()
@@ -95,9 +105,10 @@ export async function updateLocus(id: string, patch: Pick<Locus, 'name' | 'color
 
 // Deletes the locus and everything in it: its elements, their cards and the cards' review history.
 export async function deleteLocus(id: string): Promise<void> {
-  await db.transaction('rw', [db.loci, db.elements, db.cards, db.reviews, db.tags], async () => {
+  await db.transaction('rw', [db.loci, db.elements, db.cards, db.reviews, db.tags, db.links], async () => {
     const elementIds = await db.elements.where('locusId').equals(id).primaryKeys()
     const cardIds = await db.cards.where('elementId').anyOf(elementIds).primaryKeys()
+    await deleteLinksFor([{ type: 'locus', id }, ...refs('element', elementIds), ...refs('card', cardIds)])
     await db.reviews.where('cardId').anyOf(cardIds).delete()
     await db.cards.bulkDelete(cardIds)
     await db.elements.bulkDelete(elementIds)
@@ -153,12 +164,26 @@ export async function reorderElements(ids: string[]): Promise<void> {
 
 // Deletes the element with its cards and their review history.
 export async function deleteElement(id: string): Promise<void> {
-  await db.transaction('rw', [db.elements, db.cards, db.reviews], async () => {
+  await db.transaction('rw', [db.elements, db.cards, db.reviews, db.links], async () => {
     const cardIds = await db.cards.where('elementId').equals(id).primaryKeys()
+    await deleteLinksFor([{ type: 'element', id }, ...refs('card', cardIds)])
     await db.reviews.where('cardId').anyOf(cardIds).delete()
     await db.cards.bulkDelete(cardIds)
     await db.elements.delete(id)
   })
+}
+
+// ---------- Links ----------
+
+const refs = (type: ItemRef['type'], ids: string[]): ItemRef[] => ids.map((id) => ({ type, id }))
+
+// Removes every link that starts or ends at one of these items. Call it inside the
+// transaction that deletes them (with db.links in scope), so no link points nowhere.
+export async function deleteLinksFor(items: ItemRef[]): Promise<void> {
+  for (const item of items) {
+    await db.links.where('[from.type+from.id]').equals([item.type, item.id]).delete()
+    await db.links.where('[to.type+to.id]').equals([item.type, item.id]).delete()
+  }
 }
 
 // ---------- Tags ----------

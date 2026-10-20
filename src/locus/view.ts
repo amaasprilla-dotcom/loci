@@ -6,6 +6,7 @@ import { h } from '../dom'
 import { type ElementType, registry } from '../elements/registry'
 import { iconNode } from '../elements/flashcards/type'
 import { backIcon } from '../icons'
+import { linkedItemsSection } from '../linkedItems'
 import { elementHash, go } from '../router'
 import { button, deleteConfirmation, describeCounts, openSheet, sheetActions, submitButton } from '../sheet'
 import { createElement, db, deleteElement, listElements, reorderElements, updateElement } from '../store/db'
@@ -146,6 +147,7 @@ function openTileMenu(el: LocusElement): Promise<boolean | null> {
     const form = [
       h('h2', {}, 'Rename'),
       h('label', { class: 'field-label' }, 'Title', titleInput),
+      linkedItemsSection({ type: 'element', id: el.id }, () => api.close(null)),
       sheetActions(
         button('Delete', () => void askDelete(), 'danger-text'),
         button('Cancel', () => api.close(null)),

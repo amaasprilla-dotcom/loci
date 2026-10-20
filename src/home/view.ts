@@ -5,7 +5,7 @@
 
 import { PALETTE } from '../colors'
 import { h } from '../dom'
-import type { Task } from '../elements/registry'
+import { isActive, type Task } from '../elements/registry'
 import { moreIcon, tasksIcon } from '../icons'
 import { openBackupSheet } from './backupSheet'
 import { createLocus, deleteLocus, findOrCreateTag, listLoci, listTags, moveLocus, updateLocus } from '../store/db'
@@ -18,7 +18,7 @@ export interface Home {
   el: HTMLElement
   field: Field
   refresh(): Promise<void>
-  // The current tasks: their loci pulse, and the badge counts them.
+  // The current tasks: loci with active ones pulse, and the badge counts the active ones.
   setTasks(tasks: Task[]): void
 }
 
@@ -59,8 +59,9 @@ export function createHome(options: { onOpen(locus: Locus): void; onTasks(): voi
     const tagId = filter.selected()
     const outside = new Set(tagId ? loci.filter((l) => !l.tagIds.includes(tagId)).map((l) => l.id) : [])
     field.setDimmed(outside)
-    field.setActive(new Set(tasks.map((t) => t.locusId)))
-    const count = tasks.filter((t) => !outside.has(t.locusId)).length
+    const active = tasks.filter(isActive)
+    field.setActive(new Set(active.map((t) => t.locusId)))
+    const count = active.filter((t) => !outside.has(t.locusId)).length
     badge.hidden = count === 0
     badge.textContent = count > 99 ? '99+' : String(count)
     tasksButton.setAttribute('aria-label', count === 0 ? 'Tasks, nothing due' : `Tasks, ${count} due`)
@@ -92,7 +93,14 @@ export function createHome(options: { onOpen(locus: Locus): void; onTasks(): voi
     if (result?.action !== 'save') return
     const { draft } = result
     const { width, height } = field.el.getBoundingClientRect()
-    await createLocus({ name: draft.name, color: draft.color, tagIds: await resolveTagIds(draft), ...spiralPoint(count, width, height) })
+    await createLocus({
+      name: draft.name,
+      color: draft.color,
+      tagIds: await resolveTagIds(draft),
+      studyImportance: draft.studyImportance,
+      studyDifficulty: draft.studyDifficulty,
+      ...spiralPoint(count, width, height),
+    })
     await refresh()
   }
 
@@ -103,7 +111,13 @@ export function createHome(options: { onOpen(locus: Locus): void; onTasks(): voi
       await deleteLocus(locus.id)
     } else {
       const { draft } = result
-      await updateLocus(locus.id, { name: draft.name, color: draft.color, tagIds: await resolveTagIds(draft) })
+      await updateLocus(locus.id, {
+        name: draft.name,
+        color: draft.color,
+        tagIds: await resolveTagIds(draft),
+        studyImportance: draft.studyImportance,
+        studyDifficulty: draft.studyDifficulty,
+      })
     }
     await refresh()
   }

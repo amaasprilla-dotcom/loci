@@ -1,4 +1,5 @@
 import 'fake-indexeddb/auto' // an in-memory IndexedDB, so the real Dexie code runs in tests
+import '../all'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createElement, createLocus, db } from '../../store/db'
 import type { Grade, LocusElement } from '../../types'
@@ -39,7 +40,7 @@ describe('due count at the 04:00 boundary', () => {
     expect(await flashcardsType.getTasks(deck, due - 1)).toEqual([])
     const tasks = await flashcardsType.getTasks(deck, due)
     expect(tasks).toHaveLength(1)
-    expect(tasks[0]).toMatchObject({ count: 1, label: '1 card due', elementId: deck.id })
+    expect(tasks[0]).toMatchObject({ kind: 'review', state: 'due', label: '1 card due', elementId: deck.id, dueAt: due })
   })
 
   it('never-studied cards are not tasks', async () => {
