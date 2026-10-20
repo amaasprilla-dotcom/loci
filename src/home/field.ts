@@ -40,6 +40,8 @@ export interface Field {
   bubble(id: string): HTMLElement | undefined
   // Greys out these bubbles (the tag filter). They keep their place and motion.
   setDimmed(ids: Set<string>): void
+  // Bubbles whose locus has work due pulse.
+  setActive(ids: Set<string>): void
   // Freeze the bubbles in place, e.g. while another screen covers the field.
   pause(): void
   resume(): void
@@ -273,6 +275,9 @@ export function createField(options: FieldOptions): Field {
     bubble: (id) => nodes.get(id),
     setDimmed(ids) {
       for (const [id, node] of nodes) node.classList.toggle('dimmed', ids.has(id))
+    },
+    setActive(ids) {
+      for (const [id, node] of nodes) node.classList.toggle('active', ids.has(id))
     },
     pause() {
       paused = true

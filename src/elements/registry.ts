@@ -1,5 +1,5 @@
 // Element types are plug-ins behind one interface (SPEC.md, "Architecture").
-// The home screen, the locus view and (later) the Tasks screen only talk to
+// The home screen, the locus view and the Tasks screen only talk to
 // this interface; adding a type means writing one module and registering it here.
 
 import type { LocusElement } from '../types'
@@ -27,6 +27,8 @@ export interface ElementType<TData = unknown> {
   // (The spec's open(el) is just navigating there; see elementHash in router.ts.)
   renderScreen(el: LocusElement<TData>): Promise<HTMLElement>
   getTasks(el: LocusElement<TData>, now: number): Promise<Task[]>
+  // When work next falls due (after `now`), for "Nothing due. Next: … in 3h."
+  nextDueAt?(el: LocusElement<TData>, now: number): Promise<number | null>
   // A study session, at #/review/:elementId, for types that have one.
   renderSession?(el: LocusElement<TData>): Promise<HTMLElement>
 }

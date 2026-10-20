@@ -15,6 +15,11 @@ export const backIcon = () => icon(`<path d="M15 5l-7 7 7 7" ${stroke(2.4)}/>`)
 
 export const closeIcon = () => icon(`<path d="M6 6l12 12M18 6L6 18" ${stroke(2.2)}/>`)
 
+// A checklist: the Tasks screen.
+export const tasksIcon = () => icon(`<path d="M4 6.5l1.6 1.6L8.5 5M4 12.5l1.6 1.6 2.9-3.1M4 18.5l1.6 1.6 2.9-3.1M12 7h8M12 13h8M12 19h8" ${STROKE}/>`)
+
+export const chevronIcon = () => icon(`<path d="M9 5l7 7-7 7" ${STROKE}/>`)
+
 // Three sliders: settings.
 export const settingsIcon = () =>
   icon(

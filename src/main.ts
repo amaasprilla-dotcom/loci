@@ -4,21 +4,37 @@
 import '@fontsource-variable/inter'
 import './style.css'
 import { h } from './dom'
-import { registry } from './elements/registry'
+import { registry, type Task } from './elements/registry'
 import { createHome } from './home/view'
 import { renderLocusView } from './locus/view'
 import { back, currentRoute, go, parentOf, type Route } from './router'
 import { db, getElement, requestPersistentStorage } from './store/db'
+import { allTasks } from './tasks/tasks'
+import { createTasksScreen } from './tasks/view'
 import { coverFor, fadeIn, fadeOut, growFrom, motionAllowed, shrinkInto } from './transition'
 
 const DEFAULT_THEME_COLOR = '#ffffff'
+const REFRESH_MS = 60_000 // cards fall due as time passes
 
 const root = document.getElementById('app')!
-const home = createHome({ onOpen: (locus) => go(`#/locus/${encodeURIComponent(locus.id)}`) })
+const home = createHome({
+  onOpen: (locus) => go(`#/locus/${encodeURIComponent(locus.id)}`),
+  onTasks: () => go('#/tasks'),
+})
+const tasksScreen = createTasksScreen()
 const screenLayer = h('div', { class: 'screen-layer' })
 root.append(home.el, screenLayer)
 
 let shown: Route | null = null
+
+// Tasks are worked out fresh each time (SPEC.md: "derived state, never stored")
+// and shared: the same list drives the pulsing bubbles, the badge and the Tasks screen.
+let tasks: Task[] = []
+async function refreshTasks(): Promise<void> {
+  tasks = await allTasks(Date.now())
+  home.setTasks(tasks)
+  if (shown?.name === 'tasks') await tasksScreen.update(tasks)
+}
 
 function setHomeVisible(visible: boolean) {
   home.el.style.visibility = visible ? '' : 'hidden'
@@ -55,6 +71,16 @@ async function show(route: Route): Promise<void> {
     }
     setThemeColor(DEFAULT_THEME_COLOR)
     setHomeVisible(true)
+    return
+  }
+
+  if (route.name === 'tasks') {
+    shown = route
+    await refreshTasks()
+    setHomeVisible(false)
+    setThemeColor(DEFAULT_THEME_COLOR)
+    screenLayer.replaceChildren(tasksScreen.el)
+    if (motionAllowed()) await fadeIn(tasksScreen.el)
     return
   }
 
@@ -117,10 +143,23 @@ async function show(route: Route): Promise<void> {
 }
 
 // Screens change one at a time, so a quick double back can't tangle two transitions.
+// Tasks are refreshed after every change of screen, which covers returning home
+// and finishing a review.
 let queue = Promise.resolve()
 function showCurrent() {
-  queue = queue.then(() => show(currentRoute())).catch((err) => console.error(err))
+  queue = queue
+    .then(() => show(currentRoute()))
+    .then(refreshTasks)
+    .catch((err) => console.error(err))
 }
+
+// While the app is open, refresh every minute; when it comes back to the front, at once.
+setInterval(() => {
+  if (document.visibilityState === 'visible') void refreshTasks()
+}, REFRESH_MS)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') void refreshTasks()
+})
 
 window.addEventListener('hashchange', showCurrent)
 

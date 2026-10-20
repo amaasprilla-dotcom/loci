@@ -78,6 +78,16 @@ export const flashcardsType: ElementType<FlashcardsData> = {
       },
     ]
   },
+
+  // The [elementId+due] index is sorted by due, so the first match is the soonest.
+  async nextDueAt(el, now) {
+    const next = await db.cards
+      .where('[elementId+due]')
+      .between([el.id, now], [el.id, Infinity], false, true)
+      .filter((c) => !isNew(c))
+      .first()
+    return next?.due ?? null
+  },
 }
 
 export function iconNode(svg: string): HTMLElement {

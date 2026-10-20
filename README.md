@@ -47,6 +47,8 @@ Data stays in each visitor's own browser, so a deployed copy starts empty for ev
 - `src/elements/flashcards/`: the Flashcards type: its tile (`type.ts`), deck screen (`editor.ts`),
   card storage (`store.ts`), bulk import (`import.ts`), the scheduler (`srs.ts`), which cards a
   session shows (`session.ts`) and the review screen (`review.ts`)
+- `src/tasks/`: everything due across all loci (`tasks.ts`) and the Tasks screen (`view.ts`); the
+  same list makes bubbles pulse and sets the badge on home
 - `src/sheet.ts`: bottom sheets, and the delete confirmation
 - `src/press.ts`: long-press for list rows
 - `src/icons.ts`, `src/time.ts`: small icons, and "in 3h"-style times
