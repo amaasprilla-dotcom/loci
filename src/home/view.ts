@@ -27,7 +27,7 @@ export function createHome(options: { onOpen(locus: Locus): void; onTasks(): voi
     onMove: (locus, x, y) => void moveLocus(locus.id, x, y),
     onLongPress: (locus) => void onEdit(locus),
   })
-  const empty = h('p', { class: 'empty' }, 'No loci yet. Tap + to create your first one.')
+  const empty = h('p', { class: 'home-empty' }, 'No loci yet. Tap + to create your first one.')
   const filter = createTagFilter(() => applyFilter())
 
   const badge = h('span', { class: 'badge', hidden: true })

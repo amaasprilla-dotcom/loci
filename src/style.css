@@ -292,7 +292,7 @@ h2 {
   overflow: hidden;
 }
 
-.empty {
+.home-empty {
   position: absolute;
   inset: 50% 24px auto;
   transform: translateY(-50%);
