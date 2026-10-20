@@ -37,7 +37,8 @@ export interface ElementType<TData = unknown> {
   renderCard(el: LocusElement<TData>, now: number): Promise<HTMLElement>
   // The element's own full screen, at #/locus/:locusId/el/:elementId.
   // (The spec's open(el) is just navigating there; see elementHash in router.ts.)
-  renderScreen(el: LocusElement<TData>): Promise<HTMLElement>
+  // `sub` is the rest of the address, for screens inside the element (e.g. ['note', id]).
+  renderScreen(el: LocusElement<TData>, sub: string[]): Promise<HTMLElement>
   getTasks(el: LocusElement<TData>, now: number): Promise<Task[]>
   // When work next falls due (after `now`), for "Nothing due. Next: … in 3h."
   nextDueAt?(el: LocusElement<TData>, now: number): Promise<number | null>

@@ -9,7 +9,7 @@ import { backIcon } from '../icons'
 import { linkedItemsSection } from '../linkedItems'
 import { elementHash, go } from '../router'
 import { button, deleteConfirmation, describeCounts, openSheet, sheetActions, submitButton } from '../sheet'
-import { createElement, db, deleteElement, listElements, reorderElements, updateElement } from '../store/db'
+import { countElementContents, createElement, db, deleteElement, listElements, reorderElements, updateElement } from '../store/db'
 import type { Locus, LocusElement } from '../types'
 import { makeSortable } from './reorder'
 
@@ -22,7 +22,7 @@ export async function renderLocusView(locus: Locus, options: { onBack(): void })
     elements = await listElements(locus.id)
     const now = Date.now()
     if (elements.length === 0) {
-      grid.replaceChildren(h('p', { class: 'locus-empty' }, 'Nothing in this locus yet. Tap + to add a flashcard deck.'))
+      grid.replaceChildren(h('p', { class: 'locus-empty' }, 'Nothing in this locus yet. Tap + to add a flashcard deck or a notebook.'))
       return
     }
     grid.replaceChildren(...(await Promise.all(elements.map((el) => tile(el, now)))))
@@ -101,7 +101,7 @@ function openAddSheet(): Promise<{ type: ElementType; title: string } | null> {
 
     function nameStep(type: ElementType) {
       chosen = type
-      titleInput.placeholder = type.type === 'flashcards' ? 'e.g. Spanish verbs' : ''
+      titleInput.placeholder = ({ flashcards: 'e.g. Spanish verbs', notes: 'e.g. Lecture notes' } as Record<string, string>)[type.type] ?? ''
       sync()
       api.show(
         h('h2', {}, `New ${type.noun}`),
@@ -156,11 +156,15 @@ function openTileMenu(el: LocusElement): Promise<boolean | null> {
     ]
 
     async function askDelete() {
-      const cards = await db.cards.where('elementId').equals(el.id).count()
+      const { cards, notes } = await countElementContents([el.id])
+      const contents = describeCounts([
+        [cards, 'card', 'cards'],
+        [notes, 'note', 'notes'],
+      ])
       api.show(
         ...deleteConfirmation(
           `Delete “${el.title}”?`,
-          cards > 0 ? `This also deletes its ${describeCounts([[cards, 'card', 'cards']])}.` : '',
+          contents ? `This also deletes its ${contents}.` : '',
           () => api.show(...form),
           async () => {
             await deleteElement(el.id)

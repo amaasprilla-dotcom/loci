@@ -104,6 +104,7 @@ describe('merge', () => {
       attachments: [],
       blobs: [],
       settings: [],
+      notes: [],
     }
     await importBackup(backup, 'merge')
     expect(await db.tags.count()).toBe(1)

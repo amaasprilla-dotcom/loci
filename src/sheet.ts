@@ -19,6 +19,9 @@ export interface SheetSpec {
   content: Content[]
   onSubmit?(): void // Enter in a text field, or a submit button
   focus?: HTMLElement
+  // 'top': the sheet drops from the top, e.g. when an on-screen keyboard (MathLive's)
+  // would otherwise cover it.
+  placement?: 'top'
 }
 
 // Open sheets, oldest first. A sheet can open another on top (e.g. a picker);
@@ -69,6 +72,7 @@ export function openSheet<T>(label: string, build: (api: SheetApi<T>) => SheetSp
     }
     const spec = build(api)
     onSubmit = spec.onSubmit
+    if (spec.placement === 'top') backdrop.classList.add('top')
     body.replaceChildren(...present(spec.content))
     openSheets.push(self)
     document.addEventListener('keydown', onKey)

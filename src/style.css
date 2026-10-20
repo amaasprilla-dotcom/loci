@@ -1639,3 +1639,285 @@ details.task-section > summary {
   overflow-wrap: anywhere;
   font-size: 0.85rem;
 }
+
+/* ---------- Notes ---------- */
+
+.note-row .card-back {
+  max-width: 60ch;
+}
+
+.pin-mark {
+  font-size: 0.8em;
+}
+
+.header-title-small {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 1.1rem;
+  font-weight: 650;
+}
+
+.save-status {
+  font-size: 0.75rem;
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+.pin-toggle {
+  font-size: 1.1rem;
+  opacity: 0.45;
+}
+
+.pin-toggle[aria-pressed="true"] {
+  opacity: 1;
+}
+
+/* Formatting tools: one row under the header, sideways scroll on small screens. */
+.note-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  gap: 2px;
+  padding: 6px 12px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  scrollbar-width: none;
+}
+
+.note-toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+.tool {
+  flex: none;
+  min-width: 38px;
+  height: 36px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.tool:hover {
+  background: var(--surface-muted);
+}
+
+.tool[aria-pressed="true"] {
+  background: var(--text);
+  color: #fff;
+}
+
+.tool[aria-label="Italic"] {
+  font-style: italic;
+  font-family: Georgia, serif;
+}
+
+.note-main {
+  max-width: 760px;
+}
+
+.note-title {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.note-title:focus {
+  outline: none;
+}
+
+.note-content {
+  min-height: 40vh;
+  outline: none;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.note-content > * + * {
+  margin-top: 0.6em;
+}
+
+.note-content p {
+  margin: 0;
+}
+
+.note-content h1,
+.note-content h2,
+.note-content h3 {
+  margin: 1em 0 0.3em;
+}
+
+.note-content h1 {
+  font-size: 1.45rem;
+}
+
+.note-content h2 {
+  font-size: 1.2rem;
+}
+
+.note-content h3 {
+  font-size: 1.05rem;
+}
+
+.note-content ul,
+.note-content ol {
+  margin: 0;
+  padding-left: 1.4em;
+}
+
+.note-content blockquote {
+  margin: 0;
+  padding-left: 14px;
+  border-left: 3px solid var(--c);
+  color: var(--muted);
+}
+
+.note-content code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--surface-muted);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.note-content pre {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--surface-muted);
+  overflow-x: auto;
+}
+
+.note-content pre code {
+  padding: 0;
+  background: none;
+}
+
+.note-content a {
+  color: var(--blue-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Checklists */
+.note-content ul[data-type="taskList"] {
+  padding-left: 0;
+  list-style: none;
+}
+
+.note-content ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.note-content ul[data-type="taskList"] li > label {
+  flex: none;
+  margin-top: 0.2em;
+}
+
+.note-content ul[data-type="taskList"] li > div {
+  flex: 1;
+}
+
+.note-content ul[data-type="taskList"] li[data-checked="true"] > div {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.note-content input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--text);
+}
+
+/* Math: KaTeX, tap to edit */
+.tiptap-mathematics-render--editable {
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.tiptap-mathematics-render--editable:hover {
+  background: var(--blue-soft);
+}
+
+.note-content div[data-type="block-math"] {
+  margin: 0.8em 0;
+  padding: 2px 0;
+  text-align: center;
+  overflow-x: auto;
+  overflow-y: hidden; /* KaTeX can stick out a pixel; no vertical scrollbar for that */
+}
+
+.tool svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+  margin: 0 auto;
+}
+
+.note-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+}
+
+.note-content .ProseMirror-selectednode.note-image,
+.note-content img.ProseMirror-selectednode {
+  outline: 3px solid var(--blue);
+}
+
+/* Placeholder in an empty note */
+.note-content p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.note-extras {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 32px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+/* A sheet that drops from the top (MathLive's keyboard covers the bottom). */
+.backdrop.top {
+  align-items: flex-start;
+}
+
+.backdrop.top .sheet {
+  border-radius: 0 0 20px 20px;
+  padding-top: calc(16px + env(safe-area-inset-top));
+  animation: slide-down 0.2s ease-out;
+}
+
+@keyframes slide-down {
+  from { transform: translateY(-100%); }
+}
+
+.math-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 1.3rem;
+}

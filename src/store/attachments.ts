@@ -4,7 +4,7 @@
 // nothing is fetched from other sites (the browser blocks that without a server).
 
 import type { Attachment, AttachmentKind, AttachmentOwner } from '../types'
-import { db } from './db'
+import { db, deleteAttachmentsOf, deleteBlobIfUnused } from './db'
 
 export const LARGE_FILE_BYTES = 25 * 1024 * 1024 // above this, ask before saving
 export const MAX_IMAGE_EDGE = 2048
@@ -62,7 +62,9 @@ export async function addLinkAttachment(owner: Owner, url: string, title = ''): 
   return attachment
 }
 
-export async function addFileAttachment(owner: Owner, file: File): Promise<Attachment> {
+// `inline`: the file is shown inside the owner's content (an image in a note's text),
+// so the attachment strip leaves it out.
+export async function addFileAttachment(owner: Owner, file: File, { inline = false } = {}): Promise<Attachment> {
   const mime = file.type || 'application/octet-stream'
   const data = kindOf(mime) === 'image' ? await downscaleImage(file) : file
   const now = Date.now()
@@ -76,6 +78,7 @@ export async function addFileAttachment(owner: Owner, file: File): Promise<Attac
     blobId,
     mime: data.type || mime,
     size: data.size,
+    ...(inline && { inline: true }),
     createdAt: now,
     updatedAt: now,
   }
@@ -94,21 +97,14 @@ export async function deleteAttachment(id: string): Promise<void> {
   await db.transaction('rw', db.attachments, db.blobs, async () => {
     const a = await db.attachments.get(id)
     await db.attachments.delete(id)
-    if (a?.blobId) await deleteBlobIfOrphaned(a.blobId)
+    if (a?.blobId) await deleteBlobIfUnused(a.blobId)
   })
 }
 
 // When a note, to-do or goal is deleted: its attachments, and their files if
 // nothing else uses them. Call inside a transaction that includes both tables.
 export async function deleteAttachmentsFor(owner: Owner): Promise<void> {
-  const rows = await listAttachments(owner)
-  await db.attachments.bulkDelete(rows.map((a) => a.id))
-  for (const a of rows) if (a.blobId) await deleteBlobIfOrphaned(a.blobId)
-}
-
-async function deleteBlobIfOrphaned(blobId: string) {
-  const stillUsed = await db.attachments.filter((a) => a.blobId === blobId).count()
-  if (stillUsed === 0) await db.blobs.delete(blobId)
+  await deleteAttachmentsOf([owner])
 }
 
 export async function getBlob(blobId: string): Promise<Blob | null> {

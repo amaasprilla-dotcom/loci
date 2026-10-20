@@ -3,7 +3,7 @@
 // to-do, goal…) adds its case here.
 
 import { registry } from './elements/registry'
-import { elementHash, go } from './router'
+import { elementHash, go, subHash } from './router'
 import { db } from './store/db'
 import type { ItemRef, Locus } from './types'
 
@@ -51,6 +51,20 @@ export async function describeItem(ref: ItemRef): Promise<ItemInfo | null> {
         open: () => go(elementHash(deck)),
       }
     }
+    case 'note': {
+      const note = await db.notes.get(ref.id)
+      const book = note && (await db.elements.get(note.elementId))
+      if (!note || !book) return null
+      const locus = await db.loci.get(book.locusId)
+      return {
+        ref,
+        title: note.title.trim() || 'Untitled',
+        kind: 'Note',
+        context: [locus?.name, book.title].filter(Boolean).join(' › '),
+        color: locus?.color ?? NO_COLOR,
+        open: () => go(subHash(book, 'note', note.id)),
+      }
+    }
     default:
       return null // a type from a later milestone
   }
@@ -68,7 +82,7 @@ function locusInfo(locus: Locus): ItemInfo {
 
 const MAX_RESULTS = 40
 
-// Items whose title (or card back) contains the query. With no query: loci and
+// Items whose title (or a card's back, or a note's text) contains the query. With no query: loci and
 // elements only, since a list of every card isn't useful.
 export async function searchItems(query: string, exclude: ItemRef[]): Promise<ItemInfo[]> {
   const q = query.trim().toLowerCase()
@@ -105,6 +119,20 @@ export async function searchItems(query: string, exclude: ItemRef[]): Promise<It
         context: [locus?.name, deck.title].filter(Boolean).join(' › '),
         color: locus?.color ?? NO_COLOR,
         open: () => go(elementHash(deck)),
+      })
+    }
+    const notes = await db.notes.filter((n) => n.title.toLowerCase().includes(q) || n.plainText.toLowerCase().includes(q)).limit(MAX_RESULTS).toArray()
+    for (const note of notes) {
+      const book = elementById.get(note.elementId)
+      if (!book) continue
+      const locus = locusById.get(book.locusId)
+      results.push({
+        ref: { type: 'note', id: note.id },
+        title: note.title.trim() || 'Untitled',
+        kind: 'Note',
+        context: [locus?.name, book.title].filter(Boolean).join(' › '),
+        color: locus?.color ?? NO_COLOR,
+        open: () => go(subHash(book, 'note', note.id)),
       })
     }
   }

@@ -120,6 +120,7 @@ export interface Attachment {
   blobId?: string; // files
   mime?: string;
   size?: number; // bytes
+  inline?: boolean; // shown inside the content (an image in a note), not in the strip
   createdAt: number;
   updatedAt: number;
 }
@@ -136,5 +137,18 @@ export interface StoredBlob {
 export interface Setting {
   key: string;
   value: unknown;
+  updatedAt: number;
+}
+
+// A note in a Notes element (a notebook). Content is the editor's ProseMirror JSON;
+// plainText is derived from it on every save, for search and the list's first line.
+export interface Note {
+  id: string;
+  elementId: string;
+  title: string;
+  content: unknown;
+  plainText: string;
+  pinned: 0 | 1; // a number, since IndexedDB can't index booleans
+  createdAt: number;
   updatedAt: number;
 }

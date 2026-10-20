@@ -2,7 +2,7 @@
 
 import Dexie, { type EntityTable, type Transaction } from 'dexie'
 import { migrateCard } from '../elements/flashcards/srs'
-import type { Attachment, Card, ItemRef, Level, Link, Locus, LocusElement, ReviewLog, Setting, StoredBlob, Tag } from '../types'
+import type { Attachment, AttachmentOwner, Card, ItemRef, Level, Link, Locus, LocusElement, Note, ReviewLog, Setting, StoredBlob, Tag } from '../types'
 
 export const db = new Dexie('loci') as Dexie & {
   tags: EntityTable<Tag, 'id'>
@@ -14,6 +14,7 @@ export const db = new Dexie('loci') as Dexie & {
   attachments: EntityTable<Attachment, 'id'>
   blobs: EntityTable<StoredBlob, 'id'>
   settings: EntityTable<Setting, 'key'>
+  notes: EntityTable<Note, 'id'>
 }
 
 db.version(1).stores({
@@ -41,6 +42,11 @@ db.version(4).stores({
   attachments: 'id, [ownerType+ownerId]',
   blobs: 'id',
   settings: 'key',
+})
+
+// v2: notes (Notes element), newest first by updatedAt, pinned ones on top.
+db.version(5).stores({
+  notes: 'id, elementId, updatedAt, pinned',
 })
 
 // Runs once, when a v1 database is first opened by v2: gives every card its
@@ -117,23 +123,60 @@ export async function updateLocus(id: string, patch: Pick<Locus, 'name' | 'color
 
 // Deletes the locus and everything in it: its elements, their cards and the cards' review history.
 export async function deleteLocus(id: string): Promise<void> {
-  await db.transaction('rw', [db.loci, db.elements, db.cards, db.reviews, db.tags, db.links], async () => {
+  await db.transaction('rw', CONTENT_TABLES(), async () => {
     const elementIds = await db.elements.where('locusId').equals(id).primaryKeys()
-    const cardIds = await db.cards.where('elementId').anyOf(elementIds).primaryKeys()
-    await deleteLinksFor([{ type: 'locus', id }, ...refs('element', elementIds), ...refs('card', cardIds)])
-    await db.reviews.where('cardId').anyOf(cardIds).delete()
-    await db.cards.bulkDelete(cardIds)
-    await db.elements.bulkDelete(elementIds)
+    await deleteElementsAndContents(elementIds)
+    await deleteLinksFor([{ type: 'locus', id }])
     await db.loci.delete(id)
     await pruneUnusedTags()
   })
 }
 
+// Every table that deleting a locus or an element can touch.
+const CONTENT_TABLES = () => [db.loci, db.elements, db.cards, db.reviews, db.notes, db.attachments, db.blobs, db.links, db.tags]
+
+// Deletes elements and everything in them: cards with their review history, notes
+// with their attachments and files, and every link to any of these.
+// Call inside a transaction over CONTENT_TABLES().
+async function deleteElementsAndContents(elementIds: string[]): Promise<void> {
+  const cardIds = await db.cards.where('elementId').anyOf(elementIds).primaryKeys()
+  const noteIds = await db.notes.where('elementId').anyOf(elementIds).primaryKeys()
+  await deleteLinksFor([...refs('element', elementIds), ...refs('card', cardIds), ...refs('note', noteIds)])
+  await deleteAttachmentsOf(noteIds.map((id) => ({ type: 'note', id })))
+  await db.reviews.where('cardId').anyOf(cardIds).delete()
+  await db.cards.bulkDelete(cardIds)
+  await db.notes.bulkDelete(noteIds)
+  await db.elements.bulkDelete(elementIds)
+}
+
+// Removes the owners' attachments, and each file nothing else uses any more.
+// Call inside a transaction that includes db.attachments and db.blobs.
+export async function deleteAttachmentsOf(owners: { type: AttachmentOwner; id: string }[]): Promise<void> {
+  for (const owner of owners) {
+    const rows = await db.attachments.where('[ownerType+ownerId]').equals([owner.type, owner.id]).toArray()
+    await db.attachments.bulkDelete(rows.map((a) => a.id))
+    for (const a of rows) if (a.blobId) await deleteBlobIfUnused(a.blobId)
+  }
+}
+
+export async function deleteBlobIfUnused(blobId: string): Promise<void> {
+  const stillUsed = await db.attachments.filter((a) => a.blobId === blobId).count()
+  if (stillUsed === 0) await db.blobs.delete(blobId)
+}
+
 // What deleting a locus would remove, for the confirmation message.
-export async function countLocusContents(id: string): Promise<{ elements: number; cards: number }> {
+export async function countLocusContents(id: string): Promise<{ elements: number; cards: number; notes: number }> {
   const elementIds = await db.elements.where('locusId').equals(id).primaryKeys()
-  const cards = await db.cards.where('elementId').anyOf(elementIds).count()
-  return { elements: elementIds.length, cards }
+  return { elements: elementIds.length, ...(await countElementContents(elementIds)) }
+}
+
+// What deleting these elements would also remove, for confirmation messages.
+export async function countElementContents(elementIds: string[]): Promise<{ cards: number; notes: number }> {
+  const [cards, notes] = await Promise.all([
+    db.cards.where('elementId').anyOf(elementIds).count(),
+    db.notes.where('elementId').anyOf(elementIds).count(),
+  ])
+  return { cards, notes }
 }
 
 // ---------- Elements ----------
@@ -176,12 +219,8 @@ export async function reorderElements(ids: string[]): Promise<void> {
 
 // Deletes the element with its cards and their review history.
 export async function deleteElement(id: string): Promise<void> {
-  await db.transaction('rw', [db.elements, db.cards, db.reviews, db.links], async () => {
-    const cardIds = await db.cards.where('elementId').equals(id).primaryKeys()
-    await deleteLinksFor([{ type: 'element', id }, ...refs('card', cardIds)])
-    await db.reviews.where('cardId').anyOf(cardIds).delete()
-    await db.cards.bulkDelete(cardIds)
-    await db.elements.delete(id)
+  await db.transaction('rw', CONTENT_TABLES(), async () => {
+    await deleteElementsAndContents([id])
   })
 }
 

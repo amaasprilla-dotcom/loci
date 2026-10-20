@@ -129,7 +129,7 @@ async function show(route: Route): Promise<void> {
       return
     }
     shown = route
-    const view = await type.renderScreen(el)
+    const view = await type.renderScreen(el, route.sub)
     setHomeVisible(false)
     setThemeColor(locus.color)
     screenLayer.replaceChildren(view)

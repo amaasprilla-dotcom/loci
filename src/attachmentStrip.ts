@@ -36,7 +36,12 @@ function kindIcon(kind: AttachmentKind): HTMLElement {
   return span
 }
 
-export function attachmentStrip(owner: Owner): HTMLElement {
+export interface AttachmentStrip {
+  el: HTMLElement
+  refresh(): Promise<void> // after attachments were added elsewhere (e.g. dropped into a note)
+}
+
+export function attachmentStrip(owner: Owner): AttachmentStrip {
   const list = h('div', { class: 'attachment-list' })
   const fileInput = h('input', { type: 'file', multiple: true, hidden: true, onchange: () => void addFiles() })
   let urls: string[] = [] // object URLs for thumbnails, released on every redraw
@@ -44,7 +49,7 @@ export function attachmentStrip(owner: Owner): HTMLElement {
   async function render() {
     urls.forEach((u) => URL.revokeObjectURL(u))
     urls = []
-    const items = await listAttachments(owner)
+    const items = (await listAttachments(owner)).filter((a) => !a.inline)
     list.replaceChildren(...(await Promise.all(items.map(chip))))
     list.hidden = items.length === 0
   }
@@ -60,7 +65,9 @@ export function attachmentStrip(owner: Owner): HTMLElement {
       }
     }
     const label = a.kind === 'link' ? linkLabel(a) : a.name
-    const detail = a.kind === 'link' ? hostOf(a.url) : a.size != null ? formatBytes(a.size) : ''
+    // A titled link shows its domain underneath; an untitled one already shows the
+    // domain as its name, so underneath goes the rest of the address.
+    const detail = a.kind === 'link' ? (a.name ? hostOf(a.url) : pathOf(a.url)) : a.size != null ? formatBytes(a.size) : ''
     const node = h(
       'button',
       { type: 'button', class: 'attachment', title: label, onclick: () => void open(a) },
@@ -163,7 +170,7 @@ export function attachmentStrip(owner: Owner): HTMLElement {
   }
 
   void render()
-  return h(
+  const el = h(
     'div',
     { class: 'attachments' },
     list,
@@ -175,6 +182,17 @@ export function attachmentStrip(owner: Owner): HTMLElement {
       h('button', { type: 'button', class: 'btn btn-small', onclick: () => fileInput.click() }, 'Add file'),
     ),
   )
+  return { el, refresh: render }
+}
+
+function pathOf(url?: string): string {
+  try {
+    const u = new URL(url ?? '')
+    const rest = `${u.pathname}${u.search}`
+    return rest === '/' ? '' : rest
+  } catch {
+    return ''
+  }
 }
 
 function hostOf(url?: string): string {

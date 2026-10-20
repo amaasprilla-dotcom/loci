@@ -5,12 +5,13 @@ No third-party art or fonts are copied into this project by hand.
 
 ## Fonts
 
-Bundled from the `@fontsource-variable/inter` npm package, so the app needs no font service
-and works offline.
+Bundled from npm packages, so the app needs no font service and works offline.
 
 | Font | Used for | License |
 | --- | --- | --- |
 | [Inter](https://rsms.me/inter/) | All text | SIL Open Font License 1.1 |
+| KaTeX fonts (from the `katex` package) | Math shown in notes | SIL Open Font License 1.1 |
+| KaTeX fonts (from the `mathlive` package, copied into `public/mathlive/fonts` at build) | The math editor | SIL Open Font License 1.1 |
 
 ## Images and designs
 

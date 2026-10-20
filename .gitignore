@@ -25,3 +25,6 @@ dist-ssr
 
 # Claude Code local preview config
 .claude/
+
+# MathLive fonts, copied from node_modules by scripts/copy-mathlive-assets.mjs
+public/mathlive/

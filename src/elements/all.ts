@@ -2,6 +2,8 @@
 // that need the types registered.
 
 import { flashcardsType } from './flashcards/type'
+import { notesType } from './notes/type'
 import { registry } from './registry'
 
 registry.set(flashcardsType.type, flashcardsType)
+registry.set(notesType.type, notesType)

@@ -36,7 +36,8 @@ private networks.)
 `npm test` runs the unit tests (Vitest): the scheduler, the due count at the 04:00 day boundary,
 the daily limits, the review log, tasks, bulk import, backup export/import/merge, and the
 upgrade of a v1 database and v1 backups to FSRS, task ranking and sections, links, attachments,
-zip backups, number formats and desired retention. Test files sit next to the code they test
+zip backups, number formats, desired retention, and notes (text for search, pinning, cascades,
+cleanup of removed images, backup). Test files sit next to the code they test
 (`*.test.ts`).
 
 ## Put it online (static site)
@@ -81,6 +82,11 @@ them.
   card storage (`store.ts`), bulk import (`import.ts`), the FSRS scheduler and the one-time
   conversion of v1 cards (`srs.ts`), which cards a
   session shows (`session.ts`) and the review screen (`review.ts`)
+- `src/elements/notes/`: the Notes type: notebooks of rich-text notes. Tile (`type.ts`), storage and
+  search (`store.ts`), the notebook and editor screens (`screens.ts`, TipTap), math editing
+  (`mathSheet.ts`, MathLive; shown with KaTeX), images inside notes (`noteImage.ts`). The editor
+  loads only when a notebook is opened. `scripts/copy-mathlive-assets.mjs` copies MathLive's fonts
+  into `public/` before `dev` and `build`, so math works offline
 - `src/tasks/`: every task across all loci, their ranking (score = 3 × importance − difficulty)
   and sections (`tasks.ts`), and the Tasks screen: Now, Goals and exams, Planned, Someday
   (`view.ts`). Active tasks make bubbles pulse and set the badge on home

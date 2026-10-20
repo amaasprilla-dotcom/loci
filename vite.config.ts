@@ -6,6 +6,11 @@ export default defineConfig({
   // Relative paths, so the built site works from any address or subfolder
   // (e.g. https://you.github.io/loci/ or a Netlify URL).
   base: './',
+  build: {
+    // The math editor (MathLive, ~790 KB) and the note editor load only when a
+    // notebook is opened; the main bundle stays far below this.
+    chunkSizeWarningLimit: 900,
+  },
   plugins: [
     // Makes the app installable (manifest) and work offline (service worker
     // that keeps a copy of every file). New versions install themselves.
