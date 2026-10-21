@@ -17,6 +17,9 @@
   --bad: #d4443b; /* destructive actions, overdue */
   --bad-soft: #fdeceb;
 
+  --ok: #1d8348; /* right answers */
+  --ok-soft: #e7f6ed;
+
   --radius: 12px;
   --shadow-sm: 0 1px 2px rgba(11, 15, 20, 0.05);
   --shadow-md: 0 2px 4px rgba(11, 15, 20, 0.04), 0 10px 28px rgba(11, 15, 20, 0.08);
@@ -2578,4 +2581,189 @@ details.editor-section > summary {
 
 .math-inline .katex {
   font-size: 1.05em;
+}
+
+/* Answering a problem */
+.problem {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.problem .problem-question {
+  font-size: 1.1rem;
+}
+
+.options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  cursor: pointer;
+}
+
+.option:hover:not(:disabled) {
+  border-color: var(--text);
+}
+
+.option:focus-visible {
+  outline: 2px solid var(--blue-ink);
+  outline-offset: 2px;
+}
+
+.option:disabled {
+  cursor: default;
+}
+
+.option-letter {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.option.is-correct {
+  border-color: var(--ok);
+  background: var(--ok-soft);
+}
+
+.option.is-correct .option-letter {
+  background: var(--ok);
+  color: #fff;
+}
+
+.option.is-wrong {
+  border-color: var(--bad);
+  background: var(--bad-soft);
+}
+
+.option.is-wrong .option-letter {
+  background: var(--bad);
+  color: #fff;
+}
+
+.option:disabled:not(.is-correct):not(.is-wrong) {
+  opacity: 0.55;
+}
+
+.typed-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.input.answer-input {
+  flex: 1;
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.answer-unit {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.problem-feedback:empty {
+  display: none;
+}
+
+.problem-feedback {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--surface-muted);
+}
+
+.verdict {
+  margin: 0;
+}
+
+.verdict.right {
+  color: var(--ok);
+  font-weight: 650;
+}
+
+.verdict.wrong {
+  color: var(--bad);
+  font-weight: 650;
+}
+
+.verdict .explanation {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.worked-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.worked-line {
+  white-space: nowrap;
+}
+
+.preview-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.preview-option {
+  display: inline-flex;
+  flex-direction: column;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.preview-option.correct {
+  border-color: var(--ok);
+  background: var(--ok-soft);
+  font-weight: 650;
+}
+
+.preview-why {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.custom-row {
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--border);
+}
+
+@media (max-width: 420px) {
+  .options {
+    grid-template-columns: 1fr;
+  }
 }

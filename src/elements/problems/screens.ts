@@ -14,10 +14,12 @@ import { db, deleteElement, updateElement } from '../../store/db'
 import type { AnswerFormat, LocusElement, MathJSON, ProblemTemplate, VarSpec } from '../../types'
 import { detectNumbers, suggestTitle } from './authoring'
 import { formatAnswer, formulaNode, questionNode } from './display'
+import { chooseOptions } from './distractors'
 import { generate, newSeed, parseText, validate } from './engine'
 import { nameToLatex, parse, ParseError, toLatex } from './latex'
 import { isCall } from './mathjson'
 import { asTemplate, SAMPLES } from './samples'
+import { presentProblem } from './present'
 import { createTemplate, deleteTemplate, emptyDraft, listTemplates, type TemplateDraft, updateTemplate } from './store'
 import type { ProblemsData } from './type'
 
@@ -462,7 +464,7 @@ export async function renderTemplateEditor(el: LocusElement, id: string | null):
         literals.delete(from)
       }
       draft.texts = draft.texts.map((t) => t.split(`{${from}}`).join(`{${to}}`))
-      for (const f of [answer, ...derived.map((d) => d.f), ...constraints.map((c) => c.f)]) {
+      for (const f of [answer, ...derived.map((d) => d.f), ...constraints.map((c) => c.f), ...customs.map((c) => c.f)]) {
         if (f.value == null) continue
         f.value = renameIn(f.value, from, to)
         f.field.value = toLatex(f.value)
@@ -554,8 +556,29 @@ export async function renderTemplateEditor(el: LocusElement, id: string | null):
       constraints.push(entry)
       constraintList.append(entry.row)
     }
+    // The author's own wrong answers, offered before the rules' ones.
+    const customList = h('div', { class: 'formula-list' })
+    const customs: { f: FormulaField; label: HTMLInputElement; row: HTMLElement }[] = []
+    async function addCustom(expr: MathJSON | null = null, labelText = '') {
+      const f = await formulaField(expr, 'Wrong answer formula', () => schedulePreview())
+      f.field.addEventListener('focus', () => (lastFormula = f))
+      const label = h('input', { class: 'input', type: 'text', maxlength: 100, placeholder: 'The mistake, e.g. Used the diameter instead of the radius', 'aria-label': 'What the mistake is', oninput: () => schedulePreview() })
+      label.value = labelText
+      const entry = { f, label, row: h('div') }
+      entry.row = h(
+        'div',
+        { class: 'formula-row custom-row' },
+        h('div', { class: 'formula-line' }, f.field, h('button', { type: 'button', class: 'icon-btn small', 'aria-label': 'Remove', onclick: () => { customs.splice(customs.indexOf(entry), 1); entry.row.remove(); schedulePreview() } }, closeIcon())),
+        f.error,
+        label,
+      )
+      customs.push(entry)
+      customList.append(entry.row)
+    }
+
     for (const d of draft.derived) await addDerived(d.name, d.expr)
     for (const c of draft.constraints) await addConstraint(c)
+    for (const c of draft.customDistractors) await addCustom(c.expr, c.label)
 
     // ----- Preview -----
     const preview = h('div', { class: 'preview-list' })
@@ -568,7 +591,7 @@ export async function renderTemplateEditor(el: LocusElement, id: string | null):
     // Everything typed so far, as a template; with what's still wrong.
     function collect(): { template: TemplateDraft; problems: string[] } {
       const problems: string[] = []
-      const formulaErrors = [answer, ...derived.map((d) => d.f), ...constraints.map((c) => c.f)].filter((f) => f.error.textContent)
+      const formulaErrors = [answer, ...derived.map((d) => d.f), ...constraints.map((c) => c.f), ...customs.map((c) => c.f)].filter((f) => f.error.textContent)
       if (formulaErrors.length) problems.push('A formula can’t be read yet; see the message under it.')
       if (answer.value == null && !answer.error.textContent) problems.push('Write the answer formula.')
       const template: TemplateDraft = {
@@ -578,6 +601,7 @@ export async function renderTemplateEditor(el: LocusElement, id: string | null):
         answer: answer.value ?? 0,
         derived: derived.filter((d) => d.f.value != null || d.name.value.trim()).map((d) => ({ name: d.name.value.trim(), expr: d.f.value ?? 0 })),
         constraints: constraints.filter((c) => c.f.value != null).map((c) => c.f.value!),
+        customDistractors: customs.filter((c) => c.f.value != null).map((c) => ({ expr: c.f.value!, label: c.label.value.trim() || 'A common mistake' })),
       }
       for (const v of template.vars) {
         if (v.source.kind === 'range' && ![v.source.min, v.source.max, v.source.step].every(Number.isFinite)) problems.push(`“${v.name}”: fill in from, to and step with numbers.`)
@@ -613,10 +637,47 @@ export async function renderTemplateEditor(el: LocusElement, id: string | null):
             { class: 'preview-item' },
             questionNode(inst),
             h('p', { class: 'preview-answer' }, h('span', { class: 'worked' }, formulaNode(template.answer, inst.values)), ' = ', h('strong', {}, formatAnswer(inst.answer, template.answerFormat))),
+            template.answerMode === 'choice' &&
+              h(
+                'div',
+                { class: 'preview-options' },
+                chooseOptions(t, inst).map((o) => h('span', { class: `preview-option${o.correct ? ' correct' : ''}`, title: o.why?.text ?? 'The answer' }, formatAnswer(o.value, template.answerFormat), !o.correct && h('span', { class: 'preview-why' }, o.why?.text ?? ''))),
+              ),
           ),
         )
       }
       preview.replaceChildren(...items)
+    }
+
+    // Answer one, as it will come up in practice.
+    async function tryIt() {
+      const { template, problems } = collect()
+      if (problems.length) {
+        renderPreview()
+        return
+      }
+      const t = asTemplate(template)
+      await openSheet<boolean>('Try it', (api) => {
+        const holder = h('div')
+        const next = h('button', { type: 'button', class: 'btn btn-primary', hidden: true, onclick: () => show() }, 'Another one')
+        function show() {
+          const g = generate(t, newSeed())
+          if (!g.ok) {
+            holder.replaceChildren(h('p', { class: 'sheet-error' }, 'No numbers fit the constraints.'))
+            return
+          }
+          const p = presentProblem(t, g.instance)
+          next.hidden = true
+          holder.replaceChildren(p.el)
+          void p.done.then(() => {
+            next.hidden = false
+            next.focus()
+          })
+          setTimeout(() => p.focus(), 0)
+        }
+        show()
+        return { content: [h('h2', {}, template.title || 'Try it'), holder, sheetActions(null, button('Close', () => api.close(null)), next)] }
+      })
     }
 
     // ----- Saving -----
@@ -673,7 +734,15 @@ export async function renderTemplateEditor(el: LocusElement, id: string | null):
           constraintList,
           h('div', { class: 'editor-actions' }, button('Add a constraint', () => void addConstraint().then(schedulePreview))),
         ),
-        section('Preview', h('div', { class: 'editor-actions' }, button('New numbers', () => { seeds = Array.from({ length: 5 }, newSeed); renderPreview() })), preview),
+        h(
+          'details',
+          { class: 'editor-section editor-more', ...(draft.customDistractors.length && { open: true }) },
+          h('summary', { class: 'editor-heading' }, 'Wrong answers you expect'),
+          h('p', { class: 'field-hint' }, 'Wrong options are made from common mistakes (a sign, a dropped factor, a unit…). Add ones you know students make: they’re offered first, and the feedback names them.'),
+          customList,
+          h('div', { class: 'editor-actions' }, button('Add a wrong answer', () => void addCustom().then(schedulePreview))),
+        ),
+        section('Preview', h('div', { class: 'editor-actions' }, button('New numbers', () => { seeds = Array.from({ length: 5 }, newSeed); renderPreview() }), button('Try it', () => void tryIt())), preview),
         h('div', { class: 'editor-footer' }, saveError, sheetActions(existing ? button('Delete', () => void remove(), 'danger-text') : null, button('Cancel', () => back(elementHash(el))), button('Save', () => void save(), 'primary'))),
       ),
     )

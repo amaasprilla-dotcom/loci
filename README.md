@@ -41,7 +41,8 @@ cleanup of removed images, backup), and to-dos (state around the 04:00 rollover 
 change, recurrence and missed occurrences, typed phrases, waiting to-dos, cascades, backup), goals
 (progress, weights, pace, check-ins, triggers), and the problem engine (10 sample templates, 200
 generated instances each: numbers in range, constraints met, answers checked; seeds replay; the
-200-try limit; template checks), reading and writing formulas, and finding numbers in an example. Test
+200-try limit; template checks), reading and writing formulas, finding numbers in an example, and wrong answers (each rule; the
+filters; 3 plausible distractors for every sample across 50 instances). Test
 files sit next to the code they test
 (`*.test.ts`).
 
@@ -108,7 +109,10 @@ them.
   math field are read from LaTeX and written back for display (`latex.ts`). Creating a problem
   from an example (finding the numbers, names from units, suggested ranges: `authoring.ts`), the
   set screen and the template editor with its live preview (`screens.ts`), questions, answers and
-  formulas on screen (`display.ts`, KaTeX), and the tile (`type.ts`)
+  formulas on screen (`display.ts`, KaTeX), and the tile (`type.ts`). Wrong options come from
+  mistake rules applied to the formula (order of operations, dropped factor or term, sign slip,
+  inverted ratio, power slip, wrong variable, unit slip, the author's own), filtered and chosen in
+  `distractors.ts`; `present.ts` shows a problem to answer, with feedback that names the mistake
 - `src/mathField.ts`: loads MathLive when first needed (notes and problems share it)
 - `src/tasks/`: every task across all loci, their ranking (score = 3 × importance − difficulty)
   and sections (`tasks.ts`), and the Tasks screen: Now, Goals and exams, Planned, Someday
