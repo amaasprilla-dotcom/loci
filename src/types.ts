@@ -79,6 +79,7 @@ export interface ReviewLog {
   at: number;
   grade: Grade;
   prevInterval: number; // days scheduled before this review
+  ms?: number; // time on the card (since v2's study sessions), for session lengths
   updatedAt: number;
 }
 

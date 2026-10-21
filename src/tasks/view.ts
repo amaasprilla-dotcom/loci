@@ -137,7 +137,8 @@ export function taskRow(
   onComplete: () => Promise<void>,
   { showLocus = true, onSecondary }: { showLocus?: boolean; onSecondary?: () => void | Promise<void> } = {},
 ): HTMLElement {
-  const title = t.kind === 'review' ? `${elementTitle} · ${t.label}` : t.label
+  // A deck's or set's own study task names it; a locus's Study task stands alone.
+  const title = t.kind === 'review' && t.elementId ? `${elementTitle} · ${t.label}` : t.label
   const priority = t.kind === 'todo' && t.importance >= 3 ? levelName('importance', t.importance) : ''
   const details = [showLocus && locus.name, t.sublabel, priority].filter(Boolean).join(' · ')
   return h(

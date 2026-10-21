@@ -4,6 +4,7 @@
 
 import { isActive, registry, type Task } from '../elements/registry'
 import { db } from '../store/db'
+import { mergeStudyTasks, splitStudyTasks } from '../study/tasks'
 
 // How much one step of importance outweighs difficulty (SPEC-v2.md, "Ordering").
 // With 3, one step of importance beats up to two steps of difficulty.
@@ -54,7 +55,8 @@ export async function allTasks(now = Date.now()): Promise<Task[]> {
     // A type this version doesn't know (e.g. from a newer backup) has no tasks.
     elements.map((el) => registry.get(el.type)?.getTasks(el, now) ?? Promise.resolve([])),
   )
-  return lists.flat()
+  // Decks and sets study as one task per locus, unless set otherwise.
+  return (await splitStudyTasks()) ? lists.flat() : mergeStudyTasks(lists.flat())
 }
 
 // The element whose work falls due soonest after now, for the empty "Now" section.

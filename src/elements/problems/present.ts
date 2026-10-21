@@ -8,6 +8,7 @@ import type { ProblemTemplate } from '../../types'
 import { formatAnswer, formulaNode, questionNode } from './display'
 import { chooseOptions, diagnose, type Explanation, type RuleId } from './distractors'
 import { type Instance, isCorrect } from './engine'
+import { symbolsOf } from './mathjson'
 
 export interface Answered {
   correct: boolean
@@ -22,7 +23,8 @@ export function explanationNode(why: Explanation): HTMLElement {
 
 // The worked answer: the formula with this instance's numbers, = the answer.
 export function workedNode(t: ProblemTemplate, inst: Instance): HTMLElement {
-  const steps = t.derived.map((d) => h('div', { class: 'worked-line' }, formulaNode(['Equal', d.name, d.expr]), ' = ', formulaNode(d.expr, inst.values), ' = ', h('strong', {}, formatAnswer(inst.values[d.name], {}))))
+  // Derived values worked out from the numbers (a constant like g = 9.81 needs no working).
+  const steps = t.derived.filter((d) => symbolsOf(d.expr).size > 0).map((d) => h('div', { class: 'worked-line' }, formulaNode(['Equal', d.name, d.expr]), ' = ', formulaNode(d.expr, inst.values), ' = ', h('strong', {}, formatAnswer(inst.values[d.name], {}))))
   return h(
     'div',
     { class: 'worked-answer' },

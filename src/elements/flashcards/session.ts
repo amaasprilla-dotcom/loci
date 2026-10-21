@@ -8,7 +8,8 @@ import type { Card, LocusElement, ReviewLog } from '../../types'
 import { studyDayStart } from './srs'
 import { type FlashcardsData, isNew, listCards } from './store'
 
-export async function planSession(el: LocusElement<FlashcardsData>, now: number): Promise<Card[]> {
+// `newLimit` overrides the deck's new-cards-per-day (an exam pacing new material).
+export async function planSession(el: LocusElement<FlashcardsData>, now: number, newLimit?: number): Promise<Card[]> {
   const cards = await listCards(el.id)
   const logs = await db.reviews.where('cardId').anyOf(cards.map((c) => c.id)).toArray()
   const { introducedToday, reviewedToday } = todaysCounts(logs, studyDayStart(now))
@@ -17,7 +18,7 @@ export async function planSession(el: LocusElement<FlashcardsData>, now: number)
     .filter((c) => !isNew(c) && c.srs.due <= now)
     .sort((a, b) => a.srs.due - b.srs.due)
     .slice(0, Math.max(0, el.data.maxReviewsPerDay - reviewedToday))
-  const fresh = cards.filter(isNew).slice(0, Math.max(0, el.data.newPerDay - introducedToday))
+  const fresh = cards.filter(isNew).slice(0, Math.max(0, (newLimit ?? el.data.newPerDay) - introducedToday))
   return [...due, ...fresh]
 }
 
@@ -36,9 +37,9 @@ export function todaysCounts(logs: ReviewLog[], dayStart: number): { introducedT
 }
 
 // Saves a graded card and its review log together. `after` carries the new FSRS state.
-export async function recordReview(before: Card, after: Card, grade: ReviewLog['grade'], at: number): Promise<void> {
+export async function recordReview(before: Card, after: Card, grade: ReviewLog['grade'], at: number, ms?: number): Promise<void> {
   await db.transaction('rw', db.cards, db.reviews, async () => {
     await db.cards.put(after)
-    await db.reviews.add({ id: crypto.randomUUID(), cardId: before.id, at, grade, prevInterval: before.srs.scheduled_days, updatedAt: at })
+    await db.reviews.add({ id: crypto.randomUUID(), cardId: before.id, at, grade, prevInterval: before.srs.scheduled_days, ...(ms != null && { ms }), updatedAt: at })
   })
 }

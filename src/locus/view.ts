@@ -7,10 +7,14 @@ import { type ElementType, registry } from '../elements/registry'
 import { iconNode } from '../elements/flashcards/type'
 import { backIcon } from '../icons'
 import { linkedItemsSection } from '../linkedItems'
-import { elementHash, go } from '../router'
+import { elementHash, go, studyHash } from '../router'
 import { button, deleteConfirmation, describeCounts, openSheet, sheetActions, submitButton } from '../sheet'
 import { countElementContents, createElement, db, deleteElement, listElements, reorderElements, updateElement } from '../store/db'
 import { allTasks, sections } from '../tasks/tasks'
+import { newLimitsFor } from '../study/limits'
+import { studyPool, summarize } from '../study/plan'
+import { minutesText, studyCounts } from '../study/text'
+import { count } from '../locale'
 import { taskRow } from '../tasks/view'
 import type { Locus, LocusElement } from '../types'
 import { makeSortable } from './reorder'
@@ -28,7 +32,23 @@ export async function renderLocusView(locus: Locus, options: { onBack(): void })
     } else {
       grid.replaceChildren(...(await Promise.all(elements.map((el) => tile(el, now)))))
     }
+    await renderStudy(now)
     await renderItems(now)
+  }
+
+  // The locus's Study button: every due card and problem here, in one session.
+  const study = h('div', { class: 'locus-study' })
+  async function renderStudy(now: number) {
+    const studyable = elements.filter((e) => e.type === 'flashcards' || e.type === 'problems')
+    const pool = await studyPool(studyable, now, await newLimitsFor(studyable, now))
+    if (pool.items.length === 0) {
+      study.replaceChildren()
+      return
+    }
+    const s = summarize(pool)
+    const newCards = pool.items.filter((i) => i.kind === 'card' && i.isNew).length
+    const what = s.cards + s.problems > 0 ? `${studyCounts(s.cards, s.problems)} due · ${minutesText(s.seconds)}` : `${count(newCards, 'new card', 'new cards')} to learn`
+    study.replaceChildren(h('p', { class: 'locus-study-text' }, what), h('button', { type: 'button', class: 'btn btn-primary', onclick: () => go(studyHash(locus.id)) }, 'Study'))
   }
 
   // This locus's own items, in the Tasks screen's groups (SPEC-v2.md, "Tasks screen v2").
@@ -110,7 +130,7 @@ export async function renderLocusView(locus: Locus, options: { onBack(): void })
         tags.length > 0 && h('div', { class: 'locus-tags' }, tags.map((t) => h('span', { class: 'tag' }, t.name))),
       ),
     ),
-    h('main', { class: 'locus-body' }, grid, items),
+    h('main', { class: 'locus-body' }, study, grid, items),
     h('button', { class: 'fab', 'aria-label': 'Add to this locus', onclick: () => void onAdd() }, '+'),
   )
   await renderTiles()

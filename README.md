@@ -42,7 +42,9 @@ change, recurrence and missed occurrences, typed phrases, waiting to-dos, cascad
 (progress, weights, pace, check-ins, triggers), and the problem engine (10 sample templates, 200
 generated instances each: numbers in range, constraints met, answers checked; seeds replay; the
 200-try limit; template checks), reading and writing formulas, finding numbers in an example, and wrong answers (each rule; the
-filters; 3 plausible distractors for every sample across 50 instances). Test
+filters; 3 plausible distractors for every sample across 50 instances), and study sessions (the
+time budget is never exceeded and no template repeats back to back, across 200 random pools;
+lowest recall first; even spreading; ratings from time; Study tasks per locus). Test
 files sit next to the code they test
 (`*.test.ts`).
 
@@ -114,6 +116,12 @@ them.
   inverted ratio, power slip, wrong variable, unit slip, the author's own), filtered and chosen in
   `distractors.ts`; `present.ts` shows a problem to answer, with feedback that names the mistake
 - `src/mathField.ts`: loads MathLive when first needed (notes and problems share it)
+- `src/study/`: study sessions mixing cards and problems. What's up today and how long it
+  takes, lowest recall first within a time budget, interleaved (`plan.ts`); cards and problems as
+  reviewables, self-graded or rated from correctness and time (`reviewable.ts`,
+  `elements/problems/schedule.ts`); the session screen with its length choice (`screen.ts`); one
+  Study task per locus, or per deck and set (`tasks.ts`); the next schedule after any review, where
+  exams adjust it (`schedule.ts`)
 - `src/tasks/`: every task across all loci, their ranking (score = 3 × importance − difficulty)
   and sections (`tasks.ts`), and the Tasks screen: Now, Goals and exams, Planned, Someday
   (`view.ts`). Active tasks make bubbles pulse and set the badge on home

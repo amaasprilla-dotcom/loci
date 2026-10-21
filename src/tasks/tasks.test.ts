@@ -6,6 +6,7 @@ import { MIN, review } from '../elements/flashcards/srs'
 import { addCards, DEFAULT_FLASHCARDS_DATA, listCards } from '../elements/flashcards/store'
 import { createElement, createLocus, db } from '../store/db'
 import type { Grade } from '../types'
+import { setSplitStudyTasks } from '../study/tasks'
 import { allTasks, nextUpcoming } from './tasks'
 
 const at = (day: number, h: number) => new Date(2026, 0, day, h).getTime()
@@ -34,29 +35,34 @@ beforeEach(async () => {
 })
 
 describe('allTasks', () => {
-  it('lists one review task per deck with due reviews', async () => {
+  it('lists one Study task per locus with due reviews, or one per deck when split', async () => {
     const spanish = await deckWith('Spanish', 'Verbs', [at(1, 10), at(1, 10)])
     await deckWith('Spanish', 'Nouns', [at(2, 10)])
     await deckWith('Math', 'Proofs', [at(10, 10)]) // learned this morning: not due yet
     await deckWith('Math', 'Formulas', [at(3, 10)])
 
     const tasks = await allTasks(at(10, 12))
-    expect(tasks.map((t) => t.label).sort()).toEqual(['1 card due', '1 card due', '2 cards due'])
-    expect(tasks.find((t) => t.elementId === spanish.deck.id)).toMatchObject({
-      locusId: spanish.locus.id,
+    expect(tasks.map((t) => t.label).sort()).toEqual(['Study · 1 card', 'Study · 3 cards'])
+    expect(tasks.find((t) => t.locusId === spanish.locus.id)).toMatchObject({
+      elementId: '',
       kind: 'review',
       importance: 3, // the locus's study priority defaults: High
       difficulty: 2, // Medium
     })
+
+    await setSplitStudyTasks(true)
+    const split = await allTasks(at(10, 12))
+    expect(split.map((t) => t.label).sort()).toEqual(['1 card due', '1 card due', '2 cards due'])
+    expect(split.find((t) => t.elementId === spanish.deck.id)).toMatchObject({ locusId: spanish.locus.id, kind: 'review' })
   })
 
   it('reviews are overdue once they have waited past a 04:00 rollover, due before that', async () => {
-    const { deck, cards } = await deckWith('Spanish', 'Verbs', [at(1, 10)])
+    const { locus, cards } = await deckWith('Spanish', 'Verbs', [at(1, 10)])
     const due = (await db.cards.get(cards[0].id))!.srs.due // 04:00 on some day
     const [onTheDay] = await allTasks(due + 23 * 60 * MIN) // 03:00 the next night: same study day
     const [nextDay] = await allTasks(due + 24 * 60 * MIN) // 04:00 the next day
-    expect(onTheDay).toMatchObject({ elementId: deck.id, state: 'due' })
-    expect(nextDay).toMatchObject({ elementId: deck.id, state: 'overdue' })
+    expect(onTheDay).toMatchObject({ locusId: locus.id, state: 'due' })
+    expect(nextDay).toMatchObject({ locusId: locus.id, state: 'overdue' })
     expect(nextDay.sublabel).toMatch(/^Waiting since /)
   })
 

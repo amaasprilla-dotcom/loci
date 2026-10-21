@@ -120,6 +120,22 @@ async function show(route: Route): Promise<void> {
     return
   }
 
+  if (route.name === 'study') {
+    const locus = await db.loci.get(route.locusId)
+    if (!locus) {
+      location.replace('#/')
+      return
+    }
+    shown = route
+    const { renderStudyScreen } = await import('./study/screen')
+    const view = await renderStudyScreen({ locusId: locus.id, backHash: `#/locus/${encodeURIComponent(locus.id)}`, title: locus.name, chooseLength: true })
+    setHomeVisible(false)
+    setThemeColor(locus.color)
+    screenLayer.replaceChildren(view)
+    if (motionAllowed()) await fadeIn(view)
+    return
+  }
+
   if (route.name === 'element') {
     const el = await getElement(route.elementId)
     const type = el && registry.get(el.type)
@@ -184,8 +200,8 @@ window.addEventListener('hashchange', showCurrent)
 
 // Escape goes back on desktop, unless a sheet is open (it closes itself).
 document.addEventListener('keydown', (e) => {
-  // The review screen handles its own keys, Escape included.
-  if (e.key === 'Escape' && shown && shown.name !== 'home' && shown.name !== 'review' && !document.querySelector('.sheet')) back(parentOf(shown))
+  // Study screens handle their own keys, Escape included.
+  if (e.key === 'Escape' && shown && shown.name !== 'home' && shown.name !== 'review' && shown.name !== 'study' && !document.querySelector('.sheet')) back(parentOf(shown))
 })
 
 requestPersistentStorage().catch(() => {})

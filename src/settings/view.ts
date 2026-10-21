@@ -1,4 +1,4 @@
-// The Settings screen (⋯ on home): number format, storage, backup.
+// The Settings screen (⋯ on home): number format, study tasks, storage, backup.
 // Study settings (priority, desired retention) live with each locus, in its sheet.
 
 import { h } from '../dom'
@@ -6,6 +6,7 @@ import { backIcon } from '../icons'
 import { count, deviceLocale, formatBytes, formatNumber, getNumberFormat, type NumberFormatPref, setNumberFormat } from '../locale'
 import { back } from '../router'
 import { blobBytes } from '../store/attachments'
+import { setSplitStudyTasks, splitStudyTasks } from '../study/tasks'
 import { backupSection } from './backup'
 
 export async function renderSettingsScreen(onImported: () => void): Promise<HTMLElement> {
@@ -13,7 +14,7 @@ export async function renderSettingsScreen(onImported: () => void): Promise<HTML
     'div',
     { class: 'settings-screen' },
     h('header', { class: 'tasks-header' }, h('button', { class: 'icon-btn', 'aria-label': 'Back', onclick: () => back() }, backIcon()), h('div', { class: 'locus-title' }, h('h1', {}, 'Settings'))),
-    h('main', { class: 'locus-body settings-body' }, numbersSection(), await storageSection(), backupSection(onImported)),
+    h('main', { class: 'locus-body settings-body' }, numbersSection(), await studySection(), await storageSection(), backupSection(onImported)),
   )
 }
 
@@ -55,6 +56,38 @@ function numbersSection(): HTMLElement {
     h('p', { class: 'settings-text' }, 'How numbers are shown and typed everywhere in Loci. Auto follows this device. Dates follow the device too.'),
     h('div', { class: 'segments segments-3', role: 'radiogroup', 'aria-label': 'Number format' }, buttons),
     example,
+  )
+}
+
+async function studySection(): Promise<HTMLElement> {
+  let split = await splitStudyTasks()
+  const options = [
+    { value: false, label: 'One per locus' },
+    { value: true, label: 'One per deck or set' },
+  ]
+  const buttons = options.map((o) =>
+    h(
+      'button',
+      {
+        type: 'button',
+        class: 'segment',
+        role: 'radio',
+        'aria-checked': String(split === o.value),
+        onclick: async () => {
+          split = o.value
+          await setSplitStudyTasks(split)
+          buttons.forEach((b, i) => b.setAttribute('aria-checked', String(options[i].value === split)))
+        },
+      },
+      o.label,
+    ),
+  )
+  return h(
+    'section',
+    { class: 'settings-section' },
+    h('h2', {}, 'Study tasks'),
+    h('p', { class: 'settings-text' }, 'Due cards and problems show in Tasks as one Study task per locus, mixing them in one session. Or as one task per deck and problem set.'),
+    h('div', { class: 'segments segments-2', role: 'radiogroup', 'aria-label': 'Study tasks' }, buttons),
   )
 }
 

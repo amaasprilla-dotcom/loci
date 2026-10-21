@@ -4,15 +4,13 @@ import { h } from '../../dom'
 import { db } from '../../store/db'
 import { formatIn } from '../../time'
 import type { LocusElement } from '../../types'
-import { go, reviewHash } from '../../router'
+import { elementHash, go, reviewHash } from '../../router'
 import type { ElementType, Task } from '../registry'
 import { renderDeckScreen } from './editor'
-import { renderReviewScreen } from './review'
 import { planSession } from './session'
-import { studyDayStart } from './srs'
-import { DEFAULT_STUDY_DIFFICULTY, DEFAULT_STUDY_IMPORTANCE } from '../../levels'
 import { DEFAULT_FLASHCARDS_DATA, deckStats, type FlashcardsData, isNew, listCards } from './store'
 import { count, formatNumber } from '../../locale'
+import { elementStudyTask } from '../../study/tasks'
 
 const ICON =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="3.5" width="13" height="16" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4 7.5v10A3 3 0 0 0 7 20.5h8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>'
@@ -59,37 +57,16 @@ export const flashcardsType: ElementType<FlashcardsData> = {
   },
 
   renderScreen: (el) => renderDeckScreen(el),
-  renderSession: (el) => renderReviewScreen(el),
-
-  // Only reviews that are due make work: cards never studied don't (see the deck's
-  // "new" count). Overdue means some have waited past a 04:00 rollover: yesterday's
-  // work wasn't done. Ranked by the locus's study importance and difficulty.
-  // (Milestone B4 turns these into one Study task per locus.)
-  async getTasks(el: LocusElement<FlashcardsData>, now: number): Promise<Task[]> {
-    const due = await db.cards
-      .where('[elementId+srs.due]')
-      .between([el.id, 0], [el.id, now], true, true)
-      .filter((c) => !isNew(c))
-      .toArray()
-    if (due.length === 0) return []
-    const oldest = due[0].srs.due // the index is sorted by due
-    const overdue = oldest < studyDayStart(now)
-    const locus = await db.loci.get(el.locusId)
-    return [
-      {
-        locusId: el.locusId,
-        elementId: el.id,
-        kind: 'review',
-        state: overdue ? 'overdue' : 'due',
-        label: `${count(due.length, 'card', 'cards')} due`,
-        sublabel: overdue ? `Waiting since ${new Date(oldest).toLocaleDateString(undefined, { weekday: 'long' })}` : undefined,
-        importance: locus?.studyImportance ?? DEFAULT_STUDY_IMPORTANCE,
-        difficulty: locus?.studyDifficulty ?? DEFAULT_STUDY_DIFFICULTY,
-        dueAt: oldest,
-        open: () => go(reviewHash(el)),
-      },
-    ]
+  // The deck's own Study button: this deck only, until done.
+  async renderSession(el) {
+    const { renderStudyScreen } = await import('../../study/screen')
+    return renderStudyScreen({ locusId: el.locusId, elementIds: [el.id], backHash: elementHash(el), title: el.title, chooseLength: false })
   },
+
+  // Due reviews make work; cards never studied don't (see the deck's "new" count).
+  // Overdue once a review has waited past a 04:00 rollover. These join the locus's
+  // one Study task (study/tasks.ts), unless the setting splits them.
+  getTasks: (el: LocusElement<FlashcardsData>, now: number): Promise<Task[]> => elementStudyTask(el, now),
 
   // The [elementId+srs.due] index is sorted by due, so the first match is the soonest.
   async nextDueAt(el, now) {

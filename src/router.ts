@@ -7,6 +7,7 @@ export type Route =
   // `sub`: a place inside the element, e.g. ['note', id] for one note in a notebook.
   | { name: 'element'; locusId: string; elementId: string; sub: string[] }
   | { name: 'review'; elementId: string }
+  | { name: 'study'; locusId: string } // a locus's Study button: cards and problems together
   | { name: 'tasks' }
   | { name: 'settings' }
 
@@ -15,6 +16,7 @@ export function parseRoute(hash: string): Route {
   if (parts[0] === 'locus' && parts[1] && parts[2] === 'el' && parts[3]) return { name: 'element', locusId: parts[1], elementId: parts[3], sub: parts.slice(4) }
   if (parts[0] === 'locus' && parts[1]) return { name: 'locus', id: parts[1] }
   if (parts[0] === 'review' && parts[1]) return { name: 'review', elementId: parts[1] }
+  if (parts[0] === 'study' && parts[1]) return { name: 'study', locusId: parts[1] }
   if (parts[0] === 'tasks') return { name: 'tasks' }
   if (parts[0] === 'settings') return { name: 'settings' }
   return { name: 'home' }
@@ -31,6 +33,10 @@ export function elementHash(el: { locusId: string; id: string }): string {
 // A place inside an element, e.g. one note: #/locus/…/el/…/note/<id>
 export function subHash(el: { locusId: string; id: string }, ...sub: string[]): string {
   return `${elementHash(el)}/${sub.map(encodeURIComponent).join('/')}`
+}
+
+export function studyHash(locusId: string): string {
+  return `#/study/${encodeURIComponent(locusId)}`
 }
 
 export function reviewHash(el: { id: string }): string {
