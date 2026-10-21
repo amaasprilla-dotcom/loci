@@ -14,7 +14,7 @@ import { formatIn } from '../time'
 import type { Card, ProblemTemplate } from '../types'
 import { buildSession, type StudyItem, studyPool } from './plan'
 import { type Showing, showCard, showProblem } from './reviewable'
-import { newLimitsFor } from './limits'
+import { studyAdjustments } from './limits'
 import { minutesText, studyCounts } from './text'
 
 const COMES_BACK_WITHIN = 60 * 60_000 // a card due again within the hour returns in this session
@@ -48,7 +48,7 @@ export async function renderStudyScreen(opts: StudyOptions): Promise<HTMLElement
   const elements = (await db.elements.where('locusId').equals(opts.locusId).toArray()).filter(
     (e) => (e.type === 'flashcards' || e.type === 'problems') && (!opts.elementIds || opts.elementIds.includes(e.id)),
   )
-  const pool = await studyPool(elements, now0, await newLimitsFor(elements, now0))
+  const pool = await studyPool(elements, now0, await studyAdjustments(elements, now0))
   const titles = new Map(elements.map((e) => [e.id, e.title]))
 
   let leaving = false

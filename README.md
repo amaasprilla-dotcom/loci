@@ -44,7 +44,8 @@ generated instances each: numbers in range, constraints met, answers checked; se
 200-try limit; template checks), reading and writing formulas, finding numbers in an example, and wrong answers (each rule; the
 filters; 3 plausible distractors for every sample across 50 instances), and study sessions (the
 time budget is never exceeded and no template repeats back to back, across 200 random pools;
-lowest recall first; even spreading; ratings from time; Study tasks per locus). Test
+lowest recall first; even spreading; ratings from time; Study tasks per locus), and Test mode (the
+interval cap, the final pass, pacing, readiness, scope, the exam ending, cascades and backup). Test
 files sit next to the code they test
 (`*.test.ts`).
 
@@ -122,6 +123,10 @@ them.
   `elements/problems/schedule.ts`); the session screen with its length choice (`screen.ts`); one
   Study task per locus, or per deck and set (`tasks.ts`); the next schedule after any review, where
   exams adjust it (`schedule.ts`)
+- `src/exams/`: Test mode. Exams in a locus with a date, a target recall and a scope; the interval
+  cap, final pass, pacing of new material, readiness and the exam's end (`exams.ts`); exams under
+  "Goals and exams" (`tasks.ts`); adding and editing one (`sheet.ts`, from a locus's + button)
+- `src/changes.ts`: tells whatever is on screen to redraw after an edit made in a sheet
 - `src/tasks/`: every task across all loci, their ranking (score = 3 × importance − difficulty)
   and sections (`tasks.ts`), and the Tasks screen: Now, Goals and exams, Planned, Someday
   (`view.ts`). Active tasks make bubbles pulse and set the badge on home

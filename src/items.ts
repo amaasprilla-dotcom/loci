@@ -93,6 +93,19 @@ export async function describeItem(ref: ItemRef): Promise<ItemInfo | null> {
         open: () => go(subHash(list, 'goal', goal.id)),
       }
     }
+    case 'exam': {
+      const exam = await db.exams.get(ref.id)
+      const locus = exam && (await db.loci.get(exam.locusId))
+      if (!exam || !locus) return null
+      return {
+        ref,
+        title: exam.title,
+        kind: exam.status === 'done' ? 'Exam (done)' : 'Exam',
+        context: locus.name,
+        color: locus.color,
+        open: () => void import('./exams/sheet').then((m) => m.openExamSheet(exam.locusId, exam.id)),
+      }
+    }
     default:
       return null // a type from a later milestone
   }

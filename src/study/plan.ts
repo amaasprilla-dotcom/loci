@@ -4,9 +4,11 @@
 // limit never cuts them; then the session is interleaved.
 
 import { DEFAULT_RETENTION, isNewSrs, recall } from '../elements/flashcards/srs'
+import { type ExamAdjustments, inFinalPass } from '../exams/exams'
 import { planSession } from '../elements/flashcards/session'
-import type { FlashcardsData } from '../elements/flashcards/store'
+import { type FlashcardsData, listCards } from '../elements/flashcards/store'
 import { median, planProblems } from '../elements/problems/schedule'
+import { listTemplates } from '../elements/problems/store'
 import type { ProblemsData } from '../elements/problems/type'
 import { db } from '../store/db'
 import type { Card, LocusElement, ProblemTemplate, Srs } from '../types'
@@ -41,11 +43,11 @@ export interface StudyPool {
   elements: Map<string, LocusElement>
 }
 
-// New-item limits per element for today, when something (an exam) overrides the element's own.
-export type NewLimits = Map<string, number>
+const NO_ADJUSTMENTS: ExamAdjustments = { newLimits: new Map(), finalPass: new Map() }
 
-// Everything there is to study now in these elements (their daily limits applied).
-export async function studyPool(elements: LocusElement[], now: number, newLimits: NewLimits = new Map()): Promise<StudyPool> {
+// Everything there is to study now in these elements: their daily limits applied,
+// with what upcoming exams change (paced new material, the final pass).
+export async function studyPool(elements: LocusElement[], now: number, adj: ExamAdjustments = NO_ADJUSTMENTS): Promise<StudyPool> {
   const est = await estimates()
   const loci = new Map((await db.loci.bulkGet([...new Set(elements.map((e) => e.locusId))])).filter((l) => l != null).map((l) => [l.id, l]))
   const pool: StudyPool = { items: [], cards: new Map(), templates: new Map(), elements: new Map(elements.map((e) => [e.id, e])) }
@@ -55,15 +57,31 @@ export async function studyPool(elements: LocusElement[], now: number, newLimits
       const fresh = isNewSrs(srs)
       return { kind, id, elementId: el.id, srs, isNew: fresh, estSeconds: est[kind], recall: fresh ? 0 : recall(srs, now, retention) }
     }
+    const finalPass = adj.finalPass.get(el.id)
     if (el.type === 'flashcards') {
-      for (const c of await planSession(el as LocusElement<FlashcardsData>, now, newLimits.get(el.id))) {
+      for (const c of await planSession(el as LocusElement<FlashcardsData>, now, adj.newLimits.get(el.id))) {
         pool.cards.set(c.id, c)
         pool.items.push(item('card', c.id, c.srs))
       }
+      // An exam's final days: everything under target on exam day, due or not.
+      if (finalPass) {
+        for (const c of await listCards(el.id)) {
+          if (pool.cards.has(c.id) || !inFinalPass(c.srs, finalPass, now)) continue
+          pool.cards.set(c.id, c)
+          pool.items.push(item('card', c.id, c.srs))
+        }
+      }
     } else if (el.type === 'problems') {
-      for (const t of await planProblems(el as LocusElement<ProblemsData>, now, newLimits.get(el.id))) {
+      for (const t of await planProblems(el as LocusElement<ProblemsData>, now, adj.newLimits.get(el.id))) {
         pool.templates.set(t.id, t)
         pool.items.push(item('template', t.id, t.srs))
+      }
+      if (finalPass) {
+        for (const t of await listTemplates(el.id)) {
+          if (pool.templates.has(t.id) || t.tooTight || !inFinalPass(t.srs, finalPass, now)) continue
+          pool.templates.set(t.id, t)
+          pool.items.push(item('template', t.id, t.srs))
+        }
       }
     }
   }

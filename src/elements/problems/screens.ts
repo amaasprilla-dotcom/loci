@@ -9,6 +9,7 @@ import { backIcon, closeIcon, settingsIcon } from '../../icons'
 import { count, formatNumber, parseNumber, separators } from '../../locale'
 import { createMathField, type MathField } from '../../mathField'
 import { back, elementHash, go, reviewHash, subHash } from '../../router'
+import { studyAdjustments } from '../../study/limits'
 import { studyPool, summarize } from '../../study/plan'
 import { button, confirmDelete, deleteConfirmation, describeCounts, openSheet, sheetActions, submitButton } from '../../sheet'
 import { db, deleteElement, updateElement } from '../../store/db'
@@ -58,7 +59,8 @@ export async function renderProblemSet(initial: LocusElement<ProblemsData>): Pro
 
   async function reload() {
     templates = await listTemplates(set.id)
-    const due = summarize(await studyPool([set], Date.now())).problems
+    const now = Date.now()
+    const due = summarize(await studyPool([set], now, await studyAdjustments([set], now))).problems
     study.hidden = due === 0
     stats.textContent = templates.length === 0 ? 'Each problem gets new numbers every time it comes up.' : [count(templates.length, 'problem', 'problems'), due > 0 && `${formatNumber(due)} due`].filter(Boolean).join(' · ')
     list.replaceChildren(...(templates.length === 0 ? [h('p', { class: 'list-empty' }, 'No problems yet. Start one from a real example.')] : templates.map(row)))

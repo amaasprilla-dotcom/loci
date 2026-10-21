@@ -7,7 +7,7 @@ import { DEFAULT_STUDY_DIFFICULTY, DEFAULT_STUDY_IMPORTANCE } from '../levels'
 import { go, reviewHash, studyHash } from '../router'
 import { db } from '../store/db'
 import type { LocusElement } from '../types'
-import { newLimitsFor } from './limits'
+import { studyAdjustments } from './limits'
 import { studyPool, summarize } from './plan'
 import { minutesText, studyCounts } from './text'
 
@@ -26,7 +26,7 @@ const overdueSince = (at: number) => `Waiting since ${new Date(at).toLocaleDateS
 // A deck's or set's own study task: what's due in it now. Overdue once a review
 // has waited past a 04:00 rollover.
 export async function elementStudyTask(el: LocusElement, now: number): Promise<Task[]> {
-  const s = summarize(await studyPool([el], now, await newLimitsFor([el], now)))
+  const s = summarize(await studyPool([el], now, await studyAdjustments([el], now)))
   if (s.cards + s.problems === 0) return []
   const locus = await db.loci.get(el.locusId)
   const overdue = s.oldestDue != null && s.oldestDue < studyDayStart(now)

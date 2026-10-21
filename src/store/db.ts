@@ -8,6 +8,7 @@ import type {
   AttachmentOwner,
   Card,
   Contributor,
+  Exam,
   Goal,
   GoalEntry,
   ItemRef,
@@ -44,6 +45,7 @@ export const db = new Dexie('loci') as Dexie & {
   goalEntries: EntityTable<GoalEntry, 'id'>
   problemTemplates: EntityTable<ProblemTemplate, 'id'>
   problemAttempts: EntityTable<ProblemAttempt, 'id'>
+  exams: EntityTable<Exam, 'id'>
 }
 
 db.version(1).stores({
@@ -95,6 +97,11 @@ db.version(7).stores({
 db.version(8).stores({
   problemTemplates: 'id, elementId, [elementId+srs.due]',
   problemAttempts: 'id, templateId, at',
+})
+
+// v2: exams (Test mode), one locus each.
+db.version(9).stores({
+  exams: 'id, locusId, date, status',
 })
 
 // Runs once, when a v1 database is first opened by v2: gives every card its
@@ -169,12 +176,14 @@ export async function updateLocus(id: string, patch: Pick<Locus, 'name' | 'color
   })
 }
 
-// Deletes the locus and everything in it: its elements, their cards and the cards' review history.
+// Deletes the locus and everything in it: its elements with all their contents, and its exams.
 export async function deleteLocus(id: string): Promise<void> {
   await db.transaction('rw', CONTENT_TABLES(), async () => {
     const elementIds = await db.elements.where('locusId').equals(id).primaryKeys()
     await deleteElementsAndContents(elementIds)
-    await deleteLinksFor([{ type: 'locus', id }])
+    const examIds = await db.exams.where('locusId').equals(id).primaryKeys()
+    await deleteLinksFor([{ type: 'locus', id }, ...refs('exam', examIds)])
+    await db.exams.bulkDelete(examIds)
     await db.loci.delete(id)
     await pruneUnusedTags()
   })
@@ -194,6 +203,7 @@ export const CONTENT_TABLES = () => [
   db.goalEntries,
   db.problemTemplates,
   db.problemAttempts,
+  db.exams,
   db.attachments,
   db.blobs,
   db.links,
@@ -294,9 +304,9 @@ export async function deleteBlobIfUnused(blobId: string): Promise<void> {
 }
 
 // What deleting a locus would remove, for the confirmation message.
-export async function countLocusContents(id: string): Promise<{ elements: number; cards: number; problems: number; notes: number; todos: number; goals: number }> {
+export async function countLocusContents(id: string): Promise<{ elements: number; cards: number; problems: number; notes: number; todos: number; goals: number; exams: number }> {
   const elementIds = await db.elements.where('locusId').equals(id).primaryKeys()
-  return { elements: elementIds.length, ...(await countElementContents(elementIds)) }
+  return { elements: elementIds.length, ...(await countElementContents(elementIds)), exams: await db.exams.where('locusId').equals(id).count() }
 }
 
 // What deleting these elements would also remove, for confirmation messages.

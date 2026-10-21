@@ -5,6 +5,7 @@
 import { isActive, registry, type Task } from '../elements/registry'
 import { db } from '../store/db'
 import { mergeStudyTasks, splitStudyTasks } from '../study/tasks'
+import { examTasks } from '../exams/tasks'
 
 // How much one step of importance outweighs difficulty (SPEC-v2.md, "Ordering").
 // With 3, one step of importance beats up to two steps of difficulty.
@@ -26,10 +27,10 @@ const overdueFirst = (a: Task, b: Task) => Number(b.state === 'overdue') - Numbe
 
 export type Section = 'now' | 'goals' | 'planned' | 'someday'
 
-// Where a task goes on the Tasks screen (and in the locus view). Goals always go to
-// "Goals and exams", whatever their state; finished items ("info") aren't listed.
+// Where a task goes on the Tasks screen (and in the locus view). Goals and exams always
+// go to "Goals and exams", whatever their state; finished items ("info") aren't listed.
 export function sectionOf(t: Task): Section | null {
-  if (t.kind === 'goal') return 'goals'
+  if (t.kind === 'goal' || t.kind === 'exam') return 'goals'
   if (isActive(t)) return 'now'
   if (t.state === 'someday') return 'someday'
   if (t.state === 'upcoming' || t.state === 'waiting') return 'planned'
@@ -56,7 +57,8 @@ export async function allTasks(now = Date.now()): Promise<Task[]> {
     elements.map((el) => registry.get(el.type)?.getTasks(el, now) ?? Promise.resolve([])),
   )
   // Decks and sets study as one task per locus, unless set otherwise.
-  return (await splitStudyTasks()) ? lists.flat() : mergeStudyTasks(lists.flat())
+  const tasks = (await splitStudyTasks()) ? lists.flat() : mergeStudyTasks(lists.flat())
+  return [...tasks, ...(await examTasks(now))]
 }
 
 // The element whose work falls due soonest after now, for the empty "Now" section.

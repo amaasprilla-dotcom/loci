@@ -293,3 +293,19 @@ export interface ProblemAttempt {
   grade: Grade; // the FSRS rating it produced
   updatedAt: number;
 }
+
+// ---------- Exams (SPEC-v2.md, "Test mode") ----------
+
+// An exam in a locus. Its scope is the decks and problem sets linked to it
+// ("scope" links); with none linked, everything in the locus.
+export interface Exam {
+  id: string;
+  locusId: string;
+  title: string; // "Physics midterm"
+  date: number; // 09:00 on the exam day
+  targetRecall: number; // default 0.9
+  newPerDay?: number; // the user's lower pace for new material, if set
+  status: 'upcoming' | 'done';
+  createdAt: number;
+  updatedAt: number;
+}

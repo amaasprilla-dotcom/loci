@@ -162,7 +162,7 @@ export function openLocusSheet(options: { locus?: Locus; tags: Tag[]; suggestedC
     ]
 
     async function askDelete() {
-      const { elements, cards, problems, notes, todos, goals } = await countLocusContents(locus!.id)
+      const { elements, cards, problems, notes, todos, goals, exams } = await countLocusContents(locus!.id)
       const contents = describeCounts([
         [elements, 'element', 'elements'],
         [cards, 'card', 'cards'],
@@ -170,6 +170,7 @@ export function openLocusSheet(options: { locus?: Locus; tags: Tag[]; suggestedC
         [notes, 'note', 'notes'],
         [todos, 'to-do', 'to-dos'],
         [goals, 'goal', 'goals'],
+        [exams, 'exam', 'exams'],
       ])
       api.show(
         ...deleteConfirmation(

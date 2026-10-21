@@ -2854,3 +2854,19 @@ details.editor-section > summary {
     grid-template-columns: repeat(3, 1fr);
   }
 }
+
+/* ---------- Exams ---------- */
+
+.exam-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.exam-progress .progress {
+  height: 8px;
+  border-radius: 4px;
+}

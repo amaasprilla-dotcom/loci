@@ -11,6 +11,7 @@ import { loadLocaleSettings } from './locale'
 import { renderSettingsScreen } from './settings/view'
 import { renderLocusView } from './locus/view'
 import { back, currentRoute, go, parentOf, type Route } from './router'
+import { onChange } from './changes'
 import { db, getElement, requestPersistentStorage } from './store/db'
 import { allTasks } from './tasks/tasks'
 import { createTasksScreen } from './tasks/view'
@@ -197,6 +198,8 @@ document.addEventListener('visibilitychange', () => {
 })
 
 window.addEventListener('hashchange', showCurrent)
+// An edit in a sheet over any screen (e.g. an exam): the badge and Tasks catch up.
+onChange(() => void refreshTasks())
 
 // Escape goes back on desktop, unless a sheet is open (it closes itself).
 document.addEventListener('keydown', (e) => {

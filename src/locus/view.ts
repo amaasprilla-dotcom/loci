@@ -11,13 +11,17 @@ import { elementHash, go, studyHash } from '../router'
 import { button, deleteConfirmation, describeCounts, openSheet, sheetActions, submitButton } from '../sheet'
 import { countElementContents, createElement, db, deleteElement, listElements, reorderElements, updateElement } from '../store/db'
 import { allTasks, sections } from '../tasks/tasks'
-import { newLimitsFor } from '../study/limits'
+import { studyAdjustments } from '../study/limits'
 import { studyPool, summarize } from '../study/plan'
 import { minutesText, studyCounts } from '../study/text'
 import { count } from '../locale'
+import { onChange } from '../changes'
 import { taskRow } from '../tasks/view'
 import type { Locus, LocusElement } from '../types'
 import { makeSortable } from './reorder'
+
+const EXAM_ICON =
+  '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M8 3.5v3M16 3.5v3M4 10h16M9 15l2 2 4-4"/></svg>'
 
 export async function renderLocusView(locus: Locus, options: { onBack(): void }): Promise<HTMLElement> {
   const tags = (await db.tags.bulkGet(locus.tagIds)).filter((t) => t != null)
@@ -40,7 +44,7 @@ export async function renderLocusView(locus: Locus, options: { onBack(): void })
   const study = h('div', { class: 'locus-study' })
   async function renderStudy(now: number) {
     const studyable = elements.filter((e) => e.type === 'flashcards' || e.type === 'problems')
-    const pool = await studyPool(studyable, now, await newLimitsFor(studyable, now))
+    const pool = await studyPool(studyable, now, await studyAdjustments(studyable, now))
     if (pool.items.length === 0) {
       study.replaceChildren()
       return
@@ -112,9 +116,18 @@ export async function renderLocusView(locus: Locus, options: { onBack(): void })
   async function onAdd() {
     const result = await openAddSheet()
     if (!result) return
+    if (result === 'exam') {
+      const { openExamSheet } = await import('../exams/sheet')
+      await openExamSheet(locus.id, null)
+      return
+    }
     await createElement(locus.id, result.type.type, result.title, result.type.createDefault())
     await renderTiles()
   }
+
+  // An exam added or edited in its sheet: show it (and its effect on Study) here.
+  const stopListening = onChange(() => void renderTiles())
+  window.addEventListener('hashchange', stopListening, { once: true })
 
   const view = h(
     'div',
@@ -137,9 +150,9 @@ export async function renderLocusView(locus: Locus, options: { onBack(): void })
   return view
 }
 
-// The + menu: pick a type, then name it.
-function openAddSheet(): Promise<{ type: ElementType; title: string } | null> {
-  return openSheet<{ type: ElementType; title: string }>('Add to locus', (api) => {
+// The + menu: pick a type, then name it. Or add an exam, which has its own sheet.
+function openAddSheet(): Promise<{ type: ElementType; title: string } | 'exam' | null> {
+  return openSheet<{ type: ElementType; title: string } | 'exam'>('Add to locus', (api) => {
     let chosen: ElementType | null = null
     const titleInput = h('input', { class: 'input', type: 'text', maxlength: 80, 'aria-label': 'Title', oninput: () => sync() })
     const create = submitButton('Create')
@@ -170,6 +183,12 @@ function openAddSheet(): Promise<{ type: ElementType; title: string } | null> {
               iconNode(type.icon),
               h('span', {}, h('strong', {}, type.label), h('span', { class: 'type-desc' }, type.description)),
             ),
+          ),
+          h(
+            'button',
+            { type: 'button', class: 'type-option', onclick: () => api.close('exam') },
+            iconNode(EXAM_ICON),
+            h('span', {}, h('strong', {}, 'Exam'), h('span', { class: 'type-desc' }, 'A date to study toward: reviews aim to be strong on the day')),
           ),
         ),
         sheetActions(null, button('Cancel', () => api.close(null))),

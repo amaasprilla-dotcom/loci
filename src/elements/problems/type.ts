@@ -4,6 +4,7 @@
 import { h } from '../../dom'
 import { count, formatNumber } from '../../locale'
 import { elementHash, go, reviewHash } from '../../router'
+import { studyAdjustments } from '../../study/limits'
 import { studyPool, summarize } from '../../study/plan'
 import { elementStudyTask } from '../../study/tasks'
 import type { LocusElement } from '../../types'
@@ -32,7 +33,7 @@ export const problemsType: ElementType<ProblemsData> = {
   async renderCard(el: LocusElement<ProblemsData>, now) {
     const templates = await listTemplates(el.id)
     const tight = templates.filter((t) => t.tooTight).length
-    const s = summarize(await studyPool([el], now))
+    const s = summarize(await studyPool([el], now, await studyAdjustments([el], now)))
     return h(
       'div',
       { class: 'tile-content' },

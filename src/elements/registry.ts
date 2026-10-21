@@ -11,7 +11,7 @@ export interface Task {
   locusId: string
   elementId: string
   itemId?: string // the to-do / goal / template inside the element
-  kind: 'review' | 'todo' | 'checkin' | 'goal'
+  kind: 'review' | 'todo' | 'checkin' | 'goal' | 'exam'
   state: 'overdue' | 'due' | 'upcoming' | 'waiting' | 'someday' | 'info'
   label: string // "Gather receipts", "14 cards due"
   sublabel?: string // "Sunday 10:00", "23 days left"
