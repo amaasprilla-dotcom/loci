@@ -41,7 +41,7 @@ cleanup of removed images, backup), and to-dos (state around the 04:00 rollover 
 change, recurrence and missed occurrences, typed phrases, waiting to-dos, cascades, backup), goals
 (progress, weights, pace, check-ins, triggers), and the problem engine (10 sample templates, 200
 generated instances each: numbers in range, constraints met, answers checked; seeds replay; the
-200-try limit; template checks). Test
+200-try limit; template checks), reading and writing formulas, and finding numbers in an example. Test
 files sit next to the code they test
 (`*.test.ts`).
 
@@ -104,7 +104,12 @@ them.
 - `src/elements/problems/`: Problems: templates that generate fresh numbers each time.
   Evaluating formulas stored as MathJSON (`mathjson.ts`), the generator: seeded sampling, derived
   values, constraints, wordings, answer rounding and template checks (`engine.ts`, `seedrandom`),
-  storage (`store.ts`), and ten sample templates (`samples.ts`)
+  storage (`store.ts`), and ten sample templates (`samples.ts`). Formulas typed in MathLive's
+  math field are read from LaTeX and written back for display (`latex.ts`). Creating a problem
+  from an example (finding the numbers, names from units, suggested ranges: `authoring.ts`), the
+  set screen and the template editor with its live preview (`screens.ts`), questions, answers and
+  formulas on screen (`display.ts`, KaTeX), and the tile (`type.ts`)
+- `src/mathField.ts`: loads MathLive when first needed (notes and problems share it)
 - `src/tasks/`: every task across all loci, their ranking (score = 3 × importance − difficulty)
   and sections (`tasks.ts`), and the Tasks screen: Now, Goals and exams, Planned, Someday
   (`view.ts`). Active tasks make bubbles pulse and set the badge on home

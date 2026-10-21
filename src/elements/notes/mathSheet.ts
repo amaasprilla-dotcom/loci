@@ -4,31 +4,14 @@
 // the first time it's needed. Notes show math with KaTeX.
 
 import { h } from '../../dom'
-import { separators } from '../../locale'
+import { createMathField } from '../../mathField'
 import { button, openSheet, sheetActions, submitButton } from '../../sheet'
-
-let ready: Promise<typeof import('mathlive')> | null = null
-
-function loadMathLive() {
-  ready ??= import('mathlive').then((m) => {
-    // Fonts ship with the app (scripts/copy-mathlive-assets.mjs), so math works offline.
-    m.MathfieldElement.fontsDirectory = `${import.meta.env.BASE_URL}mathlive/fonts`
-    m.MathfieldElement.soundsDirectory = null
-    return m
-  })
-  return ready
-}
 
 export type MathResult = { latex: string } | 'delete'
 
 // Resolves with the new LaTeX, 'delete', or null if cancelled.
 export async function editMath(latex: string, editing: boolean, display: 'inline' | 'block'): Promise<MathResult | null> {
-  const { MathfieldElement } = await loadMathLive()
-  MathfieldElement.decimalSeparator = separators().decimal === ',' ? ',' : '.'
-  const field = new MathfieldElement()
-  field.value = latex
-  field.classList.add('math-input')
-  field.setAttribute('aria-label', 'Math')
+  const field = await createMathField(latex, 'Math')
 
   return openSheet<MathResult>('Math', (api) => ({
     content: [

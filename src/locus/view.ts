@@ -127,7 +127,7 @@ function openAddSheet(): Promise<{ type: ElementType; title: string } | null> {
 
     function nameStep(type: ElementType) {
       chosen = type
-      titleInput.placeholder = ({ flashcards: 'e.g. Spanish verbs', notes: 'e.g. Lecture notes', todos: 'e.g. Errands', goals: 'e.g. This year' } as Record<string, string>)[type.type] ?? ''
+      titleInput.placeholder = ({ flashcards: 'e.g. Spanish verbs', problems: 'e.g. Kinematics', notes: 'e.g. Lecture notes', todos: 'e.g. Errands', goals: 'e.g. This year' } as Record<string, string>)[type.type] ?? ''
       sync()
       api.show(
         h('h2', {}, `New ${type.noun}`),

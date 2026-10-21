@@ -2310,3 +2310,272 @@ details.task-section > summary {
   flex-direction: column;
   gap: 10px;
 }
+
+/* ---------- Problems ---------- */
+
+.template-row .card-back {
+  white-space: normal;
+}
+
+.template-row .problem-question {
+  margin: 0;
+}
+
+.card-back.warn {
+  color: var(--bad);
+}
+
+.template-formula {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.problem-question {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.problem-value {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.template-editor,
+.editor-step {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding-bottom: 40px;
+}
+
+.editor-step {
+  gap: 12px;
+}
+
+.editor-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.editor-heading {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.editor-step > .editor-heading {
+  font-size: 1.2rem;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--text);
+}
+
+details.editor-section > summary {
+  cursor: pointer;
+  list-style-position: inside;
+}
+
+.editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.editor-footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.wordings {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.wording {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wording-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
+}
+
+.wording-preview {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  line-height: 1.9;
+}
+
+.var-token,
+.alt-token {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.var-token {
+  background: var(--c);
+  color: var(--fg);
+}
+
+.var-token.unknown {
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+
+.alt-token {
+  border: 1px dashed var(--border-strong);
+  color: var(--muted);
+}
+
+.icon-btn.small {
+  width: 32px;
+  height: 32px;
+}
+
+.icon-btn.small svg {
+  width: 18px;
+  height: 18px;
+}
+
+.var-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.var-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.var-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.var-main .input {
+  width: auto;
+  padding: 8px 10px;
+}
+
+.input.var-name {
+  width: 76px;
+  font-weight: 650;
+}
+
+.input.var-num {
+  width: 84px;
+}
+
+.input.var-unit {
+  width: 84px;
+}
+
+.input.var-values {
+  flex: 1;
+  min-width: 140px;
+}
+
+.var-word {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.var-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.var-chips .var-chip {
+  min-width: 40px;
+  font-style: italic;
+  font-family: "Times New Roman", serif;
+  font-size: 1rem;
+}
+
+.formula-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.formula-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.formula-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.formula-line .math-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.preview-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.preview-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.preview-item:last-child {
+  border-bottom: 0;
+}
+
+.preview-answer {
+  margin: 0;
+}
+
+.preview-answer .worked {
+  color: var(--muted);
+}
+
+.problems-list {
+  margin: 0;
+  padding: 12px 14px 12px 32px;
+  color: var(--bad);
+}
+
+.math-inline .katex {
+  font-size: 1.05em;
+}
