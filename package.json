@@ -15,6 +15,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
+    "@types/seedrandom": "3.0.8",
     "@vite-pwa/assets-generator": "^2.0.0",
     "fake-indexeddb": "^6.2.6",
     "oxlint": "^1.81.0",
@@ -37,6 +38,7 @@
     "katex": "0.18.11",
     "mathlive": "0.111.1",
     "rrule": "2.8.1",
+    "seedrandom": "3.0.5",
     "ts-fsrs": "5.4.2"
   }
 }

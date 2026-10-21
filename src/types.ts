@@ -236,3 +236,59 @@ export interface GoalEntry {
   value: number;
   updatedAt: number;
 }
+
+// ---------- Problems (SPEC-v2.md, "Problems") ----------
+
+// A formula as MathJSON: a number, a symbol name, a number written as a string
+// ({ num: "2.5" }), or a function call [head, ...args], e.g. ["Divide", "d", "t"].
+export type MathJSON = number | string | { num: string } | [string, ...MathJSON[]];
+
+export interface VarSpec {
+  name: string; // "d"
+  unit?: string; // "km"
+  source: { kind: 'range'; min: number; max: number; step: number } | { kind: 'list'; values: number[] };
+  exclude?: number[]; // e.g. [0]
+}
+
+export interface AnswerFormat {
+  decimals?: number; // fixed decimal places
+  sigFigs?: number; // or significant figures (used when decimals isn't set)
+  unit?: string; // shown after the answer, e.g. "km/h"
+}
+
+export interface ProblemTemplate {
+  id: string;
+  elementId: string; // the problem set
+  title: string; // "Average speed"
+  texts: string[]; // wordings; {v} = variable, {a|b} = pick one of the alternatives
+  vars: VarSpec[];
+  mode: 'formula' | 'relation'; // relation mode arrives in v2.1
+  answer: MathJSON; // formula mode: the expression for the answer
+  relation?: MathJSON; // relation mode: ["Equal", lhs, rhs]
+  askable?: string[]; // relation mode: which variables may be hidden
+  derived: { name: string; expr: MathJSON }[]; // intermediate values, computed in order
+  constraints: MathJSON[]; // must all be true, e.g. ["GreaterEqual", ...]
+  answerFormat: AnswerFormat;
+  customDistractors: { expr: MathJSON; label: string }[];
+  answerMode: 'choice' | 'typed'; // typed = numeric entry with tolerance
+  srs: Srs;
+  // Set when 200 tries in a row failed the constraints ("constraints too tight").
+  tooTight?: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// One try at one generated instance; the seed replays it exactly.
+export interface ProblemAttempt {
+  id: string;
+  templateId: string;
+  at: number;
+  seed: string;
+  answer: number; // the correct answer, as shown
+  given: number; // what was picked or typed
+  rule?: string; // the mistake rule behind a wrong option that was picked
+  correct: boolean;
+  ms: number; // time taken
+  grade: Grade; // the FSRS rating it produced
+  updatedAt: number;
+}

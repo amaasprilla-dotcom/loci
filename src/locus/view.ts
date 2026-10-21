@@ -182,9 +182,10 @@ function openTileMenu(el: LocusElement): Promise<boolean | null> {
     ]
 
     async function askDelete() {
-      const { cards, notes, todos, goals } = await countElementContents([el.id])
+      const { cards, problems, notes, todos, goals } = await countElementContents([el.id])
       const contents = describeCounts([
         [cards, 'card', 'cards'],
+        [problems, 'problem', 'problems'],
         [notes, 'note', 'notes'],
         [todos, 'to-do', 'to-dos'],
         [goals, 'goal', 'goals'],

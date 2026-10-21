@@ -110,6 +110,8 @@ describe('merge', () => {
       goals: [],
       goalContributors: [],
       goalEntries: [],
+      problemTemplates: [],
+      problemAttempts: [],
     }
     await importBackup(backup, 'merge')
     expect(await db.tags.count()).toBe(1)

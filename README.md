@@ -38,7 +38,10 @@ the daily limits, the review log, tasks, bulk import, backup export/import/merge
 upgrade of a v1 database and v1 backups to FSRS, task ranking and sections, links, attachments,
 zip backups, number formats, desired retention, and notes (text for search, pinning, cascades,
 cleanup of removed images, backup), and to-dos (state around the 04:00 rollover and a daylight-saving
-change, recurrence and missed occurrences, typed phrases, waiting to-dos, cascades, backup). Test
+change, recurrence and missed occurrences, typed phrases, waiting to-dos, cascades, backup), goals
+(progress, weights, pace, check-ins, triggers), and the problem engine (10 sample templates, 200
+generated instances each: numbers in range, constraints met, answers checked; seeds replay; the
+200-try limit; template checks). Test
 files sit next to the code they test
 (`*.test.ts`).
 
@@ -98,6 +101,10 @@ them.
   pace and the chart's history (`progress.ts`), the weekly check-in a goal gets by default
   (`defaults.ts`), storage, check-ins and the to-dos a goal sets off (`store.ts`), tasks and tile
   (`type.ts`), and the goal list, goal screen and its sheets (`screens.ts`)
+- `src/elements/problems/`: Problems: templates that generate fresh numbers each time.
+  Evaluating formulas stored as MathJSON (`mathjson.ts`), the generator: seeded sampling, derived
+  values, constraints, wordings, answer rounding and template checks (`engine.ts`, `seedrandom`),
+  storage (`store.ts`), and ten sample templates (`samples.ts`)
 - `src/tasks/`: every task across all loci, their ranking (score = 3 × importance − difficulty)
   and sections (`tasks.ts`), and the Tasks screen: Now, Goals and exams, Planned, Someday
   (`view.ts`). Active tasks make bubbles pulse and set the badge on home

@@ -10,7 +10,7 @@
 
 import JSZip from 'jszip'
 import { count } from '../locale'
-import type { Attachment, Card, Contributor, Goal, GoalEntry, Link, Locus, LocusElement, Note, ReviewLog, Setting, StoredBlob, Tag, Todo, TodoCompletion } from '../types'
+import type { Attachment, Card, Contributor, Goal, GoalEntry, Link, Locus, LocusElement, Note, ProblemAttempt, ProblemTemplate, ReviewLog, Setting, StoredBlob, Tag, Todo, TodoCompletion } from '../types'
 import { db, migrateV1Cards, tagKey } from './db'
 
 // 1: v1 (SM-2 cards, .json). 2: cards carry FSRS state (.json).
@@ -35,12 +35,14 @@ export interface Backup {
   goals: Goal[]
   goalContributors: Contributor[]
   goalEntries: GoalEntry[]
+  problemTemplates: ProblemTemplate[]
+  problemAttempts: ProblemAttempt[]
 }
 
-const TABLES = ['tags', 'loci', 'elements', 'cards', 'reviews', 'links', 'attachments', 'blobs', 'settings', 'notes', 'todos', 'todoCompletions', 'goals', 'goalContributors', 'goalEntries'] as const
+const TABLES = ['tags', 'loci', 'elements', 'cards', 'reviews', 'links', 'attachments', 'blobs', 'settings', 'notes', 'todos', 'todoCompletions', 'goals', 'goalContributors', 'goalEntries', 'problemTemplates', 'problemAttempts'] as const
 type TableName = (typeof TABLES)[number]
 // Tables added after the first backups: a file from before them simply has none.
-const ADDED_LATER = new Set<TableName>(['links', 'attachments', 'blobs', 'settings', 'notes', 'todos', 'todoCompletions', 'goals', 'goalContributors', 'goalEntries'])
+const ADDED_LATER = new Set<TableName>(['links', 'attachments', 'blobs', 'settings', 'notes', 'todos', 'todoCompletions', 'goals', 'goalContributors', 'goalEntries', 'problemTemplates', 'problemAttempts'])
 const ALL_TABLES = () => [
   db.tags,
   db.loci,
@@ -57,6 +59,8 @@ const ALL_TABLES = () => [
   db.goals,
   db.goalContributors,
   db.goalEntries,
+  db.problemTemplates,
+  db.problemAttempts,
 ]
 
 export async function exportBackup(now = Date.now()): Promise<Backup> {
@@ -78,6 +82,8 @@ export async function exportBackup(now = Date.now()): Promise<Backup> {
     goals: await db.goals.toArray(),
     goalContributors: await db.goalContributors.toArray(),
     goalEntries: await db.goalEntries.toArray(),
+    problemTemplates: await db.problemTemplates.toArray(),
+    problemAttempts: await db.problemAttempts.toArray(),
   }))
 }
 
@@ -172,6 +178,8 @@ export function parseBackup(text: string): Backup {
     goals: b.goals as Goal[],
     goalContributors: b.goalContributors as Contributor[],
     goalEntries: b.goalEntries as GoalEntry[],
+    problemTemplates: b.problemTemplates as ProblemTemplate[],
+    problemAttempts: b.problemAttempts as ProblemAttempt[],
   }
 }
 
@@ -218,6 +226,8 @@ export async function importBackup(backup: Backup, mode: 'replace' | 'merge'): P
     await mergeInto('goals', backup.goals, summary)
     await mergeInto('goalContributors', backup.goalContributors, summary)
     await mergeInto('goalEntries', backup.goalEntries, summary)
+    await mergeInto('problemTemplates', backup.problemTemplates, summary)
+    await mergeInto('problemAttempts', backup.problemAttempts, summary)
 
     // Settings are keyed by name; the newer value wins.
     for (const setting of backup.settings) {
