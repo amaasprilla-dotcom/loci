@@ -144,15 +144,18 @@ export function openLocusSheet(options: { locus?: Locus; tags: Tag[]; suggestedC
       h('label', { class: 'field-label' }, 'Name', nameInput),
       h('div', { class: 'field-label' }, 'Color', h('div', { class: 'swatches' }, swatches, custom)),
       h('div', { class: 'field-label' }, 'Tags', chips, tagInput),
-      h(
-        'div',
-        { class: 'field-label' },
-        'Study priority',
-        h('span', { class: 'field-hint' }, 'How reviews due here rank on the Tasks screen.'),
-        h('div', { class: 'level-row' }, h('span', { class: 'level-name' }, 'Importance'), importance.el),
-        h('div', { class: 'level-row' }, h('span', { class: 'level-name' }, 'Difficulty'), difficulty.el),
-      ),
-      retention.el,
+      // A locus isn't only for studying, so a new one takes the study defaults
+      // without asking; they're adjustable later from Edit.
+      editing &&
+        h(
+          'div',
+          { class: 'field-label' },
+          'Study priority',
+          h('span', { class: 'field-hint' }, 'How reviews due here rank on the Tasks screen.'),
+          h('div', { class: 'level-row' }, h('span', { class: 'level-name' }, 'Importance'), importance.el),
+          h('div', { class: 'level-row' }, h('span', { class: 'level-name' }, 'Difficulty'), difficulty.el),
+        ),
+      editing && retention.el,
       editing && linkedItemsSection({ type: 'locus', id: locus.id }, () => api.close(null)),
       sheetActions(
         editing && button('Delete', () => void askDelete(), 'danger-text'),
