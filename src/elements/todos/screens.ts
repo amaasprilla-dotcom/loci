@@ -19,6 +19,7 @@ import type { Level, LocusElement, Todo, When } from '../../types'
 import { openGoals } from '../goals/type'
 import { archiveTodo, completeTodo, countDependents, createTodo, deleteTodo, goalsCountingTodo, itHappened, listTodos, reopenTodo, skipTodo, type TodoDraft, updateTodo, type WaitsFor, waitsForOf } from './store'
 import { todoTask } from './type'
+import { rememberTime, timeField } from './timeField'
 import { dayStartOf, formatDay, makeRepeat, parseTyped, repeatText, whenText } from './when'
 
 const DAY = 86_400_000
@@ -129,7 +130,7 @@ function createAddForm(el: LocusElement, onAdded: () => Promise<void>): HTMLElem
   const action = h('input', {
     class: 'input todo-action',
     type: 'text',
-    placeholder: 'e.g. Sunday 10am gather receipts',
+    placeholder: 'e.g. Breakfast daily 8am',
     'aria-label': 'What to do',
     maxlength: 200,
     oninput: () => sync(),
@@ -295,7 +296,12 @@ export function pickWhen(current: When | null, self: string | null): Promise<{ w
       const now = Date.now()
       return [
         h('h2', {}, 'When will you do it?'),
-        h('div', { class: 'chips' }, quickPicks(now).map((q) => h('button', { type: 'button', class: 'chip', onclick: () => done(q.when) }, q.label))),
+        h(
+          'div',
+          { class: 'chips' },
+          quickPicks(now).map((q) => h('button', { type: 'button', class: 'chip', onclick: () => done(q.when) }, q.label)),
+          h('button', { type: 'button', class: 'chip', onclick: () => api.show(...repeatView(current, done, () => api.show(...main()), 'daily')) }, 'Every day'),
+        ),
         h(
           'div',
           { class: 'when-options' },
@@ -320,50 +326,78 @@ function dateView(current: When | null, done: Done, backToMain: () => void): HTM
   const pad = (n: number) => String(n).padStart(2, '0')
   const date = h('input', { class: 'input', type: 'date', 'aria-label': 'Date' })
   date.value = `${base.getFullYear()}-${pad(base.getMonth() + 1)}-${pad(base.getDate())}`
-  const time = h('input', { class: 'input', type: 'time', 'aria-label': 'Time (optional)' })
-  if (current?.kind === 'at' && current.hasTime) time.value = `${pad(base.getHours())}:${pad(base.getMinutes())}`
   const error = h('p', { class: 'sheet-error', role: 'alert' })
+  const set = () => {
+    const t = time.read()
+    if (!date.value) {
+      error.textContent = 'Pick a date.'
+      return
+    }
+    if (t === null) {
+      error.textContent = 'That doesn’t look like a time. Try 7:30am or 19:30.'
+      return
+    }
+    const [y, m, d] = date.value.split('-').map(Number)
+    if (t) {
+      const [hh, mm] = t.split(':').map(Number)
+      rememberTime(t)
+      done({ kind: 'at', at: new Date(y, m - 1, d, hh, mm).getTime(), hasTime: true })
+    } else done({ kind: 'at', at: dayStartOf(new Date(y, m - 1, d, 12).getTime()), hasTime: false })
+  }
+  const time = timeField(current?.kind === 'at' && current.hasTime ? `${pad(base.getHours())}:${pad(base.getMinutes())}` : undefined, () => (error.textContent = ''), set)
   return [
     h('h2', {}, 'Pick a date'),
-    h('div', { class: 'field-row' }, h('label', { class: 'field-label' }, 'Date', date), h('label', { class: 'field-label' }, 'Time (optional)', time)),
-    h('p', { class: 'field-hint' }, 'Without a time, it’s due all that day.'),
+    h('label', { class: 'field-label' }, 'Date', date),
+    time.el,
     error,
-    sheetActions(
-      null,
-      button('Back', backToMain),
-      button(
-        'Set',
-        () => {
-          if (!date.value) {
-            error.textContent = 'Pick a date.'
-            return
-          }
-          const [y, m, d] = date.value.split('-').map(Number)
-          if (time.value) {
-            const [hh, mm] = time.value.split(':').map(Number)
-            done({ kind: 'at', at: new Date(y, m - 1, d, hh, mm).getTime(), hasTime: true })
-          } else done({ kind: 'at', at: dayStartOf(new Date(y, m - 1, d, 12).getTime()), hasTime: false })
-        },
-        'primary',
-      ),
-    ),
+    sheetActions(null, button('Back', backToMain), button('Set', set, 'primary')),
   ]
 }
 
 const WEEKDAYS = [RRule.SU, RRule.MO, RRule.TU, RRule.WE, RRule.TH, RRule.FR, RRule.SA]
 
-function repeatView(current: When | null, done: Done, backToMain: () => void): HTMLElement[] {
+type Freq = 'daily' | 'weekly' | 'monthly'
+
+// What the Repeat view starts from: the repeat being edited, else every day (what most
+// repeating to-dos are), with today's weekday and date ready if switched to weekly or monthly.
+function repeatStart(current: When | null): { freq: Freq; interval: number; days: number[]; monthDay: number } {
   const today = new Date()
-  let freq: 'daily' | 'weekly' | 'monthly' = 'weekly'
-  const days = new Set<number>([today.getDay()]) // 0 = Sunday
+  const start = { freq: 'daily' as Freq, interval: 1, days: [today.getDay()], monthDay: today.getDate() }
+  if (current?.kind !== 'repeat') return start
+  try {
+    const o = RRule.fromString(current.rrule).origOptions
+    const freq = o.freq === RRule.DAILY ? 'daily' : o.freq === RRule.WEEKLY ? 'weekly' : o.freq === RRule.MONTHLY ? 'monthly' : null
+    if (!freq) return start
+    // rrule counts Monday as 0; here Sunday is 0.
+    const days = ([] as unknown[]).concat(o.byweekday ?? []).map((d) => (((typeof d === 'number' ? d : (d as { weekday: number }).weekday) + 1) % 7))
+    const monthDay = ([] as number[]).concat(o.bymonthday ?? [])[0]
+    return { freq, interval: o.interval ?? 1, days: days.length > 0 ? days : start.days, monthDay: monthDay ?? start.monthDay }
+  } catch {
+    return start
+  }
+}
+
+function repeatView(current: When | null, done: Done, backToMain: () => void, preset?: Freq): HTMLElement[] {
+  const start = repeatStart(current)
+  let freq: Freq = preset ?? start.freq
+  const days = new Set<number>(start.days) // 0 = Sunday
   const every = h('input', { class: 'input every', type: 'number', min: 1, max: 99, step: 1, 'aria-label': 'Every', oninput: () => preview() })
-  every.value = '1'
+  every.value = String(preset ? 1 : start.interval)
   const unit = h('span', { class: 'every-unit' })
   const monthDay = h('input', { class: 'input every', type: 'number', min: 1, max: 31, step: 1, 'aria-label': 'Day of the month', oninput: () => preview() })
-  monthDay.value = String(today.getDate())
-  const time = h('input', { class: 'input', type: 'time', 'aria-label': 'Time (optional)', oninput: () => preview() })
-  if (current?.kind === 'repeat' && current.time) time.value = current.time
+  monthDay.value = String(start.monthDay)
   const summary = h('p', { class: 'sheet-note' })
+  const error = h('p', { class: 'sheet-error', role: 'alert' })
+  const set = () => {
+    const t = time.read()
+    if (t === null) {
+      error.textContent = 'That doesn’t look like a time. Try 7:30am or 19:30.'
+      return
+    }
+    rememberTime(t)
+    done(makeRepeat(options(), Date.now(), t))
+  }
+  const time = timeField(current?.kind === 'repeat' ? current.time : undefined, () => preview(), set)
 
   // Weekday chips, starting on this locale's first day of the week.
   const first = firstDayOfWeek() % 7
@@ -417,7 +451,8 @@ function repeatView(current: When | null, done: Done, backToMain: () => void): H
     unit.textContent = freq === 'daily' ? (n === 1 ? 'day' : 'days') : freq === 'weekly' ? (n === 1 ? 'week' : 'weeks') : n === 1 ? 'month' : 'months'
     weekRow.hidden = freq !== 'weekly'
     monthRow.hidden = freq !== 'monthly'
-    const when = makeRepeat(options(), Date.now(), time.value || undefined)
+    error.textContent = ''
+    const when = makeRepeat(options(), Date.now(), time.read() ?? undefined)
     summary.textContent = `${repeatText(when)} · first ${inSentence(formatDay(when.next, Date.now()))}`
   }
   preview()
@@ -428,9 +463,10 @@ function repeatView(current: When | null, done: Done, backToMain: () => void): H
     h('div', { class: 'every-row' }, h('span', {}, 'Every'), every, unit),
     weekRow,
     monthRow,
-    h('label', { class: 'field-label' }, 'Time (optional)', time),
+    time.el,
     summary,
-    sheetActions(null, button('Back', backToMain), button('Set', () => done(makeRepeat(options(), Date.now(), time.value || undefined)), 'primary')),
+    error,
+    sheetActions(null, button('Back', backToMain), button('Set', set, 'primary')),
   ]
 }
 

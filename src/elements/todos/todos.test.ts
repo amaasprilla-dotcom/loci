@@ -11,7 +11,7 @@ import { createElement, createLocus, db, deleteLocus } from '../../store/db'
 import type { LocusElement, Todo, When } from '../../types'
 import { completeTodo, createTodo, deleteTodo, itHappened, skipTodo } from './store'
 import { todosType } from './type'
-import { dayStartOf, makeRepeat, nextRollover, occurrencesBetween, parseTyped, resolveRepeat, todoState } from './when'
+import { dayStartOf, makeRepeat, nextRollover, occurrencesBetween, parseClock, parseTyped, resolveRepeat, todoState } from './when'
 
 const at = (month: number, day: number, h = 0, m = 0) => new Date(2026, month - 1, day, h, m).getTime()
 const open = (when: When): Pick<Todo, 'status' | 'when'> => ({ status: 'open', when })
@@ -130,8 +130,48 @@ describe('typed phrases', () => {
     expect(when).toMatchObject({ kind: 'repeat', next: at(10, 21, 4) })
   })
 
+  it('"daily" and "weekdays" work like "every day" and "every weekday"', () => {
+    const daily = parseTyped('Breakfast daily 8am', now)
+    expect(daily.title).toBe('Breakfast')
+    expect(daily.when).toMatchObject({ kind: 'repeat', time: '08:00', next: at(10, 22, 8) })
+    const weekdays = parseTyped('weekdays 9:15 standup', now)
+    expect(weekdays.title).toBe('Standup')
+    expect(weekdays.when).toMatchObject({ kind: 'repeat', time: '09:15' })
+    expect((weekdays.when as Extract<When, { kind: 'repeat' }>).rrule).toContain('BYDAY=MO,TU,WE,TH,FR')
+  })
+
+  it('only the first shorthand word is the repeat; the rest stays in the title', () => {
+    expect(parseTyped('Weekly review daily notes', now).title).toBe('Review daily notes')
+  })
+
+  it('a 24-hour time after a repeat', () => {
+    expect(parseTyped('every day 19:30 stretch', now)).toMatchObject({ title: 'Stretch', when: { kind: 'repeat', time: '19:30' } })
+  })
+
   it('no when in the text: just the action', () => {
     expect(parseTyped('call mom', now)).toEqual({ title: 'Call mom', when: null })
+  })
+})
+
+describe('typed times', () => {
+  it.each([
+    ['7', '07:00'],
+    ['730', '07:30'],
+    ['1930', '19:30'],
+    ['7:30', '07:30'],
+    ['7.30', '07:30'],
+    ['7p', '19:00'],
+    ['7:30 PM', '19:30'],
+    ['12am', '00:00'],
+    ['12pm', '12:00'],
+    ['noon', '12:00'],
+    ['midnight', '00:00'],
+  ])('%s → %s', (text, time) => {
+    expect(parseClock(text)).toBe(time)
+  })
+
+  it.each(['', 'abc', '24', '7:60', '13pm', '0am', '7:5'])('%j is not a time', (text) => {
+    expect(parseClock(text)).toBeNull()
   })
 })
 

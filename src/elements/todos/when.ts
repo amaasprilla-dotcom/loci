@@ -128,7 +128,36 @@ export function resolveRepeat(when: Extract<When, { kind: 'repeat' }>, outcome: 
 
 const REPEAT_PHRASE =
   /\b(?:every|each)\s+(?:other\s+)?(?:\d+\s+)?(?:day|days|weekday|weekdays|week|weeks|month|months|year|years|(?:mon|tues|wednes|thurs|fri|satur|sun)day(?:s)?(?:\s*(?:,|and|&)\s*(?:mon|tues|wednes|thurs|fri|satur|sun)day(?:s)?)*)\b/i
-const TIME_PHRASE = /\b(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b|\bat\s+(\d{1,2})(?::(\d{2}))?\b/i
+const TIME_PHRASE = /\b(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b|\bat\s+(\d{1,2})(?::(\d{2}))?\b|\b([01]?\d|2[0-3]):([0-5]\d)\b/i
+
+const SHORTHAND = /\b(daily|weekly|monthly)\b|(?<!\bevery\s)(?<!\beach\s)\bweekdays\b/i
+const SHORTHAND_AS = { daily: 'every day', weekly: 'every week', monthly: 'every month' }
+
+// "daily", "weekdays" and the like, in the words the repeat phrase understands. Only the
+// first one is rewritten: any other stays in the title as it was typed.
+function shorthand(s: string): string {
+  return s.replace(SHORTHAND, (_, word?: string) => (word ? SHORTHAND_AS[word.toLowerCase() as keyof typeof SHORTHAND_AS] : 'every weekday'))
+}
+
+// A time typed any common way: "7", "730", "7:30", "19.30", "7p", "7:30 pm", "noon".
+// Returns "HH:MM", or null if it isn't a time. A bare number is on the 24-hour clock.
+export function parseClock(text: string): string | null {
+  const s = text.trim().toLowerCase().replace(/^(\d{1,2})\.(\d{2})/, '$1:$2')
+  if (s === 'noon') return '12:00'
+  if (s === 'midnight') return '00:00'
+  const m = s.match(/^(\d{1,2})(?:[:h]?(\d{2}))?\s*(am|pm|a|p)?$/)
+  if (!m) return null
+  let hours = Number(m[1])
+  const minutes = Number(m[2] ?? 0)
+  const ampm = m[3]?.[0]
+  if (minutes > 59) return null
+  if (ampm) {
+    if (hours < 1 || hours > 12) return null
+    if (ampm === 'p' && hours < 12) hours += 12
+    if (ampm === 'a' && hours === 12) hours = 0
+  } else if (hours > 23) return null
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+}
 
 export interface Parsed {
   title: string
@@ -142,12 +171,13 @@ export function parseTyped(text: string, now: number): Parsed {
   let rest = text
   let when: When | null = null
 
-  const repeat = rest.match(REPEAT_PHRASE)
+  const phrased = shorthand(rest)
+  const repeat = phrased.match(REPEAT_PHRASE)
   if (repeat) {
     try {
       const options = RRule.parseText(repeat[0].replace(/\bother\b/i, '2').replace(/\beach\b/i, 'every'))
       if (options?.freq != null) {
-        rest = cut(rest, repeat.index!, repeat[0].length)
+        rest = cut(phrased, repeat.index!, repeat[0].length)
         const t = rest.match(TIME_PHRASE)
         let time: string | undefined
         if (t) {
@@ -179,8 +209,8 @@ function cut(s: string, index: number, length: number): string {
 }
 
 function clock(m: RegExpMatchArray): string {
-  let hours = Number(m[1] ?? m[4])
-  const minutes = Number(m[2] ?? m[5] ?? 0)
+  let hours = Number(m[1] ?? m[4] ?? m[6])
+  const minutes = Number(m[2] ?? m[5] ?? m[7] ?? 0)
   const ampm = m[3]?.toLowerCase()
   if (ampm === 'pm' && hours < 12) hours += 12
   if (ampm === 'am' && hours === 12) hours = 0
