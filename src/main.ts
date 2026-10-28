@@ -15,6 +15,7 @@ import { onChange } from './changes'
 import { db, getElement, requestPersistentStorage } from './store/db'
 import { allTasks } from './tasks/tasks'
 import { createTasksScreen } from './tasks/view'
+import { isStaleCodeError, reloadForStaleCode, watchForStaleCode } from './staleCode'
 import { coverFor, fadeIn, fadeOut, growFrom, motionAllowed, shrinkInto } from './transition'
 
 const DEFAULT_THEME_COLOR = '#ffffff'
@@ -186,7 +187,10 @@ function showCurrent() {
   queue = queue
     .then(() => show(currentRoute()))
     .then(refreshTasks)
-    .catch((err) => console.error(err))
+    .catch((err) => {
+      if (isStaleCodeError(err) && reloadForStaleCode()) return
+      console.error(err)
+    })
 }
 
 // While the app is open, refresh every minute; when it comes back to the front, at once.
@@ -198,6 +202,7 @@ document.addEventListener('visibilitychange', () => {
 })
 
 window.addEventListener('hashchange', showCurrent)
+watchForStaleCode()
 // An edit in a sheet over any screen (e.g. an exam): the badge and Tasks catch up.
 onChange(() => void refreshTasks())
 
