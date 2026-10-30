@@ -140,7 +140,7 @@ Two devices editing offline can leave combinations neither made alone. After eve
 - **Orphans.** A record whose parent is gone (a card whose element was deleted on the other device while this one added the card) is deleted, with its own children. The parent of each table is the one the existing delete cascade follows.
 - **Dangling links and dependencies** are removed, and to-dos that waited on a deleted item become due, exactly as when deleting locally (`wakeDependents`, `deleteLinksFor`).
 
-The repair pass is a pure function from "records just pulled + the database" to "writes to make", so it can be tested without a server.
+The repair pass reuses the app's own delete functions (`deleteLocus`, `deleteNote`, …), so a repair removes exactly what deleting by hand would. Deleting something already gone records nothing, so two devices' repairs can't bounce deletions back and forth.
 
 **Granularity.** "Newer wins" is per record. Two offline edits to *different fields* of the same note (title on the phone, pin on the laptop) keep only the newer record. For one person this is rare, and the open-editor bar covers the common case. Field-level merging is a non-goal.
 
@@ -188,10 +188,10 @@ Neither table is included in backups. Existing tables are unchanged.
 
 ## Testing
 
-- **Pure functions** (Vitest, as today): the merge decision, outbox coalescing, the repair pass (tag merge, orphans, dangling links), key formatting and parsing.
+- **Pure functions** (Vitest, as today): the merge decision, key formatting and parsing.
 - **Middleware** with `fake-indexeddb`: every write path records the right outbox rows, including the delete cascades, `clear()`, backup Replace and Merge, and that applied pulls record nothing.
 - **Server**: the store and API run in Vitest against Node's built-in SQLite (`node:sqlite`), standing in for the Durable Object's: claim, auth, push ordering, newer-wins with ties, clock cap, pagination, blob chunking, version gate. (`@cloudflare/vitest-pool-workers` needs Vitest 4; Loci is on 5.) Each milestone also runs once in the real local runtime (`npm run dev:sync`).
-- **Two-device scenarios**, client engine against a real local Durable Object: offline edits on both sides; delete vs edit; same tag created twice; card added under an element deleted elsewhere; a push interrupted half way; joining with Merge and Replace.
+- **Two-device scenarios**: the client engine against the real server code on Node's SQLite, with the other device writing to the server directly: edits and deletes both ways, no echo, newer-wins in both directions, offline then back online, joining with Merge and Replace, wrong and reset keys, the version gate, the same tag created twice (either side surviving), cards added under an element deleted elsewhere and the reverse, dangling links. Then by hand in two browser origins (`localhost` and `127.0.0.1`) against `wrangler dev`.
 
 ## Non-goals
 
@@ -213,6 +213,6 @@ One milestone at a time, each committed and reviewed before the next (as for v2 
 | --- | --- | --- |
 | **S0** | This spec | — |
 | **S1** | Server: Worker code, the Durable Object, claim/auth, push, pull, version gate, `wrangler.jsonc`, server tests, `dev:sync`. Deployed, but nothing in the app calls it yet. | Nothing |
-| **S2** | Client: `db.version(11)`, the middleware and outbox, the sync engine (push/pull rounds, triggers, backoff), the repair pass, Settings → Sync (set up, join with Merge/Replace, status, stop, reset), the sync dot. Records only; attachment *files* not yet. Pulled changes show the next time a screen opens (no live redraw yet, so an open editor is never redrawn). | Sync works between devices |
+| **S2** | Client: `db.version(11)`, the middleware and outbox, the sync engine (push/pull rounds, triggers, backoff), the repair pass, Settings → Sync (set up, join with Merge/Replace, status, stop, reset), the sync dot. Records only: attachments (links and files) wait in the outbox until S4. Pulled changes show the next time a screen opens (no live redraw yet, so an open editor is never redrawn). | Sync works between devices |
 | **S3** | Live updates (WebSocket), screen redraws, the open-editor bar and "Deleted on another device". | Changes appear within a second or two; editors are safe |
 | **S4** | Attachment files (upload, download, chunks, "Downloading…"), the large-file warning, backup Replace/Merge with sync on, README (setup, limits, recovery). | Files sync; done |

@@ -1,8 +1,10 @@
-// IndexedDB storage through Dexie. All data stays on this device.
+// IndexedDB storage through Dexie. All data lives on this device; with sync on,
+// changes are also copied to the user's other devices (src/sync/).
 
-import Dexie, { type EntityTable, type Transaction } from 'dexie'
+import Dexie, { type EntityTable, type Table, type Transaction } from 'dexie'
 import { migrateCard } from '../elements/flashcards/srs'
 import { defaultCheckin } from '../elements/goals/defaults'
+import { type OutboxRow, recordChanges, type SyncStateRow } from '../sync/record'
 import type {
   Attachment,
   AttachmentOwner,
@@ -48,6 +50,8 @@ export const db = new Dexie('loci') as Dexie & {
   problemAttempts: EntityTable<ProblemAttempt, 'id'>
   exams: EntityTable<Exam, 'id'>
   recallAttempts: EntityTable<RecallAttempt, 'id'>
+  syncOutbox: Table<OutboxRow, [string, string]>
+  syncState: EntityTable<SyncStateRow, 'key'>
 }
 
 db.version(1).stores({
@@ -110,6 +114,16 @@ db.version(9).stores({
 db.version(10).stores({
   recallAttempts: 'id, noteId, at',
 })
+
+// Sync (SPEC-v4-sync.md): changes waiting to be sent, and this device's sync
+// settings. Both stay on this device: neither is synced or backed up.
+db.version(11).stores({
+  syncOutbox: '[table+id], changedAt',
+  syncState: 'key',
+})
+
+// Every write to a synced table is recorded for sync (src/sync/record.ts).
+db.use(recordChanges)
 
 // Runs once, when a v1 database is first opened by v2: gives every card its
 // FSRS state, replaying its review history where there is one.

@@ -20,6 +20,8 @@
   --ok: #1d8348; /* right answers */
   --ok-soft: #e7f6ed;
 
+  --warn: #b7791f; /* waiting: changes not synced yet */
+
   --radius: 12px;
   --shadow-sm: 0 1px 2px rgba(11, 15, 20, 0.05);
   --shadow-md: 0 2px 4px rgba(11, 15, 20, 0.04), 0 10px 28px rgba(11, 15, 20, 0.08);
@@ -143,6 +145,47 @@ h2 {
 
 .badge[hidden] {
   display: none;
+}
+
+/* Sync dot: hidden while all is synced; a spinner while a slow round runs,
+   amber while changes wait for a connection, red when sync needs the user. */
+.sync-dot {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  justify-content: center;
+}
+
+.sync-dot[hidden] {
+  display: none;
+}
+
+.sync-dot-mark {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.sync-dot[data-state="waiting"] .sync-dot-mark {
+  background: var(--warn);
+}
+
+.sync-dot[data-state="error"] .sync-dot-mark {
+  background: var(--bad);
+}
+
+.sync-dot[data-state="busy"] .sync-dot-mark {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border-strong);
+  border-top-color: var(--blue-ink);
+  background: none;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* Tag filter: one row of chips that scrolls sideways when there are many. */
@@ -1066,6 +1109,10 @@ textarea.input {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .sync-dot[data-state="busy"] .sync-dot-mark {
+    animation: none;
+  }
+
   /* No waves: a still ring marks a locus with work due. */
   .bubble.active::before {
     display: none;
@@ -1533,6 +1580,30 @@ details.task-section > summary {
 
 .segments-3 {
   grid-template-columns: repeat(3, 1fr);
+}
+
+.sync-problem {
+  color: var(--bad);
+}
+
+/* A sync key, shown to copy onto another device. */
+.sync-key {
+  margin: 0;
+  padding: 14px 12px;
+  border-radius: var(--radius);
+  background: var(--surface-muted);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+  text-align: center;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.sync-key-input {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 /* ---------- Retention slider ---------- */

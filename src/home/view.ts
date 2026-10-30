@@ -1,5 +1,5 @@
-// The home screen: the bubble field, a top bar with the Tasks button and the tag
-// filter, and the + button.
+// The home screen: the bubble field, a top bar with the Tasks button, the sync dot
+// and the tag filter, and the + button.
 // It stays in the page while other screens cover it, so the bubbles keep their
 // places (and motion) when you come back.
 
@@ -7,7 +7,9 @@ import { PALETTE } from '../colors'
 import { h } from '../dom'
 import { isActive, type Task } from '../elements/registry'
 import { moreIcon, tasksIcon } from '../icons'
+import { describeSync } from '../settings/sync'
 import { createLocus, deleteLocus, findOrCreateTag, listLoci, listTags, moveLocus, updateLocus } from '../store/db'
+import { onSyncStatus } from '../sync/engine'
 import type { Locus, Tag } from '../types'
 import { type LocusDraft, openLocusSheet } from './createLocus'
 import { createField, type Field, spiralPoint } from './field'
@@ -44,6 +46,29 @@ export function createHome(options: { onOpen(locus: Locus): void; onTasks(): voi
     },
     moreIcon(),
   )
+
+  // Shows only when sync wants attention, or a round is slow. Opens Settings.
+  const syncDot = h('button', { type: 'button', class: 'tasks-btn round sync-dot', hidden: true, onclick: options.onSettings }, h('span', { class: 'sync-dot-mark' }))
+  let busyTimer: ReturnType<typeof setTimeout> | undefined
+  onSyncStatus((s) => {
+    clearTimeout(busyTimer)
+    const state = !s.on ? null : s.problem === 'offline' || s.problem === 'server' ? 'waiting' : s.problem ? 'error' : null
+    const label = `Sync: ${describeSync(s)}`
+    syncDot.setAttribute('aria-label', label)
+    syncDot.title = label
+    if (state) {
+      syncDot.dataset.state = state
+      syncDot.hidden = false
+    } else if (s.busy) {
+      // Quick rounds come and go without a flash of spinner.
+      busyTimer = setTimeout(() => {
+        syncDot.dataset.state = 'busy'
+        syncDot.hidden = false
+      }, 600)
+    } else {
+      syncDot.hidden = true
+    }
+  })
 
   let loci: Locus[] = []
   let tasks: Task[] = []
@@ -121,7 +146,7 @@ export function createHome(options: { onOpen(locus: Locus): void; onTasks(): voi
   const el = h(
     'div',
     { class: 'home' },
-    h('header', { class: 'topbar' }, h('div', { class: 'topbar-row' }, h('h1', { class: 'brand' }, 'Loci'), h('div', { class: 'topbar-actions' }, tasksButton, moreButton)), filter.el),
+    h('header', { class: 'topbar' }, h('div', { class: 'topbar-row' }, h('h1', { class: 'brand' }, 'Loci'), h('div', { class: 'topbar-actions' }, syncDot, tasksButton, moreButton)), filter.el),
     field.el,
     empty,
     h('button', { class: 'fab', 'aria-label': 'New locus', onclick: onCreate }, '+'),

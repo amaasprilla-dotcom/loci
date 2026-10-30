@@ -12,6 +12,7 @@ import { renderSettingsScreen } from './settings/view'
 import { renderLocusView } from './locus/view'
 import { back, currentRoute, go, parentOf, type Route } from './router'
 import { onChange } from './changes'
+import { loadSync, startAutoSync } from './sync/engine'
 import { db, getElement, requestPersistentStorage } from './store/db'
 import { allTasks } from './tasks/tasks'
 import { createTasksScreen } from './tasks/view'
@@ -83,7 +84,7 @@ async function show(route: Route): Promise<void> {
 
   if (route.name === 'settings') {
     shown = route
-    // After an import, start the app over so every screen shows the imported data.
+    // After an import or joining sync, start the app over so every screen shows the new data.
     const view = await renderSettingsScreen(() => {
       location.replace('#/')
       location.reload()
@@ -214,7 +215,9 @@ document.addEventListener('keydown', (e) => {
 
 requestPersistentStorage().catch(() => {})
 // The number format must be known before anything with numbers is drawn.
-loadLocaleSettings()
+// Sync must know whether it's on before anything is written, so every change is recorded.
+Promise.all([loadLocaleSettings(), loadSync()])
   .catch((err) => console.error(err))
   .then(() => home.refresh())
   .then(showCurrent)
+  .then(startAutoSync)

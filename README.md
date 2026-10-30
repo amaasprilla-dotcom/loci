@@ -50,7 +50,9 @@ generated instances each: numbers in range, constraints met, answers checked; se
 filters; 3 plausible distractors for every sample across 50 instances), and study sessions (the
 time budget is never exceeded and no template repeats back to back, across 200 random pools;
 lowest recall first; even spreading; ratings from time; Study tasks per locus), and Test mode (the
-interval cap, the final pass, pacing, readiness, scope, the exam ending, cascades and backup). Test
+interval cap, the final pass, pacing, readiness, scope, the exam ending, cascades and backup), and
+sync (the server against Node's built-in SQLite; recording every write path; two-device rounds,
+conflicts, joining, keys and repairs). Test
 files sit next to the code they test
 (`*.test.ts`).
 
@@ -93,6 +95,10 @@ them.
 
 ## Where things are
 
+- `src/sync/`: sync between devices (SPEC-v4-sync.md). Recording every change in an outbox
+  (`record.ts`, a Dexie middleware), the engine: push and pull rounds, when they run, joining
+  and leaving (`engine.ts`), talking to the server (`client.ts`), fixing what two devices
+  editing apart leave behind (`repair.ts`). Settings → Sync is `src/settings/sync.ts`
 - `worker/`: the Cloudflare Worker behind sync (SPEC-v4-sync.md). The routes and checks
   (`api.ts`), the synced records in SQLite (`store.ts`), and the Worker with its Durable Object
   (`index.ts`). `src/sync/rules.ts` holds what the app and the server share: which tables sync,
