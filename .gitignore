@@ -28,3 +28,6 @@ dist-ssr
 
 # MathLive fonts, copied from node_modules by scripts/copy-mathlive-assets.mjs
 public/mathlive/
+
+# Wrangler local state and temp files
+.wrangler/

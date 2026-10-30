@@ -36,6 +36,8 @@ export default defineConfig({
       workbox: {
         // Everything the app needs, fonts included, so it opens with no connection.
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+        // The sync API is never answered from the offline copy.
+        navigateFallbackDenylist: [/\/api\//],
       },
     }),
   ],

@@ -33,6 +33,9 @@ To try it on your phone on the same Wi-Fi, use `npm run dev -- --host` instead a
 "Network" address it prints. (Windows may ask to allow Node.js through the firewall: allow it on
 private networks.)
 
+`npm run dev` has no sync server. `npm run dev:sync` builds the app and runs it with the sync API
+and a local copy of its storage (`wrangler dev`) at http://localhost:8787.
+
 ## Tests
 
 `npm test` runs the unit tests (Vitest): the scheduler, the due count at the 04:00 day boundary,
@@ -90,6 +93,10 @@ them.
 
 ## Where things are
 
+- `worker/`: the Cloudflare Worker behind sync (SPEC-v4-sync.md). The routes and checks
+  (`api.ts`), the synced records in SQLite (`store.ts`), and the Worker with its Durable Object
+  (`index.ts`). `src/sync/rules.ts` holds what the app and the server share: which tables sync,
+  which of two versions wins, and the sync key format
 - `src/main.ts`: app start, and switching between screens
 - `src/router.ts`: the screen addresses (`#/`, `#/locus/…`) and the back button
 - `src/transition.ts`: the bubble growing into its locus screen, and back

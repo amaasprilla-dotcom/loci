@@ -10,7 +10,7 @@ Loci stays **offline-first**. Every device keeps its full copy in IndexedDB and 
 
 It is for **one person on several devices**, not for sharing with other people and not for two people typing in the same note at once.
 
-Constraints carry over: no AI, no paid APIs. New dependencies are dev-only (`wrangler`, Cloudflare's Worker types and test pool).
+Constraints carry over: no AI, no paid APIs. New dependencies are dev-only (`wrangler` and Cloudflare's Worker types).
 
 ## What the user sees
 
@@ -77,8 +77,8 @@ Sync must see **every** write, including the cascades in `deleteLocus` and `dele
 ### The record on the server
 
 ```
-records(table TEXT, id TEXT, data TEXT /* JSON, null when deleted */, deleted INT,
-        changedAt INT, seq INT, PRIMARY KEY (table, id))
+records(tbl TEXT, id TEXT, data TEXT /* JSON, null when deleted */, deleted INT,
+        changedAt INT, device TEXT, seq INT, PRIMARY KEY (tbl, id))
 INDEX records_seq ON records(seq)
 ```
 
@@ -175,7 +175,7 @@ The service worker precaches only built files and has no runtime caching, so `/a
 
 **Local development:** `npm run dev` stays as it is (no sync). `npm run dev:sync` builds and runs `wrangler dev`, which serves the app and a local Durable Object together.
 
-**Free plan fit.** One person with two or three devices makes a few hundred requests a day, plus one live socket per open app. Stored data is the size of a backup. Both are far below the Workers free plan's limits; S1 records the current limits in the README.
+**Free plan fit.** One person with two or three devices makes a few hundred requests a day, plus one live socket per open app. Stored data is the size of a backup. Both are far below the Workers free plan's limits; S4 records the current limits in the README.
 
 ## Data model changes
 
@@ -190,7 +190,7 @@ Neither table is included in backups. Existing tables are unchanged.
 
 - **Pure functions** (Vitest, as today): the merge decision, outbox coalescing, the repair pass (tag merge, orphans, dangling links), key formatting and parsing.
 - **Middleware** with `fake-indexeddb`: every write path records the right outbox rows, including the delete cascades, `clear()`, backup Replace and Merge, and that applied pulls record nothing.
-- **Server**: the Durable Object under `@cloudflare/vitest-pool-workers`: claim, auth, push ordering, newer-wins with ties, clock cap, pagination, blob chunking, version gate.
+- **Server**: the store and API run in Vitest against Node's built-in SQLite (`node:sqlite`), standing in for the Durable Object's: claim, auth, push ordering, newer-wins with ties, clock cap, pagination, blob chunking, version gate. (`@cloudflare/vitest-pool-workers` needs Vitest 4; Loci is on 5.) Each milestone also runs once in the real local runtime (`npm run dev:sync`).
 - **Two-device scenarios**, client engine against a real local Durable Object: offline edits on both sides; delete vs edit; same tag created twice; card added under an element deleted elsewhere; a push interrupted half way; joining with Merge and Replace.
 
 ## Non-goals

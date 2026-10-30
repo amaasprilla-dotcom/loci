@@ -1,10 +1,19 @@
-// Cloudflare Workers: serves the built `dist` folder as a static site.
+// Cloudflare Workers: serves the built `dist` folder as a static site, and the sync
+// API under /api/sync/ (SPEC-v4-sync.md, "Server").
 // Cloudflare runs `npm run build`, then `npx wrangler deploy` on every push to main.
-// No server code: routes are hash-based (#/…), so every request is for a real file.
+// Routes in the app are hash-based (#/…), so every other request is for a real file.
 {
   "name": "loci",
+  "main": "worker/index.ts",
   "compatibility_date": "2026-10-01",
   "assets": {
-    "directory": "./dist"
-  }
+    "directory": "./dist",
+    "binding": "ASSETS",
+    // Only the API runs code; files are served straight from `dist`.
+    "run_worker_first": ["/api/*"]
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "SYNC", "class_name": "SyncObject" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SyncObject"] }]
 }

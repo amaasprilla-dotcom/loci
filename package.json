@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:sync": "npm run build && wrangler dev",
     "predev": "node scripts/copy-mathlive-assets.mjs",
     "build": "tsc -b && vite build",
     "prebuild": "node scripts/copy-mathlive-assets.mjs",
@@ -14,6 +15,7 @@
     "icons": "pwa-assets-generator"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261030.1",
     "@types/node": "^24.13.3",
     "@types/seedrandom": "3.0.8",
     "@vite-pwa/assets-generator": "^2.0.0",
@@ -22,7 +24,8 @@
     "typescript": "~6.0.2",
     "vite": "^8.3.0",
     "vite-plugin-pwa": "^2.0.0",
-    "vitest": "^5.0.5"
+    "vitest": "^5.0.5",
+    "wrangler": "^4.156.0"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",

@@ -1,0 +1,101 @@
+// The sync API (SPEC-v4-sync.md, "Push", "Pull", "Security and privacy"). Every
+// request carries the sync key as `Authorization: Bearer <key>`; all but claim
+// also carry the app's database version in X-Loci-Version.
+//
+//   POST /api/sync/claim   first device: make this key the only key
+//   GET  /api/sync/status  check the key; the current seq and newest app version
+//   POST /api/sync/push    { device, changes: Change[] } → { results, seq }
+//   GET  /api/sync/pull?since=<seq>  → { changes, more, seq }
+//   POST /api/sync/rekey   { key } → the new key replaces this one
+
+import { BATCH_LIMIT, isSyncedTable, normalizeKey, VERSION_HEADER, type Change } from '../src/sync/rules.ts'
+import type { SyncStore } from './store.ts'
+
+export async function handleSync(request: Request, store: SyncStore): Promise<Response> {
+  const url = new URL(request.url)
+  const route = `${request.method} ${url.pathname.replace(/^\/api\/sync\//, '')}`
+
+  const key = normalizeKey(request.headers.get('Authorization')?.replace(/^Bearer\s+/i, '') ?? '')
+  if (!key) return json(401, { error: 'wrong-key' })
+  const keyHash = await hashKey(key)
+
+  if (route === 'POST claim') {
+    const result = store.claim(keyHash)
+    if (result === 'taken') return json(409, { error: 'taken' })
+    return json(result === 'claimed' ? 201 : 200, { seq: store.seq() })
+  }
+  if (!store.isClaimed()) return json(404, { error: 'not-set-up' })
+  if (!store.keyMatches(keyHash)) return json(401, { error: 'wrong-key' })
+
+  const version = Number(request.headers.get(VERSION_HEADER))
+  if (!Number.isInteger(version) || version < 1) return json(400, { error: 'no-version' })
+  const upToDate = store.noteVersion(version)
+
+  switch (route) {
+    case 'GET status':
+      return json(200, { seq: store.seq(), newestVersion: store.newestVersion() })
+
+    case 'GET pull': {
+      const since = Number(url.searchParams.get('since') ?? 0)
+      if (!Number.isInteger(since) || since < 0) return json(400, { error: 'bad-since' })
+      return json(200, store.pull(since, BATCH_LIMIT))
+    }
+
+    case 'POST push': {
+      if (!upToDate) return json(426, { error: 'update', newestVersion: store.newestVersion() })
+      const body = await readJson(request)
+      if (!isRecord(body) || typeof body.device !== 'string' || !/^[\w-]{1,64}$/.test(body.device) || !Array.isArray(body.changes)) return json(400, { error: 'bad-push' })
+      if (body.changes.length > BATCH_LIMIT) return json(413, { error: 'too-many', limit: BATCH_LIMIT })
+      const bad = body.changes.findIndex((change) => !isChange(change))
+      if (bad >= 0) return json(400, { error: 'bad-change', index: bad })
+      return json(200, store.push(body.device, body.changes as Change[]))
+    }
+
+    case 'POST rekey': {
+      const body = await readJson(request)
+      const newKey = isRecord(body) && typeof body.key === 'string' ? normalizeKey(body.key) : null
+      if (!newKey) return json(400, { error: 'bad-key' })
+      store.rekey(await hashKey(newKey))
+      return json(200, {})
+    }
+  }
+  return json(404, { error: 'not-found' })
+}
+
+// Hex SHA-256 of the key: the server never stores the key itself.
+export async function hashKey(key: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key))
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+function isChange(value: unknown): value is Change {
+  if (!isRecord(value)) return false
+  const { table, id, op, changedAt, data } = value
+  return (
+    typeof table === 'string' &&
+    isSyncedTable(table) &&
+    typeof id === 'string' &&
+    id.length > 0 &&
+    id.length <= 200 &&
+    (op === 'delete' || (op === 'put' && isRecord(data))) &&
+    typeof changedAt === 'number' &&
+    Number.isFinite(changedAt) &&
+    changedAt >= 0
+  )
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+async function readJson(request: Request): Promise<unknown> {
+  try {
+    return await request.json()
+  } catch {
+    return undefined
+  }
+}
+
+function json(status: number, body: unknown): Response {
+  return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } })
+}
