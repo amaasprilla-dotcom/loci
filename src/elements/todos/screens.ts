@@ -1,6 +1,7 @@
 // The to-do list screen (SPEC-v2.md, "To-dos"): a sentence-builder to add to-dos
-// ("[When] · [action]"), the list in Now / Planned / Someday / Done, and the
-// sheets to pick a when and to edit a to-do.
+// as if-then plans ("When [when] [cue], I will [action]", with an optional backup
+// "If [obstacle], then I will [action]"; SPEC-v3-coach.md), the list in Now /
+// Planned / Someday / Done, and the sheets to pick a when and to edit a to-do.
 
 import { type Options, RRule } from 'rrule'
 import { attachmentStrip } from '../../attachmentStrip'
@@ -15,8 +16,9 @@ import { button, deleteConfirmation, openSheet, type SheetApi, sheetActions, sub
 import { deleteAttachmentsOf, db } from '../../store/db'
 import { sections } from '../../tasks/tasks'
 import { taskRow } from '../../tasks/view'
-import type { Level, LocusElement, Todo, When } from '../../types'
+import type { Level, LocusElement, Todo, TodoPlan, When } from '../../types'
 import { openGoals } from '../goals/type'
+import { checkPlan, type PlanInput, type PlanProblem } from './plan'
 import { archiveTodo, completeTodo, countDependents, createTodo, deleteTodo, goalsCountingTodo, itHappened, listTodos, reopenTodo, skipTodo, type TodoDraft, updateTodo, type WaitsFor, waitsForOf } from './store'
 import { todoTask } from './type'
 import { rememberTime, timeField } from './timeField'
@@ -119,7 +121,64 @@ function collapsible(title: string, rows: HTMLElement[]): HTMLElement {
   return h('details', { class: 'task-section muted' }, h('summary', { class: 'task-section-title' }, title), h('div', { class: 'task-list' }, rows))
 }
 
-// ---------- Adding: "[When] · [action]" ----------
+// ---------- Checking a plan ----------
+
+// The problems with a plan, shown under it; while there are any, saving waits
+// until they're fixed or the user keeps the plan as written.
+interface PlanCheck {
+  el: HTMLElement
+  update(input: PlanInput | null): void // null: nothing to check
+  blocked(): boolean
+  reset(): void
+}
+
+function planCheck(onKeep: () => void): PlanCheck {
+  let kept = false
+  let problems: PlanProblem[] = []
+  const el = h('div', { class: 'plan-problems', 'aria-live': 'polite', hidden: true })
+  const keep = () => {
+    kept = true
+    onKeep()
+  }
+  return {
+    el,
+    update(input) {
+      problems = input ? checkPlan(input) : []
+      el.hidden = problems.length === 0
+      el.classList.toggle('kept', kept)
+      el.replaceChildren(
+        h('ul', {}, problems.map((p) => h('li', {}, h('strong', {}, p.message), ' ', p.hint))),
+        kept ? h('p', { class: 'plan-kept' }, 'Kept as written.') : h('button', { type: 'button', class: 'btn-link', onclick: keep }, 'Keep as written'),
+      )
+    },
+    blocked: () => problems.length > 0 && !kept,
+    reset() {
+      kept = false
+    },
+  }
+}
+
+// The backup plan: "If [obstacle], then I will [action]".
+function backupFields(plan: TodoPlan | undefined, onInput: () => void) {
+  const obstacle = h('input', { class: 'input', type: 'text', maxlength: 120, placeholder: 'I’m too tired', 'aria-label': 'If (what gets in the way)', oninput: onInput })
+  const action = h('input', { class: 'input', type: 'text', maxlength: 160, placeholder: 'do just 5 minutes', 'aria-label': 'Then I will', oninput: onInput })
+  obstacle.value = plan?.obstacle ?? ''
+  action.value = plan?.obstacleAction ?? ''
+  const el = h(
+    'div',
+    { class: 'todo-backup' },
+    h('div', { class: 'todo-sentence' }, h('span', { class: 'todo-word' }, 'If'), obstacle),
+    h('div', { class: 'todo-sentence' }, h('span', { class: 'todo-word' }, 'then I will'), action),
+    h('p', { class: 'field-hint' }, 'What’s most likely to get in the way? Plan for it now.'),
+  )
+  const clear = () => {
+    obstacle.value = ''
+    action.value = ''
+  }
+  return { el, obstacle, action, clear }
+}
+
+// ---------- Adding: "When [when] [cue], I will [action]" ----------
 
 function createAddForm(el: LocusElement, onAdded: () => Promise<void>): HTMLElement {
   let pendingId = crypto.randomUUID() // attachments added before the to-do exists hang on this id
@@ -127,13 +186,17 @@ function createAddForm(el: LocusElement, onAdded: () => Promise<void>): HTMLElem
   let parsedTitle: string | null = null // the action text without the typed when
 
   const whenChip = h('button', { type: 'button', class: 'when-chip empty', onclick: () => void choose() }, 'When?')
+  const cue = h('input', { class: 'input todo-cue', type: 'text', maxlength: 120, placeholder: 'where, or after what (optional)', 'aria-label': 'Where, or after what', oninput: () => void sync() })
   const action = h('input', {
     class: 'input todo-action',
     type: 'text',
-    placeholder: 'e.g. Breakfast daily 8am',
-    'aria-label': 'What to do',
+    placeholder: 'e.g. read 10 pages, daily 8am',
+    'aria-label': 'I will',
     maxlength: 200,
-    oninput: () => sync(),
+    oninput: () => {
+      check.reset()
+      void sync()
+    },
     onkeydown: (e: KeyboardEvent) => {
       if (e.key === 'Enter') {
         e.preventDefault()
@@ -143,7 +206,28 @@ function createAddForm(el: LocusElement, onAdded: () => Promise<void>): HTMLElem
   })
   const addButton = button('Add', () => void add(), 'primary')
   const importance = levelPicker('importance', DEFAULT_IMPORTANCE)
-  const difficulty = levelPicker('difficulty', DEFAULT_DIFFICULTY)
+  const difficulty = levelPicker('difficulty', DEFAULT_DIFFICULTY, () => void sync())
+  const check = planCheck(() => void sync())
+  const backup = backupFields(undefined, () => void sync())
+  backup.el.hidden = true
+  const backupToggle = h(
+    'button',
+    {
+      type: 'button',
+      class: 'btn-link',
+      'aria-expanded': 'false',
+      onclick: () => {
+        backup.el.hidden = !backup.el.hidden
+        backupToggle.setAttribute('aria-expanded', String(!backup.el.hidden))
+        backupToggle.textContent = backup.el.hidden ? 'Add a backup plan' : 'No backup plan'
+        if (backup.el.hidden) backup.clear()
+        else backup.obstacle.focus()
+        void sync()
+      },
+    },
+    'Add a backup plan',
+  )
+  const plan = (): TodoPlan => ({ cue: cue.value, ...(!backup.el.hidden && { obstacle: backup.obstacle.value, obstacleAction: backup.action.value }) })
   const why = h('textarea', { class: 'input', rows: 2, placeholder: 'Why it matters (optional)', 'aria-label': 'Why it matters' })
   let strip = attachmentStrip({ type: 'todo', id: pendingId })
   const more = h('div', { class: 'todo-more', hidden: true }, h('label', { class: 'field-label' }, 'Why', why), h('div', { class: 'field-label' }, 'Attachments', strip.el))
@@ -170,6 +254,9 @@ function createAddForm(el: LocusElement, onAdded: () => Promise<void>): HTMLElem
       whenChip.classList.add('empty')
     }
     showNudge(c?.when.kind === 'someday')
+    const title = c?.fromText && parsedTitle ? parsedTitle : action.value
+    check.update(title.trim() ? { title, when: c?.when ?? null, difficulty: difficulty.value(), plan: plan() } : null)
+    addButton.disabled = check.blocked()
   }
 
   function showNudge(show: boolean) {
@@ -197,6 +284,8 @@ function createAddForm(el: LocusElement, onAdded: () => Promise<void>): HTMLElem
       action.focus()
       return
     }
+    await sync()
+    if (check.blocked()) return
     let c = current()
     if (!c) {
       // The when is required: ask for one.
@@ -205,7 +294,7 @@ function createAddForm(el: LocusElement, onAdded: () => Promise<void>): HTMLElem
       c = { ...picked, fromText: false }
     }
     const title = c.fromText && parsedTitle ? parsedTitle : text
-    const draft: TodoDraft = { title: title || text, why: why.value, importance: importance.value(), difficulty: difficulty.value(), when: c.when }
+    const draft: TodoDraft = { title: title || text, why: why.value, importance: importance.value(), difficulty: difficulty.value(), when: c.when, plan: plan() }
     await createTodo(el.id, draft, c.waitsFor, pendingId)
     // Reset for the next one.
     pendingId = crypto.randomUUID()
@@ -214,7 +303,10 @@ function createAddForm(el: LocusElement, onAdded: () => Promise<void>): HTMLElem
     strip = fresh
     chosen = null
     action.value = ''
+    cue.value = ''
     why.value = ''
+    if (!backup.el.hidden) backupToggle.click() // closes and clears it
+    check.reset()
     await sync()
     await onAdded()
     action.focus()
@@ -233,8 +325,12 @@ function createAddForm(el: LocusElement, onAdded: () => Promise<void>): HTMLElem
   return h(
     'section',
     { class: 'todo-add' },
-    h('div', { class: 'todo-sentence' }, whenChip, h('span', { class: 'todo-dot', 'aria-hidden': 'true' }, '·'), action, addButton),
+    h('div', { class: 'todo-sentence' }, h('span', { class: 'todo-word' }, 'When'), whenChip, cue),
+    h('div', { class: 'todo-sentence' }, h('span', { class: 'todo-word' }, 'I will'), action, addButton),
+    check.el,
     nudge,
+    backupToggle,
+    backup.el,
     h(
       'div',
       { class: 'todo-levels' },
@@ -581,16 +677,71 @@ function conditionView(current: When | null, done: Done, backToMain: () => void)
 export async function openTodoSheet(todo: Todo): Promise<void> {
   let when = todo.when
   let waitsFor = await waitsForOf(todo.id)
+  const goals = await goalsCountingTodo(todo.id)
 
   await openSheet<boolean>('To-do', (api) => {
     const owner = { type: 'todo' as const, id: todo.id }
     const chip = h('button', { type: 'button', class: 'when-chip', onclick: () => void change() })
-    const title = h('input', { class: 'input', type: 'text', maxlength: 200, 'aria-label': 'What to do' })
+    const cue = h('input', { class: 'input todo-cue', type: 'text', maxlength: 120, placeholder: 'where, or after what (optional)', 'aria-label': 'Where, or after what', oninput: () => sync() })
+    cue.value = todo.plan?.cue ?? ''
+    const title = h('input', {
+      class: 'input todo-action',
+      type: 'text',
+      maxlength: 200,
+      'aria-label': 'I will',
+      oninput: () => {
+        check.reset()
+        sync()
+      },
+    })
     title.value = todo.title
     const why = h('textarea', { class: 'input', rows: 2, placeholder: 'Why it matters (optional)', 'aria-label': 'Why it matters' })
     why.value = todo.why ?? ''
     const importance = levelPicker('importance', todo.importance)
-    const difficulty = levelPicker('difficulty', todo.difficulty)
+    const difficulty = levelPicker('difficulty', todo.difficulty, () => sync())
+    const backup = backupFields(todo.plan, () => sync())
+    let firstStep = todo.plan?.firstStep ?? ''
+    const firstStepRow = h('div', { class: 'first-step' })
+    const saveButton = submitButton('Save')
+    const check = planCheck(() => sync())
+
+    const plan = (): TodoPlan => ({ cue: cue.value, obstacle: backup.obstacle.value, obstacleAction: backup.action.value, firstStep })
+    // Only a plan whose words were changed here is checked: an older to-do isn't nagged about on every edit.
+    function sync() {
+      const p = todo.plan
+      const changed = title.value.trim() !== todo.title || cue.value.trim() !== (p?.cue ?? '') || backup.action.value.trim() !== (p?.obstacleAction ?? '')
+      check.update(changed && title.value.trim() ? { title: title.value, when, difficulty: difficulty.value(), plan: plan() } : null)
+      saveButton.disabled = check.blocked()
+      firstStepRow.replaceChildren(
+        ...(firstStep
+          ? [h('span', {}, h('strong', {}, 'First step: '), firstStep), h('button', { type: 'button', class: 'btn-link', onclick: () => breakItDown() }, 'Change')]
+          : []),
+      )
+    }
+
+    // "Break it down": the smallest start, so starting is easy (SPEC-v3-coach.md, CBT for procrastination).
+    function breakItDown() {
+      const input = h('input', { class: 'input', type: 'text', maxlength: 120, placeholder: 'e.g. open the document', 'aria-label': 'First step' })
+      input.value = firstStep
+      const setStep = () => {
+        firstStep = input.value.trim()
+        api.show(...form)
+        sync()
+      }
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          setStep()
+        }
+      })
+      api.show(
+        h('h2', {}, 'Break it down'),
+        h('p', { class: 'sheet-text' }, `What’s the very first step of “${title.value.trim() || todo.title}”? Something you can do in two minutes or less, like opening the file or laying out your shoes.`),
+        h('label', { class: 'field-label' }, 'First step', input),
+        sheetActions(null, button('Back', () => api.show(...form)), button('Set first step', setStep, 'primary')),
+      )
+      input.focus()
+    }
 
     async function showWhen() {
       const other = await waitsForTitle(waitsFor)
@@ -602,10 +753,11 @@ export async function openTodoSheet(todo: Todo): Promise<void> {
       when = picked.when
       waitsFor = picked.waitsFor
       await showWhen()
+      sync()
     }
     void showWhen()
 
-    const draft = (): TodoDraft => ({ title: title.value.trim() || todo.title, why: why.value, importance: importance.value(), difficulty: difficulty.value(), when })
+    const draft = (): TodoDraft => ({ title: title.value.trim() || todo.title, why: why.value, importance: importance.value(), difficulty: difficulty.value(), when, plan: plan() })
     const save = async () => {
       // Keep what it waits for when the when wasn't changed to something else.
       await updateTodo(todo.id, draft(), when.kind === 'after' || when.kind === 'goal' ? waitsFor : null)
@@ -614,8 +766,18 @@ export async function openTodoSheet(todo: Todo): Promise<void> {
     const isOpen = todo.status === 'open'
     const form = [
       h('h2', {}, 'To-do'),
-      h('div', { class: 'field-label' }, 'When', chip),
-      h('label', { class: 'field-label' }, 'What', title),
+      // If-then plans only work for goals you care about: keep the reason in view.
+      goals.length > 0 &&
+        h(
+          'div',
+          { class: 'goal-reasons' },
+          goals.map((g) => h('p', {}, 'Counts toward ', h('strong', {}, g.title), g.why ? h('span', { class: 'goal-reason-why' }, ` · ${g.why}`) : null)),
+        ),
+      h('div', { class: 'todo-sentence' }, h('span', { class: 'todo-word' }, 'When'), chip, cue),
+      h('div', { class: 'todo-sentence' }, h('span', { class: 'todo-word' }, 'I will'), title),
+      check.el,
+      firstStepRow,
+      h('div', { class: 'field-label' }, 'Backup plan', backup.el),
       h('label', { class: 'field-label' }, 'Why', why),
       h(
         'div',
@@ -629,13 +791,15 @@ export async function openTodoSheet(todo: Todo): Promise<void> {
       h(
         'div',
         { class: 'todo-actions' },
+        isOpen && button('Break it down', () => breakItDown()),
         isOpen && todo.when.kind === 'when' && !todo.when.firedAt && button('It happened', async () => { await save(); await itHappened(todo.id); api.close(true) }),
         isOpen && todo.when.kind === 'repeat' && button('Skip this time', async () => { await save(); await skipTodo(todo.id); api.close(true) }),
         isOpen && todo.when.kind !== 'repeat' && button('Archive', async () => { await save(); await archiveTodo(todo.id); api.close(true) }),
         isOpen ? button('Done', async () => { await save(); await completeTodo(todo.id); api.close(true) }) : button('Reopen', async () => { await reopenTodo(todo.id); api.close(true) }),
       ),
-      sheetActions(button('Delete', () => void askDelete(), 'danger-text'), button('Cancel', () => api.close(null)), submitButton('Save')),
+      sheetActions(button('Delete', () => void askDelete(), 'danger-text'), button('Cancel', () => api.close(null)), saveButton),
     ]
+    sync()
 
     async function askDelete() {
       const waiting = await countDependents(todo.id)
@@ -661,6 +825,7 @@ export async function openTodoSheet(todo: Todo): Promise<void> {
     return {
       content: form,
       onSubmit: async () => {
+        if (saveButton.disabled) return
         await save()
         api.close(true)
       },

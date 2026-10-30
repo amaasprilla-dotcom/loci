@@ -1,7 +1,7 @@
 // Reading and writing to-dos and their completions.
 
 import { CONTENT_TABLES, db, deleteAttachmentsOf, deleteLinksFor, removeTodoContributors } from '../../store/db'
-import type { ItemRef, Level, Todo, TodoCompletion, When } from '../../types'
+import type { ItemRef, Level, Todo, TodoCompletion, TodoPlan, When } from '../../types'
 import { fireGoalTriggers, goalsCountingTodo } from '../goals/store'
 import { dueOf, resolveRepeat } from './when'
 
@@ -11,6 +11,7 @@ export interface TodoDraft {
   importance: Level
   difficulty: Level
   when: When
+  plan?: TodoPlan // left out: unchanged when editing
 }
 
 // What an "after" or "goal" when waits for. Stored as an "after" link (SPEC-v2.md, "Links").
@@ -36,14 +37,30 @@ export async function createTodo(elementId: string, draft: TodoDraft, waitsFor: 
 
 export async function updateTodo(id: string, draft: TodoDraft, waitsFor: WaitsFor = null): Promise<void> {
   await db.transaction('rw', db.todos, db.links, async () => {
-    await db.todos.update(id, { ...cleanDraft(draft), updatedAt: Date.now() })
+    // Dexie removes a field set to undefined: a plan cleared in the form goes.
+    await db.todos.update(id, { ...cleanDraft(draft), ...('plan' in draft && { plan: cleanPlan(draft.plan) }), updatedAt: Date.now() })
     await setWaitsFor(id, waitsFor)
   })
   if (waitsFor?.type === 'goal') await fireGoalTriggers(waitsFor.id)
 }
 
 function cleanDraft(d: TodoDraft): TodoDraft {
-  return { title: d.title.trim(), ...(d.why?.trim() && { why: d.why.trim() }), importance: d.importance, difficulty: d.difficulty, when: d.when }
+  const plan = cleanPlan(d.plan)
+  return { title: d.title.trim(), ...(d.why?.trim() && { why: d.why.trim() }), importance: d.importance, difficulty: d.difficulty, when: d.when, ...(plan && { plan }) }
+}
+
+// Trimmed, empty parts dropped; nothing left is no plan. A backup needs both halves.
+export function cleanPlan(p: TodoPlan | undefined): TodoPlan | undefined {
+  if (!p) return undefined
+  const t = (s?: string) => s?.trim() || undefined
+  const out: TodoPlan = {}
+  if (t(p.cue)) out.cue = t(p.cue)
+  if (t(p.obstacle) && t(p.obstacleAction)) {
+    out.obstacle = t(p.obstacle)
+    out.obstacleAction = t(p.obstacleAction)
+  }
+  if (t(p.firstStep)) out.firstStep = t(p.firstStep)
+  return Object.keys(out).length ? out : undefined
 }
 
 // The one "after" link pointing at this to-do: replaced, or removed for other whens.

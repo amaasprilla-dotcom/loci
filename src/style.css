@@ -1952,11 +1952,6 @@ details.task-section > summary {
   min-width: 180px;
 }
 
-.todo-dot {
-  color: var(--muted);
-  font-weight: 700;
-}
-
 .when-chip {
   flex: none;
   max-width: 100%;
@@ -3033,4 +3028,93 @@ details.editor-section > summary {
 .spacing-text {
   color: var(--muted);
   font-size: 0.8rem;
+}
+
+/* ---------- Coach: if-then plans ---------- */
+
+.todo-word {
+  flex: none;
+  min-width: 3.2em;
+  color: var(--muted);
+  font-weight: 650;
+}
+
+.todo-cue {
+  flex: 1;
+  min-width: 160px;
+}
+
+.todo-backup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.todo-backup[hidden],
+.plan-problems[hidden] {
+  display: none;
+}
+
+.todo-backup .input {
+  flex: 1;
+  min-width: 160px;
+}
+
+.todo-backup .field-hint {
+  margin: 0;
+}
+
+.plan-problems {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff6e5;
+  color: #6b4a00;
+  font-size: 0.9rem;
+}
+
+.plan-problems.kept {
+  background: var(--surface-muted);
+  color: var(--muted);
+}
+
+.plan-problems ul {
+  margin: 0 0 6px;
+  padding-left: 18px;
+}
+
+.plan-problems li + li {
+  margin-top: 4px;
+}
+
+.plan-kept {
+  margin: 0;
+  font-style: italic;
+}
+
+.first-step {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  font-size: 0.95rem;
+}
+
+.first-step:empty {
+  display: none;
+}
+
+.goal-reasons {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--blue-soft);
+  color: var(--blue-ink);
+  font-size: 0.9rem;
+}
+
+.goal-reasons p {
+  margin: 0;
+}
+
+.goal-reason-why {
+  color: var(--text);
 }

@@ -34,7 +34,8 @@ export function todoTask(el: LocusElement, t: Todo, now: number, waitsFor?: stri
     kind: 'todo',
     state: todoState(t, now),
     label: t.title,
-    sublabel: whenText(t.when, now, waitsFor),
+    // "Start: open the doc · Sunday 10:00, at my desk": the first step leads, so starting is the easy part.
+    sublabel: [t.plan?.firstStep && `Start: ${t.plan.firstStep}`, [whenText(t.when, now, waitsFor), t.plan?.cue].filter(Boolean).join(', ')].filter(Boolean).join(' · '),
     importance: t.importance,
     difficulty: t.difficulty,
     dueAt: dueOf(t.when, now) ?? undefined,

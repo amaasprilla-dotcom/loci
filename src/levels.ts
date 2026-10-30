@@ -20,7 +20,7 @@ export interface LevelPicker {
   value(): Level
 }
 
-export function levelPicker(kind: 'importance' | 'difficulty', initial: Level): LevelPicker {
+export function levelPicker(kind: 'importance' | 'difficulty', initial: Level, onChange?: () => void): LevelPicker {
   let current = initial
   const labels = kind === 'importance' ? IMPORTANCE_LABELS : DIFFICULTY_LABELS
   const buttons = labels.map((label, i) =>
@@ -34,6 +34,7 @@ export function levelPicker(kind: 'importance' | 'difficulty', initial: Level): 
         onclick: () => {
           current = (i + 1) as Level
           buttons.forEach((b, j) => b.setAttribute('aria-checked', String(j + 1 === current)))
+          onChange?.()
         },
       },
       label,

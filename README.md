@@ -101,8 +101,9 @@ them.
   into `public/` before `dev` and `build`, so math works offline
 - `src/elements/todos/`: the To-dos type: plans with a when. The when model, recurrence and typed
   phrases (`when.ts`, chrono-node and rrule), storage, completions and waiting to-dos (`store.ts`),
-  tasks and tile (`type.ts`), and the list screen with its sentence builder, When picker and edit
-  sheet (`screens.ts`)
+  tasks and tile (`type.ts`), the vague-plan check (`plan.ts`), and the list screen with its
+  if-then sentence builder (cue, backup plan), When picker and edit sheet with Break it down
+  (`screens.ts`)
 - `src/elements/goals/`: the Goals type: goals with a target, made of what counts toward them
   (to-do counts, numbers and ratings checked in on a schedule, checklists). Progress, weights,
   pace and the chart's history (`progress.ts`), the weekly check-in a goal gets by default

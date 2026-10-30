@@ -178,11 +178,22 @@ export type When =
   | { kind: 'when'; condition: string; firedAt?: number }
   | { kind: 'someday' };
 
+// What makes a to-do a full if-then plan (SPEC-v3-coach.md, "If-then plans"):
+// "When [when], [cue], I will [title]", a backup "If [obstacle], then I will
+// [obstacleAction]", and a first step of two minutes or less.
+export interface TodoPlan {
+  cue?: string; // "after breakfast, at my desk"
+  obstacle?: string; // "I'm too tired"
+  obstacleAction?: string; // "do just 5 minutes"
+  firstStep?: string; // "open the doc"
+}
+
 export interface Todo {
   id: string;
   elementId: string;
   title: string; // the action
   why?: string;
+  plan?: TodoPlan;
   importance: Level;
   difficulty: Level;
   when: When;
