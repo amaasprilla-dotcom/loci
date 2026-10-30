@@ -113,6 +113,7 @@ describe('merge', () => {
       problemTemplates: [],
       problemAttempts: [],
       exams: [],
+      recallAttempts: [],
     }
     await importBackup(backup, 'merge')
     expect(await db.tags.count()).toBe(1)
@@ -141,8 +142,8 @@ describe('a backup from v1', () => {
     expect(b.srs).toMatchObject({ state: 0, reps: 0 })
   })
 
-  it('new backups are version 3, which older apps refuse rather than misread', async () => {
-    expect((await exportBackup()).version).toBe(3)
+  it('new backups are version 4, which older apps refuse rather than misread', async () => {
+    expect((await exportBackup()).version).toBe(4)
   })
 })
 

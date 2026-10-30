@@ -92,10 +92,11 @@ them.
 - `src/elements/flashcards/`: the Flashcards type: its tile (`type.ts`), deck screen (`editor.ts`),
   card storage (`store.ts`), bulk import (`import.ts`), the FSRS scheduler and the one-time
   conversion of v1 cards (`srs.ts`), which cards a
-  session shows (`session.ts`) and the review screen (`review.ts`)
+  session shows (`session.ts`). Reviews happen in `src/study/` (a deck can be Flip or Type)
 - `src/elements/notes/`: the Notes type: notebooks of rich-text notes. Tile (`type.ts`), storage and
   search (`store.ts`), the notebook and editor screens (`screens.ts`, TipTap), math editing
-  (`mathSheet.ts`, MathLive; shown with KaTeX), images inside notes (`noteImage.ts`). The editor
+  (`mathSheet.ts`, MathLive; shown with KaTeX), images inside notes (`noteImage.ts`), blank-page
+  recall practice, which puts a note into Study sessions (`recall.ts`). The editor
   loads only when a notebook is opened. `scripts/copy-mathlive-assets.mjs` copies MathLive's fonts
   into `public/` before `dev` and `build`, so math works offline
 - `src/elements/todos/`: the To-dos type: plans with a when. The when model, recurrence and typed
@@ -119,10 +120,11 @@ them.
   inverted ratio, power slip, wrong variable, unit slip, the author's own), filtered and chosen in
   `distractors.ts`; `present.ts` shows a problem to answer, with feedback that names the mistake
 - `src/mathField.ts`: loads MathLive when first needed (notes and problems share it)
-- `src/study/`: study sessions mixing cards and problems. What's up today and how long it
-  takes, lowest recall first within a time budget, interleaved (`plan.ts`); cards and problems as
-  reviewables, self-graded or rated from correctness and time (`reviewable.ts`,
-  `elements/problems/schedule.ts`); the session screen with its length choice (`screen.ts`); one
+- `src/study/`: study sessions mixing cards, problems and notes to recall. What's up today and how
+  long it takes, lowest recall first within a time budget, interleaved (`plan.ts`); cards, problems
+  and notes as reviewables, self-graded or rated from correctness and time (`reviewable.ts`,
+  `elements/problems/schedule.ts`); checking typed card answers (`answer.ts`); the locus's
+  four-week spacing strip (`days.ts`); the session screen with its length choice (`screen.ts`); one
   Study task per locus, or per deck and set (`tasks.ts`); the next schedule after any review, where
   exams adjust it (`schedule.ts`)
 - `src/exams/`: Test mode. Exams in a locus with a date, a target recall and a scope; the interval

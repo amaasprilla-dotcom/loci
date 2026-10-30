@@ -19,6 +19,7 @@ import type {
   Note,
   ProblemAttempt,
   ProblemTemplate,
+  RecallAttempt,
   ReviewLog,
   Setting,
   StoredBlob,
@@ -46,6 +47,7 @@ export const db = new Dexie('loci') as Dexie & {
   problemTemplates: EntityTable<ProblemTemplate, 'id'>
   problemAttempts: EntityTable<ProblemAttempt, 'id'>
   exams: EntityTable<Exam, 'id'>
+  recallAttempts: EntityTable<RecallAttempt, 'id'>
 }
 
 db.version(1).stores({
@@ -102,6 +104,11 @@ db.version(8).stores({
 // v2: exams (Test mode), one locus each.
 db.version(9).stores({
   exams: 'id, locusId, date, status',
+})
+
+// Coach: every blank-page recall of a note (SPEC-v3-coach.md, "Blank-page recall").
+db.version(10).stores({
+  recallAttempts: 'id, noteId, at',
 })
 
 // Runs once, when a v1 database is first opened by v2: gives every card its
@@ -204,6 +211,7 @@ export const CONTENT_TABLES = () => [
   db.problemTemplates,
   db.problemAttempts,
   db.exams,
+  db.recallAttempts,
   db.attachments,
   db.blobs,
   db.links,
@@ -211,7 +219,7 @@ export const CONTENT_TABLES = () => [
 ]
 
 // Deletes elements and everything in them: cards with their review history; problem
-// templates with their attempts; notes,
+// templates with their attempts; notes with their recall attempts,
 // to-dos and goals with their attachments and files; to-do history; goal
 // contributors and check-ins; and every link to any of these. To-dos elsewhere that
 // waited on a deleted to-do or goal become due now; goals elsewhere lose
@@ -233,6 +241,7 @@ async function deleteElementsAndContents(elementIds: string[]): Promise<void> {
   ])
   await db.reviews.where('cardId').anyOf(cardIds).delete()
   await db.cards.bulkDelete(cardIds)
+  await db.recallAttempts.where('noteId').anyOf(noteIds).delete()
   await db.notes.bulkDelete(noteIds)
   await db.todoCompletions.where('todoId').anyOf(todoIds).delete()
   await db.todos.bulkDelete(todoIds)

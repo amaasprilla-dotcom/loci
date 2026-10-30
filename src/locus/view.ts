@@ -12,7 +12,8 @@ import { button, deleteConfirmation, describeCounts, openSheet, sheetActions, su
 import { countElementContents, createElement, db, deleteElement, listElements, reorderElements, updateElement } from '../store/db'
 import { allTasks, sections } from '../tasks/tasks'
 import { studyAdjustments } from '../study/limits'
-import { studyPool, summarize } from '../study/plan'
+import { dayStarts, studiedDays, studyTimes } from '../study/days'
+import { isStudyable, studyPool, summarize } from '../study/plan'
 import { minutesText, studyCounts } from '../study/text'
 import { count } from '../locale'
 import { onChange } from '../changes'
@@ -40,19 +41,32 @@ export async function renderLocusView(locus: Locus, options: { onBack(): void })
     await renderItems(now)
   }
 
-  // The locus's Study button: every due card and problem here, in one session.
+  // The locus's Study button: every due card, problem and note to recall here, in
+  // one session. Under it, the days studied lately (SPEC-v3-coach.md, "Spacing strip").
   const study = h('div', { class: 'locus-study' })
   async function renderStudy(now: number) {
-    const studyable = elements.filter((e) => e.type === 'flashcards' || e.type === 'problems')
+    const studyable = elements.filter(isStudyable)
     const pool = await studyPool(studyable, now, await studyAdjustments(studyable, now))
-    if (pool.items.length === 0) {
+    const days = studiedDays(await studyTimes(studyable, dayStarts(now)[0]), now)
+    if (pool.items.length === 0 && !days.some(Boolean)) {
       study.replaceChildren()
       return
     }
     const s = summarize(pool)
     const newCards = pool.items.filter((i) => i.kind === 'card' && i.isNew).length
-    const what = s.cards + s.problems > 0 ? `${studyCounts(s.cards, s.problems)} due · ${minutesText(s.seconds)}` : `${count(newCards, 'new card', 'new cards')} to learn`
-    study.replaceChildren(h('p', { class: 'locus-study-text' }, what), h('button', { type: 'button', class: 'btn btn-primary', onclick: () => go(studyHash(locus.id)) }, 'Study'))
+    const what =
+      pool.items.length === 0
+        ? 'All caught up'
+        : s.cards + s.problems + s.notes > 0
+          ? `${studyCounts(s.cards, s.problems, s.notes)} due · ${minutesText(s.seconds)}`
+          : `${count(newCards, 'new card', 'new cards')} to learn`
+    study.replaceChildren(
+      ...[
+        h('p', { class: 'locus-study-text' }, what),
+        pool.items.length > 0 && h('button', { type: 'button', class: 'btn btn-primary', onclick: () => go(studyHash(locus.id)) }, 'Study'),
+        spacingStrip(days, now),
+      ].filter((x): x is HTMLElement => x !== false),
+    )
   }
 
   // This locus's own items, in the Tasks screen's groups (SPEC-v2.md, "Tasks screen v2").
@@ -253,4 +267,21 @@ function openTileMenu(el: LocusElement): Promise<boolean | null> {
       },
     }
   })
+}
+
+// Four weeks of dots, today last; filled where something here was studied.
+function spacingStrip(days: boolean[], now: number): HTMLElement {
+  const starts = dayStarts(now, days.length)
+  const studied = days.filter(Boolean).length
+  const label = (i: number) => new Date(starts[i]).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
+  return h(
+    'div',
+    { class: 'spacing' },
+    h(
+      'div',
+      { class: 'spacing-strip', role: 'img', 'aria-label': `Studied on ${studied} of the last ${days.length} days` },
+      days.map((on, i) => h('span', { class: `spacing-dot${on ? ' on' : ''}${i === days.length - 1 ? ' today' : ''}`, title: `${label(i)}${on ? ' · studied' : ''}` })),
+    ),
+    h('span', { class: 'spacing-text' }, `${studied} of the last ${days.length} days`),
+  )
 }

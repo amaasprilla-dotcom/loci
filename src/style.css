@@ -2886,3 +2886,151 @@ details.editor-section > summary {
   height: 8px;
   border-radius: 4px;
 }
+
+/* ---------- Coach: typed answers, blank-page recall, spacing strip ---------- */
+
+.typed-answer {
+  margin-top: 24px;
+  font-size: 1.15rem;
+  text-align: center;
+}
+
+.typed-answer[readonly] {
+  background: var(--surface-muted);
+}
+
+.typed-answer.wrong {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+
+.typed-verdict {
+  margin: 12px 0 0;
+  font-weight: 650;
+}
+
+.typed-verdict.right {
+  color: var(--ok);
+}
+
+.typed-verdict.wrong {
+  color: var(--bad);
+}
+
+.typed-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.typed-actions .btn {
+  flex: 1;
+}
+
+.recall-card {
+  text-align: left;
+}
+
+.recall-kicker {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.recall-input {
+  width: 100%;
+  margin-top: 20px;
+  min-height: 12rem;
+  resize: vertical;
+  font: inherit;
+  line-height: 1.5;
+}
+
+.recall-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.recall-compare[hidden] {
+  display: none;
+}
+
+.recall-side h3 {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.recall-text {
+  padding: 12px;
+  border-radius: var(--radius);
+  background: var(--surface-muted);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.recall-text.empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
+@media (max-width: 560px) {
+  .recall-compare {
+    grid-template-columns: 1fr;
+  }
+}
+
+.recall-mark {
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--blue-soft);
+  color: var(--blue-ink);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.type-option:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.spacing {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+.spacing-strip {
+  display: grid;
+  grid-template-columns: repeat(28, 1fr);
+  gap: 3px;
+  flex: 1 1 220px;
+  max-width: 360px;
+}
+
+.spacing-dot {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.spacing-dot.on {
+  background: var(--c);
+  box-shadow: inset 0 0 0 1px rgba(11, 15, 20, 0.12);
+}
+
+.spacing-dot.today {
+  outline: 1.5px solid var(--text);
+  outline-offset: 1px;
+}
+
+.spacing-text {
+  color: var(--muted);
+  font-size: 0.8rem;
+}

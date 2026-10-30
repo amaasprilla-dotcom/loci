@@ -7,6 +7,7 @@ import { isNewSrs, newSrs } from './srs'
 export interface FlashcardsData {
   newPerDay: number // new cards introduced per day
   maxReviewsPerDay: number
+  answerMode?: 'flip' | 'type' // type: the answer is typed and checked (SPEC-v3-coach.md); missing = flip
 }
 
 export const DEFAULT_FLASHCARDS_DATA: FlashcardsData = { newPerDay: 20, maxReviewsPerDay: 200 }

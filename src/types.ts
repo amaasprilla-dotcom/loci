@@ -150,7 +150,21 @@ export interface Note {
   content: unknown;
   plainText: string;
   pinned: 0 | 1; // a number, since IndexedDB can't index booleans
+  // Blank-page recall (SPEC-v3-coach.md): while on, the note joins its locus's Study
+  // sessions. Turned off, the state stays for when it's turned on again.
+  recall?: { on: boolean; srs: Srs };
   createdAt: number;
+  updatedAt: number;
+}
+
+// One blank-page recall of a note: what was written from memory, and how it went.
+export interface RecallAttempt {
+  id: string;
+  noteId: string;
+  at: number;
+  typed: string;
+  grade: Grade;
+  ms: number;
   updatedAt: number;
 }
 

@@ -22,7 +22,7 @@ export interface Task {
   open(): void // tap
   complete?(): Promise<void> // tick, where it makes sense
   secondary?: { label: string; run(): Promise<void> } // e.g. "It happened" on a waiting to-do
-  study?: { cards: number; problems: number; seconds: number } // a Study task: what's due, and about how long
+  study?: { cards: number; problems: number; notes?: number; seconds: number } // a Study task: what's due, and about how long
 }
 
 // Active tasks are the ones that need doing now: they pulse the bubble and fill "Now".

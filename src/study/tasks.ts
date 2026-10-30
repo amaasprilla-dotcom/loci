@@ -27,7 +27,7 @@ const overdueSince = (at: number) => `Waiting since ${new Date(at).toLocaleDateS
 // has waited past a 04:00 rollover.
 export async function elementStudyTask(el: LocusElement, now: number): Promise<Task[]> {
   const s = summarize(await studyPool([el], now, await studyAdjustments([el], now)))
-  if (s.cards + s.problems === 0) return []
+  if (s.cards + s.problems + s.notes === 0) return []
   const locus = await db.loci.get(el.locusId)
   const overdue = s.oldestDue != null && s.oldestDue < studyDayStart(now)
   return [
@@ -36,13 +36,13 @@ export async function elementStudyTask(el: LocusElement, now: number): Promise<T
       elementId: el.id,
       kind: 'review',
       state: overdue ? 'overdue' : 'due',
-      label: `${studyCounts(s.cards, s.problems)} due`,
+      label: `${studyCounts(s.cards, s.problems, s.notes)} due`,
       sublabel: [overdue && overdueSince(s.oldestDue!), minutesText(s.seconds)].filter(Boolean).join(' · '),
       importance: locus?.studyImportance ?? DEFAULT_STUDY_IMPORTANCE,
       difficulty: locus?.studyDifficulty ?? DEFAULT_STUDY_DIFFICULTY,
       dueAt: s.oldestDue ?? now,
       open: () => go(reviewHash(el)),
-      study: { cards: s.cards, problems: s.problems, seconds: s.seconds },
+      study: { cards: s.cards, problems: s.problems, notes: s.notes, seconds: s.seconds },
     },
   ]
 }
@@ -58,6 +58,7 @@ export function mergeStudyTasks(tasks: Task[]): Task[] {
   for (const [locusId, list] of byLocus) {
     const cards = list.reduce((n, t) => n + t.study!.cards, 0)
     const problems = list.reduce((n, t) => n + t.study!.problems, 0)
+    const notes = list.reduce((n, t) => n + (t.study!.notes ?? 0), 0)
     const seconds = list.reduce((n, t) => n + t.study!.seconds, 0)
     const overdue = list.filter((t) => t.state === 'overdue')
     const dueAt = Math.min(...list.map((t) => t.dueAt ?? Infinity))
@@ -66,13 +67,13 @@ export function mergeStudyTasks(tasks: Task[]): Task[] {
       elementId: '',
       kind: 'review',
       state: overdue.length ? 'overdue' : 'due',
-      label: `Study · ${studyCounts(cards, problems)}`,
+      label: `Study · ${studyCounts(cards, problems, notes)}`,
       sublabel: [overdue.length > 0 && overdueSince(dueAt), minutesText(seconds)].filter(Boolean).join(' · '),
       importance: list[0].importance,
       difficulty: list[0].difficulty,
       dueAt,
       open: () => go(studyHash(locusId)),
-      study: { cards, problems, seconds },
+      study: { cards, problems, notes, seconds },
     })
   }
   return rest

@@ -22,6 +22,7 @@ import { formatAgo } from '../../time'
 import type { LocusElement, Note } from '../../types'
 import { editMath } from './mathSheet'
 import { NoteImage } from './noteImage'
+import { practising, setRecall } from './recall'
 import { createNote, deleteNote, firstLine, listNotes, noteTitle, removeUnusedInlineImages, saveNote, searchNotes, setPinned } from './store'
 
 const AUTOSAVE_MS = 500
@@ -81,7 +82,13 @@ export async function renderNotebook(el: LocusElement): Promise<HTMLElement> {
       h(
         'span',
         { class: 'card-text' },
-        h('span', { class: 'card-front' }, n.pinned ? h('span', { class: 'pin-mark', 'aria-label': 'Pinned' }, '📌 ') : null, noteTitle(n)),
+        h(
+          'span',
+          { class: 'card-front' },
+          n.pinned ? h('span', { class: 'pin-mark', 'aria-label': 'Pinned' }, '📌 ') : null,
+          noteTitle(n),
+          practising(n) && h('span', { class: 'recall-mark' }, n.recall!.srs.due <= now ? 'Recall due' : 'Recall'),
+        ),
         h('span', { class: 'card-back' }, firstLine(n) || ' '),
       ),
       h('span', { class: 'card-due' }, when(n.updatedAt, now)),
@@ -91,17 +98,9 @@ export async function renderNotebook(el: LocusElement): Promise<HTMLElement> {
   }
 
   async function noteMenu(n: Note) {
-    const choice = await openSheet<'pin' | 'delete'>('Note', (api) => ({
-      content: [
-        h('h2', {}, noteTitle(n)),
-        sheetActions(
-          button('Delete', () => api.close('delete'), 'danger-text'),
-          button('Cancel', () => api.close(null)),
-          button(n.pinned ? 'Unpin' : 'Pin to top', () => api.close('pin'), 'primary'),
-        ),
-      ],
-    }))
+    const choice = await openNoteMenu(n, true)
     if (choice === 'pin') await setPinned(n.id, !n.pinned)
+    if (choice === 'recall') await setRecall(n, !n.recall?.on)
     if (choice === 'delete' && (await confirmDelete(`Delete “${noteTitle(n)}”?`, 'Its attachments go too.'))) await deleteNote(n.id)
     if (choice) await reload()
   }
@@ -126,6 +125,36 @@ export async function renderNotebook(el: LocusElement): Promise<HTMLElement> {
   )
   await reload()
   return screen
+}
+
+// A note's options: pin (from the list; the editor has its own pin button),
+// recall practice, delete.
+function openNoteMenu(n: Note, withPin: boolean): Promise<'pin' | 'recall' | 'delete' | null> {
+  const recallOn = n.recall?.on === true
+  const empty = n.plainText.trim() === ''
+  const option = (title: string, description: string, onclick: () => void, disabled = false) =>
+    h('button', { type: 'button', class: 'type-option', disabled, onclick }, h('span', {}, h('strong', {}, title), h('span', { class: 'type-desc' }, description)))
+  return openSheet<'pin' | 'recall' | 'delete'>('Note', (api) => ({
+    content: [
+      h('h2', {}, noteTitle(n)),
+      h(
+        'div',
+        { class: 'type-options' },
+        withPin && option(n.pinned ? 'Unpin' : 'Pin to top', n.pinned ? 'Back among the other notes, newest first.' : 'Keep it at the top of the notebook.', () => api.close('pin')),
+        option(
+          recallOn ? 'Stop recall practice' : 'Practise recall',
+          recallOn
+            ? 'It leaves Study sessions. Its schedule is kept if you turn it on again.'
+            : empty
+              ? 'Write something in this note first.'
+              : 'In Study sessions, write down everything you remember of it, then compare. Spaced over days and weeks.',
+          () => api.close('recall'),
+          !recallOn && empty,
+        ),
+      ),
+      sheetActions(button('Delete', () => api.close('delete'), 'danger-text'), button('Cancel', () => api.close(null))),
+    ],
+  }))
 }
 
 // ---------- Note editor ----------
@@ -361,6 +390,16 @@ export async function renderNoteEditor(el: LocusElement, noteId: string): Promis
       class: 'icon-btn',
       'aria-label': 'Note options',
       onclick: async () => {
+        await save()
+        const current = await db.notes.get(note.id)
+        if (!current) return
+        const choice = await openNoteMenu(current, false)
+        if (choice === 'recall') {
+          await setRecall(current, !current.recall?.on)
+          status.textContent = current.recall?.on ? 'Recall practice off' : 'In Study sessions from now'
+          return
+        }
+        if (choice !== 'delete') return
         if (await confirmDelete(`Delete “${noteTitle({ title: title.value })}”?`, 'Its attachments go too.')) {
           clearTimeout(timer)
           dirty = false

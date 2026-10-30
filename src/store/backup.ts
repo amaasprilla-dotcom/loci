@@ -10,12 +10,13 @@
 
 import JSZip from 'jszip'
 import { count } from '../locale'
-import type { Attachment, Card, Contributor, Exam, Goal, GoalEntry, Link, Locus, LocusElement, Note, ProblemAttempt, ProblemTemplate, ReviewLog, Setting, StoredBlob, Tag, Todo, TodoCompletion } from '../types'
+import type { Attachment, Card, Contributor, Exam, Goal, GoalEntry, Link, Locus, LocusElement, Note, ProblemAttempt, ProblemTemplate, RecallAttempt, ReviewLog, Setting, StoredBlob, Tag, Todo, TodoCompletion } from '../types'
 import { db, migrateV1Cards, tagKey } from './db'
 
 // 1: v1 (SM-2 cards, .json). 2: cards carry FSRS state (.json).
-// 3: a .zip with attachments, their files and settings. Older versions are converted on import.
-export const BACKUP_VERSION = 3
+// 3: a .zip with attachments, their files and settings. 4: adds Coach's tables.
+// Older versions are converted on import.
+export const BACKUP_VERSION = 4
 
 export interface Backup {
   version: number
@@ -38,12 +39,13 @@ export interface Backup {
   problemTemplates: ProblemTemplate[]
   problemAttempts: ProblemAttempt[]
   exams: Exam[]
+  recallAttempts: RecallAttempt[]
 }
 
-const TABLES = ['tags', 'loci', 'elements', 'cards', 'reviews', 'links', 'attachments', 'blobs', 'settings', 'notes', 'todos', 'todoCompletions', 'goals', 'goalContributors', 'goalEntries', 'problemTemplates', 'problemAttempts', 'exams'] as const
+const TABLES = ['tags', 'loci', 'elements', 'cards', 'reviews', 'links', 'attachments', 'blobs', 'settings', 'notes', 'todos', 'todoCompletions', 'goals', 'goalContributors', 'goalEntries', 'problemTemplates', 'problemAttempts', 'exams', 'recallAttempts'] as const
 type TableName = (typeof TABLES)[number]
 // Tables added after the first backups: a file from before them simply has none.
-const ADDED_LATER = new Set<TableName>(['links', 'attachments', 'blobs', 'settings', 'notes', 'todos', 'todoCompletions', 'goals', 'goalContributors', 'goalEntries', 'problemTemplates', 'problemAttempts', 'exams'])
+const ADDED_LATER = new Set<TableName>(['links', 'attachments', 'blobs', 'settings', 'notes', 'todos', 'todoCompletions', 'goals', 'goalContributors', 'goalEntries', 'problemTemplates', 'problemAttempts', 'exams', 'recallAttempts'])
 const ALL_TABLES = () => [
   db.tags,
   db.loci,
@@ -63,6 +65,7 @@ const ALL_TABLES = () => [
   db.problemTemplates,
   db.problemAttempts,
   db.exams,
+  db.recallAttempts,
 ]
 
 export async function exportBackup(now = Date.now()): Promise<Backup> {
@@ -87,6 +90,7 @@ export async function exportBackup(now = Date.now()): Promise<Backup> {
     problemTemplates: await db.problemTemplates.toArray(),
     problemAttempts: await db.problemAttempts.toArray(),
     exams: await db.exams.toArray(),
+    recallAttempts: await db.recallAttempts.toArray(),
   }))
 }
 
@@ -184,6 +188,7 @@ export function parseBackup(text: string): Backup {
     problemTemplates: b.problemTemplates as ProblemTemplate[],
     problemAttempts: b.problemAttempts as ProblemAttempt[],
     exams: b.exams as Exam[],
+    recallAttempts: b.recallAttempts as RecallAttempt[],
   }
 }
 
@@ -233,6 +238,7 @@ export async function importBackup(backup: Backup, mode: 'replace' | 'merge'): P
     await mergeInto('problemTemplates', backup.problemTemplates, summary)
     await mergeInto('problemAttempts', backup.problemAttempts, summary)
     await mergeInto('exams', backup.exams, summary)
+    await mergeInto('recallAttempts', backup.recallAttempts, summary)
 
     // Settings are keyed by name; the newer value wins.
     for (const setting of backup.settings) {

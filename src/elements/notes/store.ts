@@ -26,11 +26,12 @@ export async function setPinned(id: string, pinned: boolean): Promise<void> {
   await db.notes.update(id, { pinned: pinned ? 1 : 0, updatedAt: Date.now() })
 }
 
-// Deletes the note with its attachments (and their files) and its links.
+// Deletes the note with its attachments (and their files), its links and its recall history.
 export async function deleteNote(id: string): Promise<void> {
-  await db.transaction('rw', [db.notes, db.attachments, db.blobs, db.links], async () => {
+  await db.transaction('rw', [db.notes, db.attachments, db.blobs, db.links, db.recallAttempts], async () => {
     await deleteLinksFor([{ type: 'note', id }])
     await deleteAttachmentsOf([{ type: 'note', id }])
+    await db.recallAttempts.where('noteId').equals(id).delete()
     await db.notes.delete(id)
   })
 }

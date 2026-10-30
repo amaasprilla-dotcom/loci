@@ -39,7 +39,7 @@ Already built: FSRS for cards and problem templates, mixed Study sessions, exams
 A per-deck setting **Answer mode: Flip | Type** (default Flip, stored in the deck element's data).
 
 - Type mode shows an input under the front. Enter submits; the back is revealed with the verdict.
-- `checkAnswer(typed, back)` is pure: lowercase, strip accents and punctuation, collapse spaces, then accept an edit distance of 0 for answers up to 4 characters, 1 up to 10, 2 beyond. If the back has several answers separated by `;` or `/`, any one counts.
+- `checkAnswer(typed, back)` is pure: lowercase, strip accents and punctuation, collapse spaces, then accept an edit distance of 0 for answers up to 4 characters, 1 up to 10, 2 beyond. If the back has several answers separated by `;`, ` / ` or a new line, any one counts. A bare slash stays part of the answer (`km/h`).
 - Rating is derived, like problems: wrong → Again; right → Good; right in under 0.6× the user's median card time → Easy. The first 3 attempts on a card rate right as Good.
 - "I was right" under a wrong verdict turns it into Good. Typos happen; the user is the judge.
 - Cards with no text answer (images, long backs over 80 characters) fall back to Flip inside a Type deck.

@@ -1,5 +1,5 @@
-// The study screen: a locus's Study button (cards and problems together, length
-// in minutes), or one deck's or set's own Study button (until done). Missed
+// The study screen: a locus's Study button (cards, problems and notes to recall
+// together, length in minutes), or one deck's, set's or notebook's own Study button (until done). Missed
 // problems return later in the session with new numbers; cards on a short
 // learning step return when it's up.
 
@@ -11,9 +11,11 @@ import { formatNumber } from '../locale'
 import { back } from '../router'
 import { db } from '../store/db'
 import { formatIn } from '../time'
-import type { Card, ProblemTemplate } from '../types'
-import { buildSession, type StudyItem, studyPool } from './plan'
-import { type Showing, showCard, showProblem } from './reviewable'
+import type { FlashcardsData } from '../elements/flashcards/store'
+import type { Card, Note, ProblemTemplate } from '../types'
+import { typeable } from './answer'
+import { buildSession, isStudyable, type StudyItem, studyPool } from './plan'
+import { type Showing, showCard, showNote, showProblem, showTypedCard } from './reviewable'
 import { studyAdjustments } from './limits'
 import { minutesText, studyCounts } from './text'
 
@@ -46,7 +48,7 @@ export async function renderStudyScreen(opts: StudyOptions): Promise<HTMLElement
   const color = locus?.color ?? '#0b0f14'
   const now0 = Date.now()
   const elements = (await db.elements.where('locusId').equals(opts.locusId).toArray()).filter(
-    (e) => (e.type === 'flashcards' || e.type === 'problems') && (!opts.elementIds || opts.elementIds.includes(e.id)),
+    (e) => isStudyable(e) && (!opts.elementIds || opts.elementIds.includes(e.id)),
   )
   const pool = await studyPool(elements, now0, await studyAdjustments(elements, now0))
   const titles = new Map(elements.map((e) => [e.id, e.title]))
@@ -70,7 +72,8 @@ export async function renderStudyScreen(opts: StudyOptions): Promise<HTMLElement
   let current: StudyItem | null = null
   let showing: Showing | null = null
   let done = 0
-  const seenKinds = { card: new Set<string>(), template: new Set<string>() }
+  const seenKinds = { card: new Set<string>(), template: new Set<string>(), note: new Set<string>() }
+  const kindCounts = (items: StudyItem[]) => studyCounts(...(['card', 'template', 'note'] as const).map((k) => items.filter((i) => i.kind === k).length) as [number, number, number])
   let studyMs = 0
   let finished = false
 
@@ -88,13 +91,11 @@ export async function renderStudyScreen(opts: StudyOptions): Promise<HTMLElement
     const summary = h('p', { class: 'study-summary' })
     const show = () => {
       const picked = buildSession(pool.items, minutes == null ? null : minutes * 60)
-      const cards = picked.filter((i) => i.kind === 'card').length
-      const problems = picked.length - cards
       const secs = picked.reduce((s, i) => s + i.estSeconds, 0)
       summary.textContent =
         picked.length === 0
           ? 'Nothing fits in that time. Choose a longer session.'
-          : `${studyCounts(cards, problems)} · ${minutesText(secs)}${picked.length < all.length ? ` (of ${formatNumber(all.length)})` : ''}`
+          : `${kindCounts(picked)} · ${minutesText(secs)}${picked.length < all.length ? ` (of ${formatNumber(all.length)})` : ''}`
       start.disabled = picked.length === 0
     }
     const segs = LENGTHS.map((m) =>
@@ -125,7 +126,7 @@ export async function renderStudyScreen(opts: StudyOptions): Promise<HTMLElement
         'div',
         { class: 'study-start' },
         h('h2', {}, 'Study'),
-        h('p', { class: 'study-due' }, `Ready to study: ${studyCounts(all.filter((i) => i.kind === 'card').length, all.filter((i) => i.kind === 'template').length)}.`),
+        h('p', { class: 'study-due' }, `Ready to study: ${kindCounts(all)}.`),
         h('div', { class: 'field-label' }, 'How long?', h('div', { class: 'segments segments-5', role: 'radiogroup', 'aria-label': 'Session length' }, segs)),
         summary,
       ),
@@ -168,11 +169,17 @@ export async function renderStudyScreen(opts: StudyOptions): Promise<HTMLElement
     kicker.textContent = opts.elementIds ? '' : (titles.get(current.elementId) ?? '')
     const item = current
     const s = { stage, footer, retention }
-    showing =
-      item.kind === 'card'
-        ? showCard(pool.cards.get(item.id)!, s, (after: Card) => pool.cards.set(after.id, after))
-        : showProblem(pool.templates.get(item.id)!, s, (after: ProblemTemplate) => pool.templates.set(after.id, after))
-    void showing.done.then((o) => {
+    const savedCard = (after: Card) => pool.cards.set(after.id, after)
+    if (item.kind === 'card') {
+      const card = pool.cards.get(item.id)!
+      const typed = (pool.elements.get(item.elementId)?.data as FlashcardsData | undefined)?.answerMode === 'type' && typeable(card.back)
+      showing = typed ? showTypedCard(card, s, savedCard) : showCard(card, s, savedCard)
+    } else if (item.kind === 'template') {
+      showing = showProblem(pool.templates.get(item.id)!, s, (after: ProblemTemplate) => pool.templates.set(after.id, after))
+    } else {
+      showing = showNote(pool.notes.get(item.id)!, s, (after: Note) => pool.notes.set(after.id, after))
+    }
+    void showing!.done.then((o) => {
       done++
       seenKinds[item.kind].add(item.id)
       studyMs += o.ms
@@ -198,11 +205,12 @@ export async function renderStudyScreen(opts: StudyOptions): Promise<HTMLElement
     const dues = [
       ...(await db.cards.where('elementId').anyOf(ids).toArray()).map((c) => c.srs),
       ...(await db.problemTemplates.where('elementId').anyOf(ids).toArray()).map((t) => t.srs),
+      ...(await db.notes.where('elementId').anyOf(ids).toArray()).filter((n) => n.recall?.on).map((n) => n.recall!.srs),
     ]
       .filter((s) => s.state !== 0 && s.due > now)
       .map((s) => s.due)
     const nextDue = dues.length ? Math.min(...dues) : null
-    const what = studyCounts(seenKinds.card.size, seenKinds.template.size)
+    const what = studyCounts(seenKinds.card.size, seenKinds.template.size, seenKinds.note.size)
     stage.replaceChildren(
       h(
         'div',
@@ -216,12 +224,17 @@ export async function renderStudyScreen(opts: StudyOptions): Promise<HTMLElement
 
   function onKey(e: KeyboardEvent) {
     if (e.ctrlKey || e.metaKey || e.altKey || document.querySelector('.sheet')) return
+    const target = e.target as HTMLElement | null
+    // Writing a recall: keys are text. Escape only leaves the box, so a slip can't lose it.
+    if (target?.tagName === 'TEXTAREA') {
+      if (e.key === 'Escape') target.blur()
+      return
+    }
     if (e.key === 'Escape' || (finished && e.key === 'Enter')) {
       e.preventDefault()
       leave()
       return
     }
-    const target = e.target as HTMLElement | null
     if (target?.tagName === 'INPUT' && e.key !== 'Enter') return // typing an answer
     if (showing?.onKey(e)) e.preventDefault()
   }

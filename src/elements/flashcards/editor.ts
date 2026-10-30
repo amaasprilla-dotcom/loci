@@ -301,6 +301,27 @@ function openDeckSettings(deck: LocusElement<FlashcardsData>, cardCount: number)
     }
     const newPerDay = numberInput(deck.data.newPerDay, 0, 999, 'New cards per day')
     const maxReviews = numberInput(deck.data.maxReviewsPerDay, 1, 9999, 'Maximum reviews per day')
+    let answerMode = deck.data.answerMode ?? 'flip'
+    const modes = [
+      { value: 'flip' as const, label: 'Flip' },
+      { value: 'type' as const, label: 'Type' },
+    ]
+    const modeButtons = modes.map((m) =>
+      h(
+        'button',
+        {
+          type: 'button',
+          class: 'segment',
+          role: 'radio',
+          'aria-checked': String(m.value === answerMode),
+          onclick: () => {
+            answerMode = m.value
+            modeButtons.forEach((b, i) => b.setAttribute('aria-checked', String(modes[i].value === answerMode)))
+          },
+        },
+        m.label,
+      ),
+    )
     const save = submitButton('Save')
 
     function sync() {
@@ -315,6 +336,13 @@ function openDeckSettings(deck: LocusElement<FlashcardsData>, cardCount: number)
         { class: 'field-row' },
         h('label', { class: 'field-label' }, 'New cards per day', newPerDay),
         h('label', { class: 'field-label' }, 'Most reviews per day', maxReviews),
+      ),
+      h(
+        'div',
+        { class: 'field-label' },
+        'Answers',
+        h('div', { class: 'segments segments-2', role: 'radiogroup', 'aria-label': 'Answers' }, modeButtons),
+        h('span', { class: 'field-hint' }, 'Type: you type the answer and Loci checks it. Cards with long backs still flip.'),
       ),
       sheetActions(
         button(
@@ -343,7 +371,7 @@ function openDeckSettings(deck: LocusElement<FlashcardsData>, cardCount: number)
       content: form,
       onSubmit: async () => {
         if (save.disabled) return
-        const data: FlashcardsData = { newPerDay: Number(newPerDay.value), maxReviewsPerDay: Number(maxReviews.value) }
+        const data: FlashcardsData = { ...deck.data, newPerDay: Number(newPerDay.value), maxReviewsPerDay: Number(maxReviews.value), answerMode }
         const title = titleInput.value.trim()
         await updateElement(deck.id, { title, data })
         api.close({ ...deck, title, data })

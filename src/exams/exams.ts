@@ -181,8 +181,7 @@ export interface ExamDraft {
   scope: string[] | null // element ids; null = everything in the locus
 }
 
-export async function saveExam(locusId: string, draft: ExamDraft, id?: string): Promise<Exam> {
-  const now = Date.now()
+export async function saveExam(locusId: string, draft: ExamDraft, id?: string, now = Date.now()): Promise<Exam> {
   return db.transaction('rw', db.exams, db.links, async () => {
     const old = id ? await db.exams.get(id) : undefined
     const exam: Exam = {

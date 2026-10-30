@@ -73,14 +73,14 @@ describe('an exam in a locus', () => {
     await addCards(nouns.id, [{ front: 'casa', back: 'house' }])
     const [n] = await listCards(nouns.id)
     await db.cards.put({ ...n, srs: strongCard() })
-    const exam = await saveExam(locus.id, { title: 'Final', date: inDays(examInDays), targetRecall: 0.9, scope: null })
+    const exam = await saveExam(locus.id, { title: 'Final', date: inDays(examInDays), targetRecall: 0.9, scope: null }, undefined, now)
     return { locus, verbs, nouns, exam }
   }
 
   it('covers everything in the locus by default, or what is linked', async () => {
     const { locus, verbs, exam } = await setup()
     expect((await scopeOf(exam)).map((e) => e.title).sort()).toEqual(['Nouns', 'Verbs'])
-    const narrowed = await saveExam(locus.id, { title: 'Final', date: exam.date, targetRecall: 0.9, scope: [verbs.id] }, exam.id)
+    const narrowed = await saveExam(locus.id, { title: 'Final', date: exam.date, targetRecall: 0.9, scope: [verbs.id] }, exam.id, now)
     expect((await scopeOf(narrowed)).map((e) => e.title)).toEqual(['Verbs'])
     // Deleting the deck takes the scope link with it, back to "everything".
     await deleteElement(verbs.id)
@@ -100,7 +100,7 @@ describe('an exam in a locus', () => {
     const { locus, verbs, exam } = await setup(12)
     expect((await examAdjustments([verbs], now)).newLimits.get(verbs.id)).toBe(3)
     expect((await studyPool([verbs], now, await examAdjustments([verbs], now))).items).toHaveLength(3)
-    await saveExam(locus.id, { title: 'Final', date: exam.date, targetRecall: 0.9, newPerDay: 2, scope: null }, exam.id)
+    await saveExam(locus.id, { title: 'Final', date: exam.date, targetRecall: 0.9, newPerDay: 2, scope: null }, exam.id, now)
     expect((await examAdjustments([verbs], now)).newLimits.get(verbs.id)).toBe(2)
   })
 
@@ -116,7 +116,7 @@ describe('an exam in a locus', () => {
 
   it('caps reviews of items in scope, whatever reviews them', async () => {
     const { nouns, locus } = await setup(10)
-    await saveExam(locus.id, { title: 'Final', date: inDays(10), targetRecall: 0.999, scope: null }, (await db.exams.toArray())[0].id)
+    await saveExam(locus.id, { title: 'Final', date: inDays(10), targetRecall: 0.999, scope: null }, (await db.exams.toArray())[0].id, now)
     const [card] = await listCards(nouns.id)
     const capped = await nextState({ type: 'card', id: card.id, elementId: nouns.id }, card.srs, 2, now, 0.9)
     expect(capped.due).toBeLessThan(inDays(10))
