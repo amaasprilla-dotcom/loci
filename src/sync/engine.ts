@@ -3,15 +3,18 @@
 // devices editing apart can leave behind, and pushes the repairs.
 
 import { db } from '../store/db'
-import type { Tag } from '../types'
+import type { StoredBlob, Tag } from '../types'
 import { createClient, SyncError, type SyncProblem } from './client'
+import { announceFile } from './files'
 import { createLive } from './live'
 import { markSilent, type OutboxRow, setRecording } from './record'
 import { repairAfterPull } from './repair'
-import { BATCH_LIMIT, generateKey, incomingWins, normalizeKey, SYNCED_TABLES, type Change, type ServerRecord, type SyncedTable } from './rules'
+import { BATCH_LIMIT, generateKey, incomingWins, normalizeKey, PART_BYTES, SYNCED_TABLES, type Change, type ServerRecord } from './rules'
 
-// Attachments and their files wait in the outbox until files can travel (S4).
-const HELD = new Set<SyncedTable>(['attachments', 'blobs'])
+// Bumped when a new app version pulls records an older one skipped: a device
+// coming from the older version pulls everything once more. 2: attachments and
+// their files, which devices before it left on the server.
+const PULL_VERSION = 2
 
 const DEBOUNCE_MS = 2000
 const SAFETY_NET_MS = 5 * 60 * 1000
@@ -67,7 +70,7 @@ async function setState(key: string, value: unknown): Promise<void> {
 }
 
 async function pendingCount(): Promise<number> {
-  return db.syncOutbox.filter((row) => !HELD.has(row.table)).count()
+  return db.syncOutbox.count()
 }
 
 // At app start: picks sync back up if this device has it on.
@@ -75,6 +78,12 @@ export async function loadSync(): Promise<void> {
   const key = await getState<string>('key')
   const deviceId = await getState<string>('deviceId')
   if (!key || !deviceId) return
+  if (((await getState<number>('pullVersion')) ?? 1) < PULL_VERSION) {
+    await db.syncState.bulkPut([
+      { key: 'cursor', value: 0 },
+      { key: 'pullVersion', value: PULL_VERSION },
+    ])
+  }
   config = { key, deviceId }
   setRecording(true, syncSoon)
   setStatus({ on: true, lastSyncAt: (await getState<number>('lastSyncAt')) ?? null, pending: await pendingCount() })
@@ -142,6 +151,7 @@ async function begin(key: string) {
       { key: 'key', value: key },
       { key: 'deviceId', value: deviceId },
       { key: 'cursor', value: 0 },
+      { key: 'pullVersion', value: PULL_VERSION },
     ])
   })
   config = { key, deviceId }
@@ -241,6 +251,7 @@ async function round(): Promise<void> {
         }
       }
     }
+    await downloadFiles(key)
     if (config?.deviceId !== deviceId) return // stopped or rejoined meanwhile
     const at = Date.now()
     await setState('lastSyncAt', at)
@@ -261,9 +272,11 @@ async function round(): Promise<void> {
 // ---------- Push ----------
 
 async function pushAll(key: string, deviceId: string): Promise<void> {
-  const rows = (await db.syncOutbox.orderBy('changedAt').toArray()).filter((row) => !HELD.has(row.table))
+  const rows = await db.syncOutbox.orderBy('changedAt').toArray()
   for (let i = 0; i < rows.length; i += BATCH_LIMIT) {
     const batch = rows.slice(i, i + BATCH_LIMIT)
+    // A file's bytes go up before its record, so no device sees a file it can't fetch.
+    await uploadFiles(key, batch)
     await client.push(key, deviceId, await changesFor(batch))
     // Sent rows go, unless the record changed again while they were on the way.
     await db.transaction('rw', db.syncOutbox, async () => {
@@ -285,7 +298,12 @@ async function changesFor(rows: OutboxRow[]): Promise<Change[]> {
     ids.forEach((id, i) => values.set(`${table}/${id}`, found[i]))
   }
   return rows.map((row) => {
-    const data = row.op === 'put' ? values.get(`${row.table}/${row.id}`) : undefined
+    let data = row.op === 'put' ? values.get(`${row.table}/${row.id}`) : undefined
+    // A file's record travels without its bytes (uploaded separately).
+    if (data && row.table === 'blobs') {
+      const { data: _bytes, ...meta } = data as unknown as StoredBlob
+      data = meta
+    }
     // Gone since it was recorded: send the deletion.
     return data ? { table: row.table, id: row.id, op: 'put', changedAt: row.changedAt, data } : { table: row.table, id: row.id, op: 'delete', changedAt: row.changedAt }
   })
@@ -313,12 +331,13 @@ async function applyPage(records: ServerRecord[], seq: number, deviceId: string)
     markSilent(tx.idbtrans)
     for (const record of records) {
       // Our own changes coming back: this device already has them, or newer.
-      if (record.device === deviceId || HELD.has(record.table)) continue
+      if (record.device === deviceId) continue
       const local = await db.syncOutbox.get([record.table, record.id])
       // A newer change here wins, and will be pushed.
       if (local && incomingWins({ changedAt: local.changedAt, device: deviceId }, record)) continue
       if (local) await db.syncOutbox.delete([record.table, record.id])
-      if (record.deleted) await db.table(record.table).delete(record.id)
+      if (record.table === 'blobs') await queueDownload(record)
+      else if (record.deleted) await db.table(record.table).delete(record.id)
       else if (record.table === 'tags') await applyTag(record.data as unknown as Tag)
       else await db.table(record.table).put(record.data)
       applied.push(record)
@@ -346,4 +365,62 @@ async function applyTag(tag: Tag) {
   }
   // Recorded by hand: this transaction records nothing by itself.
   await db.syncOutbox.put({ table: 'tags', id: loser, op: 'delete', changedAt: Date.now() })
+}
+
+// ---------- Files ----------
+
+type FileInfo = Omit<StoredBlob, 'data'>
+
+async function uploadFiles(key: string, rows: OutboxRow[]): Promise<void> {
+  for (const row of rows) {
+    if (row.table !== 'blobs' || row.op !== 'put') continue
+    const blob = await db.blobs.get(row.id)
+    if (!(blob?.data instanceof Blob)) continue
+    const parts = Math.max(1, Math.ceil(blob.data.size / PART_BYTES))
+    for (let part = 0; part < parts; part++) {
+      await client.putFilePart(key, blob.id, part, parts, await blob.data.slice(part * PART_BYTES, (part + 1) * PART_BYTES).arrayBuffer())
+    }
+  }
+}
+
+// A pulled file record: the bytes download after the pull (not inside this
+// transaction, which can't wait for the network). A deleted file goes now.
+async function queueDownload(record: ServerRecord) {
+  const queue = (await getState<Record<string, FileInfo>>('downloads')) ?? {}
+  if (record.deleted) {
+    delete queue[record.id]
+    await db.blobs.delete(record.id)
+  } else {
+    queue[record.id] = record.data as unknown as FileInfo
+  }
+  await setState('downloads', queue)
+}
+
+// Fetches the files queued by pulls. One missing on the server (not uploaded
+// yet) waits for a later round; no connection ends the round, to retry.
+async function downloadFiles(key: string): Promise<void> {
+  const queue = (await getState<Record<string, FileInfo>>('downloads')) ?? {}
+  for (const [id, info] of Object.entries(queue)) {
+    const first = await client.getFilePart(key, id, 0)
+    if (!first) continue
+    const parts: ArrayBuffer[] = [first.bytes]
+    for (let part = 1; part < first.parts; part++) {
+      const next = await client.getFilePart(key, id, part)
+      if (!next) break
+      parts.push(next.bytes)
+    }
+    if (parts.length < first.parts) continue
+    const blob: StoredBlob = { ...info, id, data: new Blob(parts, { type: info.mime }) }
+    let stored = false
+    await db.transaction('rw', db.blobs, db.syncState, async (tx) => {
+      markSilent(tx.idbtrans)
+      const current = (await getState<Record<string, FileInfo>>('downloads')) ?? {}
+      if (!(id in current)) return // deleted while downloading
+      await db.blobs.put(blob)
+      delete current[id]
+      await setState('downloads', current)
+      stored = true
+    })
+    if (stored) announceFile(id)
+  }
 }

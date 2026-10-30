@@ -1950,6 +1950,14 @@ details.task-section > summary {
   border-radius: 10px;
 }
 
+/* An image still downloading from another device (sync). */
+.note-image.downloading {
+  width: 100%;
+  min-height: 96px;
+  border: 1px dashed var(--border-strong);
+  background: var(--surface-muted);
+}
+
 .note-content .ProseMirror-selectednode.note-image,
 .note-content img.ProseMirror-selectednode {
   outline: 3px solid var(--blue);

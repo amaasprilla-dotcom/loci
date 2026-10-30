@@ -4,7 +4,7 @@
 
 import { incomingWins, MAX_CLOCK_LEAD_MS, type Change, type ServerRecord, type SyncedTable } from '../src/sync/rules.ts'
 
-type SqlValue = string | number | null
+type SqlValue = string | number | null | ArrayBuffer
 
 // The part of a Durable Object's `ctx.storage.sql` this file uses.
 export interface SqlLike {
@@ -31,6 +31,25 @@ export class SyncStore {
       changedAt INTEGER NOT NULL, device TEXT NOT NULL, seq INTEGER NOT NULL,
       PRIMARY KEY (tbl, id))`)
     sql.exec('CREATE INDEX IF NOT EXISTS records_seq ON records (seq)')
+    // Attached files, in parts; their records (metadata only) are in `records`.
+    sql.exec('CREATE TABLE IF NOT EXISTS blob_parts (id TEXT NOT NULL, part INTEGER NOT NULL, parts INTEGER NOT NULL, data BLOB NOT NULL, PRIMARY KEY (id, part))')
+  }
+
+  putBlobPart(id: string, part: number, parts: number, data: ArrayBuffer): void {
+    this.sql.exec(
+      'INSERT INTO blob_parts (id, part, parts, data) VALUES (?, ?, ?, ?) ON CONFLICT (id, part) DO UPDATE SET parts = excluded.parts, data = excluded.data',
+      id,
+      part,
+      parts,
+      data,
+    )
+  }
+
+  getBlobPart(id: string, part: number): { parts: number; data: Uint8Array<ArrayBuffer> } | null {
+    const [row] = this.sql.exec('SELECT parts, data FROM blob_parts WHERE id = ? AND part = ?', id, part).toArray()
+    if (!row) return null
+    // An ArrayBuffer on a Durable Object, a Uint8Array on Node's SQLite.
+    return { parts: row.parts as number, data: new Uint8Array(row.data as ArrayBuffer | Uint8Array) }
   }
 
   // The first key to arrive becomes the only key (SPEC, "Claiming").
@@ -102,6 +121,8 @@ export class SyncStore {
           device,
           seq,
         )
+        // A deleted file's bytes go too.
+        if (deleted && change.table === 'blobs') this.sql.exec('DELETE FROM blob_parts WHERE id = ?', change.id)
         return 'accepted'
       })
       this.setMeta('seq', String(seq))

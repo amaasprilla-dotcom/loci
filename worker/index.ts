@@ -10,6 +10,10 @@ import { SyncStore } from './store.ts'
 interface Env {
   SYNC: DurableObjectNamespace<SyncObject>
   ASSETS: Fetcher
+  // Which synced space this Worker serves. Unset: "main". Setting another value in
+  // the dashboard starts sync over with empty storage, e.g. after losing the key on
+  // every device (README, "Sync between devices").
+  SYNC_SPACE?: string
 }
 
 // What a live socket remembers once its hello was accepted (it survives the
@@ -95,7 +99,7 @@ export default {
   async fetch(request, env) {
     const { pathname } = new URL(request.url)
     if (pathname.startsWith('/api/sync/')) {
-      const response = await env.SYNC.get(env.SYNC.idFromName('main')).fetch(request)
+      const response = await env.SYNC.get(env.SYNC.idFromName(env.SYNC_SPACE || 'main')).fetch(request)
       // Wrong keys wait a second, to slow down guessing.
       if (response.status === 401) await new Promise((resolve) => setTimeout(resolve, 1000))
       return response

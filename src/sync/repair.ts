@@ -9,8 +9,9 @@ import { deleteNote } from '../elements/notes/store'
 import { deleteTemplate } from '../elements/problems/store'
 import { deleteTodo } from '../elements/todos/store'
 import { deleteExam } from '../exams/exams'
+import { deleteAttachment } from '../store/attachments'
 import { db, deleteElement, deleteLocus, wakeDependents } from '../store/db'
-import type { ItemRef, ItemType, Link } from '../types'
+import type { AttachmentOwner, ItemRef, ItemType, Link } from '../types'
 import type { ServerRecord, SyncedTable } from './rules'
 
 const TABLE_OF: Record<ItemType, SyncedTable> = {
@@ -24,6 +25,8 @@ const TABLE_OF: Record<ItemType, SyncedTable> = {
   exam: 'exams',
 }
 
+const OWNER_TABLE: Record<AttachmentOwner, SyncedTable> = { note: 'notes', todo: 'todos', goal: 'goals' }
+
 // Deletes a record the way the app does, with everything that hangs off it.
 // Deleting something already gone does nothing (and records nothing).
 const REMOVE: Partial<Record<SyncedTable, (id: string) => Promise<void>>> = {
@@ -35,6 +38,7 @@ const REMOVE: Partial<Record<SyncedTable, (id: string) => Promise<void>>> = {
   goals: deleteGoal,
   problemTemplates: deleteTemplate,
   exams: deleteExam,
+  attachments: deleteAttachment,
   goalContributors: async (id) => {
     await db.transaction('rw', db.goalContributors, db.goalEntries, async () => {
       await db.goalEntries.where('contributorId').equals(id).delete()
@@ -68,6 +72,8 @@ function parentOf(record: ServerRecord): { table: SyncedTable; id: string } | nu
       return { table: 'goalContributors', id: data.contributorId }
     case 'problemAttempts':
       return { table: 'problemTemplates', id: data.templateId }
+    case 'attachments':
+      return { table: OWNER_TABLE[data.ownerType as AttachmentOwner], id: data.ownerId }
     default:
       return null
   }

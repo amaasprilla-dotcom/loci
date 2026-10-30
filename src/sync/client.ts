@@ -1,7 +1,7 @@
 // Talking to the sync server (worker/api.ts). Every failure becomes a SyncError
 // whose `problem` says what the user can do about it.
 
-import { formatKey, VERSION_HEADER, type Change, type ServerRecord } from './rules'
+import { formatKey, PARTS_HEADER, VERSION_HEADER, type Change, type ServerRecord } from './rules'
 
 export type SyncProblem =
   | 'offline' // no connection; retried
@@ -34,14 +34,13 @@ export interface PullResult {
 }
 
 export function createClient(version: () => number) {
-  async function call<T>(method: 'GET' | 'POST', path: string, key: string, body?: unknown): Promise<T> {
+  async function send(method: 'GET' | 'POST' | 'PUT', path: string, key: string, body?: BodyInit, headers: Record<string, string> = {}): Promise<Response> {
     if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new SyncError('offline')
-    let response: Response
     try {
-      response = await fetch(`/api/sync/${path}`, {
+      return await fetch(`/api/sync/${path}`, {
         method,
-        headers: { Authorization: `Bearer ${formatKey(key)}`, [VERSION_HEADER]: String(version()), ...(body !== undefined && { 'Content-Type': 'application/json' }) },
-        body: body === undefined ? undefined : JSON.stringify(body),
+        headers: { Authorization: `Bearer ${formatKey(key)}`, [VERSION_HEADER]: String(version()), ...headers },
+        body,
         cache: 'no-store',
         // A connection that hangs counts as offline, so the round ends and retries.
         signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -49,6 +48,9 @@ export function createClient(version: () => number) {
     } catch {
       throw new SyncError('offline')
     }
+  }
+
+  async function read<T>(response: Response): Promise<T> {
     let data: { error?: string } & Record<string, unknown>
     try {
       data = await response.json()
@@ -61,11 +63,26 @@ export function createClient(version: () => number) {
     throw new SyncError(problems[data.error ?? ''] ?? 'server')
   }
 
+  const call = async <T>(method: 'GET' | 'POST', path: string, key: string, body?: unknown): Promise<T> =>
+    read<T>(await send(method, path, key, body === undefined ? undefined : JSON.stringify(body), body === undefined ? {} : { 'Content-Type': 'application/json' }))
+
   return {
     claim: (key: string) => call<{ seq: number }>('POST', 'claim', key),
     status: (key: string) => call<{ seq: number; newestVersion: number }>('GET', 'status', key),
     push: (key: string, device: string, changes: Change[]) => call<PushResult>('POST', 'push', key, { device, changes }),
     pull: (key: string, since: number) => call<PullResult>('GET', `pull?since=${since}`, key),
     rekey: (key: string, newKey: string) => call<object>('POST', 'rekey', key, { key: newKey }),
+
+    async putFilePart(key: string, id: string, part: number, parts: number, bytes: ArrayBuffer): Promise<void> {
+      await read(await send('PUT', `blobs/${id}/${part}`, key, bytes, { [PARTS_HEADER]: String(parts) }))
+    },
+
+    // Null if the server doesn't have this part (yet).
+    async getFilePart(key: string, id: string, part: number): Promise<{ parts: number; bytes: ArrayBuffer } | null> {
+      const response = await send('GET', `blobs/${id}/${part}`, key)
+      if (response.status === 404) return null
+      if (!response.ok) return read(response)
+      return { parts: Number(response.headers.get(PARTS_HEADER)), bytes: await response.arrayBuffer() }
+    },
   }
 }

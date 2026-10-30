@@ -38,6 +38,13 @@ export const VERSION_HEADER = 'X-Loci-Version'
 // The most changes one push may carry, and the most one pull returns.
 export const BATCH_LIMIT = 500
 
+// Attached files travel separately from their records, in parts of at most this
+// size (the server's database holds values up to 2 MB). Each part's request says
+// how many parts the file has in this header.
+export const PART_BYTES = 1024 * 1024
+export const PARTS_HEADER = 'X-Loci-Parts'
+export const MAX_PARTS = 10_000
+
 // The live socket (worker/live.ts) closes with this code when the key is wrong
 // or was reset on another device.
 export const WRONG_KEY_CLOSE = 4401

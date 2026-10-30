@@ -3,7 +3,7 @@
 
 import { DatabaseSync } from 'node:sqlite'
 import { describe, expect, it } from 'vitest'
-import { BATCH_LIMIT, formatKey, generateKey, MAX_CLOCK_LEAD_MS, VERSION_HEADER, type Change } from '../src/sync/rules.ts'
+import { BATCH_LIMIT, formatKey, generateKey, MAX_CLOCK_LEAD_MS, PART_BYTES, PARTS_HEADER, VERSION_HEADER, type Change } from '../src/sync/rules.ts'
 import { handleSync } from './api.ts'
 import { parseHello } from './live.ts'
 import { SyncStore, type SqlLike, type Transact } from './store.ts'
@@ -14,7 +14,7 @@ const KEY = generateKey()
 function memoryStore(db = new DatabaseSync(':memory:')): SyncStore {
   const sql: SqlLike = {
     exec: (query, ...bindings) => {
-      const rows = db.prepare(query).all(...bindings) as Record<string, unknown>[]
+      const rows = db.prepare(query).all(...bindings.map((b) => (b instanceof ArrayBuffer ? new Uint8Array(b) : b))) as Record<string, unknown>[]
       return { toArray: () => rows }
     },
   }
@@ -244,5 +244,39 @@ describe('live updates', () => {
     let rekeyed = false
     await handleSync(new Request('https://loci.test/api/sync/rekey', { method: 'POST', headers: { Authorization: `Bearer ${KEY}`, [VERSION_HEADER]: '11' }, body: JSON.stringify({ key: generateKey() }) }), store, { rekeyed: () => (rekeyed = true) })
     expect(rekeyed).toBe(true)
+  })
+})
+
+describe('attached files', () => {
+  const putPart = (store: SyncStore, id: string, part: number, parts: number, bytes: Uint8Array, key = KEY) =>
+    handleSync(new Request(`https://loci.test/api/sync/blobs/${id}/${part}`, { method: 'PUT', headers: { Authorization: `Bearer ${key}`, [VERSION_HEADER]: '11', [PARTS_HEADER]: String(parts) }, body: bytes }), store)
+  const getPart = (store: SyncStore, id: string, part: number) =>
+    handleSync(new Request(`https://loci.test/api/sync/blobs/${id}/${part}`, { headers: { Authorization: `Bearer ${KEY}`, [VERSION_HEADER]: '11' } }), store)
+
+  it('store and return each part, with how many there are', async () => {
+    const store = await claimedStore()
+    expect((await putPart(store, 'b1', 0, 2, new Uint8Array([1, 2, 3]))).status).toBe(200)
+    expect((await putPart(store, 'b1', 1, 2, new Uint8Array([4]))).status).toBe(200)
+    const first = await getPart(store, 'b1', 0)
+    expect(first.headers.get(PARTS_HEADER)).toBe('2')
+    expect([...new Uint8Array(await first.arrayBuffer())]).toEqual([1, 2, 3])
+    expect([...new Uint8Array(await (await getPart(store, 'b1', 1)).arrayBuffer())]).toEqual([4])
+    expect((await getPart(store, 'b1', 2)).status).toBe(404)
+  })
+
+  it('refuse parts that are too big, out of range, or without a key', async () => {
+    const store = await claimedStore()
+    expect((await putPart(store, 'b1', 0, 1, new Uint8Array(PART_BYTES + 1))).status).toBe(413)
+    expect((await putPart(store, 'b1', 2, 2, new Uint8Array(1))).status).toBe(400)
+    expect((await putPart(store, 'b1', 0, 0, new Uint8Array(1))).status).toBe(400)
+    expect((await putPart(store, 'b1', 0, 1, new Uint8Array(1), generateKey())).status).toBe(401)
+  })
+
+  it('drop a file’s bytes when its record is deleted', async () => {
+    const store = await claimedStore()
+    await putPart(store, 'b1', 0, 1, new Uint8Array([1]))
+    store.push('laptop', [{ table: 'blobs', id: 'b1', op: 'put', changedAt: NOW, data: { id: 'b1', mime: 'image/png', size: 1, updatedAt: NOW } }])
+    store.push('phone', [{ table: 'blobs', id: 'b1', op: 'delete', changedAt: NOW + 1 }])
+    expect((await getPart(store, 'b1', 0)).status).toBe(404)
   })
 })

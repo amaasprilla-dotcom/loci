@@ -18,6 +18,9 @@ import {
   type Owner,
   renameAttachment,
 } from './store/attachments'
+import { onRemoteChanges, syncStatus } from './sync/engine'
+import { onFileArrived } from './sync/files'
+import { toast } from './toast'
 import type { Attachment, AttachmentKind } from './types'
 
 const KIND_ICONS: Record<AttachmentKind, string> = {
@@ -36,6 +39,14 @@ function kindIcon(kind: AttachmentKind): HTMLElement {
   return span
 }
 
+// The warning before adding large files (here and in the note editor).
+export function largeFilesText(files: { name: string; size: number }[]): string {
+  const list = files.map((f) => `${f.name} (${formatBytes(f.size)})`).join(', ')
+  return syncStatus().on
+    ? `${list}. Large files fill up this device’s storage, are copied to every device you sync, and make backups big. Add anyway?`
+    : `${list}. Large files fill up this device’s storage, and backups get big. Add anyway?`
+}
+
 export interface AttachmentStrip {
   el: HTMLElement
   refresh(): Promise<void> // after attachments were added elsewhere (e.g. dropped into a note)
@@ -45,29 +56,41 @@ export function attachmentStrip(owner: Owner): AttachmentStrip {
   const list = h('div', { class: 'attachment-list' })
   const fileInput = h('input', { type: 'file', multiple: true, hidden: true, onchange: () => void addFiles() })
   let urls: string[] = [] // object URLs for thumbnails, released on every redraw
+  // Files whose bytes are still coming from another device: drawn again when they arrive.
+  const downloading = new Set<string>()
+  const stopListening = onFileArrived((blobId) => {
+    if (!list.isConnected) return stopListening()
+    if (downloading.has(blobId)) void render()
+  })
+  // Attachments added or removed on another device show here even while the
+  // owner is open in an editor (which isn't redrawn as a whole).
+  const stopRemote = onRemoteChanges((records) => {
+    if (!list.isConnected) return stopRemote()
+    if (records.some((r) => r.table === 'attachments')) void render()
+  })
 
   async function render() {
     urls.forEach((u) => URL.revokeObjectURL(u))
     urls = []
     const items = (await listAttachments(owner)).filter((a) => !a.inline)
+    downloading.clear()
     list.replaceChildren(...(await Promise.all(items.map(chip))))
     list.hidden = items.length === 0
   }
 
   async function chip(a: Attachment): Promise<HTMLElement> {
     let thumb: HTMLElement = kindIcon(a.kind)
-    if (a.kind === 'image' && a.blobId) {
-      const blob = await getBlob(a.blobId)
-      if (blob) {
-        const url = URL.createObjectURL(blob)
-        urls.push(url)
-        thumb = h('img', { class: 'attachment-thumb', src: url, alt: '' })
-      }
+    const blob = a.blobId ? await getBlob(a.blobId) : null
+    if (a.blobId && !blob) downloading.add(a.blobId)
+    if (a.kind === 'image' && blob) {
+      const url = URL.createObjectURL(blob)
+      urls.push(url)
+      thumb = h('img', { class: 'attachment-thumb', src: url, alt: '' })
     }
     const label = a.kind === 'link' ? linkLabel(a) : a.name
     // A titled link shows its domain underneath; an untitled one already shows the
     // domain as its name, so underneath goes the rest of the address.
-    const detail = a.kind === 'link' ? (a.name ? hostOf(a.url) : pathOf(a.url)) : a.size != null ? formatBytes(a.size) : ''
+    const detail = a.kind === 'link' ? (a.name ? hostOf(a.url) : pathOf(a.url)) : a.blobId && !blob ? 'Downloading…' : a.size != null ? formatBytes(a.size) : ''
     const node = h(
       'button',
       { type: 'button', class: 'attachment', title: label, onclick: () => void open(a) },
@@ -84,7 +107,10 @@ export function attachmentStrip(owner: Owner): AttachmentStrip {
       return
     }
     const blob = a.blobId ? await getBlob(a.blobId) : null
-    if (!blob) return
+    if (!blob) {
+      toast('Still downloading from another device')
+      return
+    }
     const url = URL.createObjectURL(blob)
     // Images, PDFs, audio and video open in a tab; other files are saved.
     const link = h('a', { href: url, target: '_blank', rel: 'noopener', ...(a.kind === 'file' && { download: a.name }) })
@@ -155,11 +181,7 @@ export function attachmentStrip(owner: Owner): AttachmentStrip {
       const ok = await openSheet<boolean>('Large file', (api) => ({
         content: [
           h('h2', {}, large.length === 1 ? 'This file is large' : `${count(large.length, 'file is', 'files are')} large`),
-          h(
-            'p',
-            { class: 'sheet-text' },
-            `${large.map((f) => `${f.name} (${formatBytes(f.size)})`).join(', ')}. Large files fill up this device’s storage, and backups get big. Add anyway?`,
-          ),
+          h('p', { class: 'sheet-text' }, largeFilesText(large)),
           sheetActions(null, button('Cancel', () => api.close(false)), button('Add anyway', () => api.close(true), 'primary')),
         ],
       }))

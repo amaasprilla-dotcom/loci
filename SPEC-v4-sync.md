@@ -127,9 +127,11 @@ This is what makes the laptop and phone show the same thing within a second or t
 
 `attachments` rows sync like any record. The files in `blobs` are too large for a JSON push, so a blob record is synced as metadata only (`id`, `mime`, `size`, `updatedAt`) and its bytes travel separately:
 
-- `PUT /api/sync/blobs/<id>`: upload. The Durable Object stores the bytes in 1 MB chunks (SQLite values are capped at 2 MB). The blob's record is pushed only after its upload finishes, so other devices never see a file they can't fetch.
-- `GET /api/sync/blobs/<id>`: download. A device that pulls a blob record downloads the file before writing the row. If that fails it retries later, and the attachment shows "Downloading…" until then.
+- `PUT /api/sync/blobs/<id>/<part>`: upload one part of at most 1 MB (SQLite values are capped at 2 MB), with `X-Loci-Parts` saying how many there are. Small requests also travel well on a phone's connection. The blob's record is pushed only after all its parts are up, so other devices never see a file they can't fetch.
+- `GET /api/sync/blobs/<id>/<part>`: download one part, with `X-Loci-Parts`. A pulled blob record is queued in `syncState` (the pull's transaction can't wait for the network); after the pull the device downloads the parts and writes the row. A part the server doesn't have yet waits for a later round, and the attachment (or the image in a note) shows "Downloading…" until the file is in.
 - Blobs never change after they're made (editing a file means a new attachment), so there's no merging of file contents.
+- The attachment strip refreshes itself when attachments change on another device, even inside an open editor (which isn't redrawn as a whole): a new file shows as "Downloading…", then its size.
+- Devices on S2 or S3 skipped pulled attachments while moving their cursor on. A `pullVersion` in `syncState` (now 2) makes such a device pull everything once more when it first runs this version, so nothing it skipped stays missing. A future version that starts pulling something new bumps it again.
 - Deleting a blob record deletes its chunks on the server.
 
 The existing "large file" warning now also says the file is uploaded to every device.
@@ -158,7 +160,7 @@ Every push and pull sends the app's database version (`db.verno`, now 11).
 
 - **The key is the account.** All `/api/sync/*` requests carry it as `Authorization: Bearer <key>`. The server stores only its SHA-256 hash.
 - **Claiming.** The server starts empty. The first **Set up sync** claims it: if no key hash is stored, the hash is stored. After that, Set up sync from another device fails with "Sync is already set up. Use Join with a key." This Worker serves one person, so there is exactly one key.
-- **Losing every device and the key** leaves the data unreachable through the app. Recovery is to delete the Durable Object's storage from the Cloudflare dashboard, which the README explains. Regular backups remain the safety net.
+- **Losing every device and the key** leaves the synced copy unreachable through the app. Recovery: set the Worker variable `SYNC_SPACE` to a new value in the Cloudflare dashboard (`keep_vars` keeps it across deploys). The Worker then uses a fresh, empty Durable Object, and Set up sync works again; the old copy stays unused in the account. The README explains it. Regular backups remain the safety net.
 - **Brute force** is hopeless at 120 bits; wrong keys still get a 1-second delay and a 401.
 - **Transport** is HTTPS / WSS only.
 - **At rest**, data on Cloudflare is readable by the account owner and by Cloudflare, like any hosted app's data. End-to-end encryption is listed under open questions.
@@ -169,7 +171,7 @@ Every push and pull sends the app's database version (`db.verno`, now 11).
 The Worker that today only serves files gets code:
 
 - `wrangler.jsonc`: `main: "worker/index.ts"`; a `SYNC` Durable Object binding with a `new_sqlite_classes` migration; `assets.run_worker_first: ["/api/*"]` so everything else is still served straight from `dist` without running code.
-- `worker/index.ts`: routes `/api/sync/*` to the one Durable Object (`idFromName("main")`), answers 404 for other `/api` paths.
+- `worker/index.ts`: routes `/api/sync/*` to the one Durable Object (`idFromName(SYNC_SPACE || "main")`), answers 404 for other `/api` paths.
 - `worker/sync.ts`: the Durable Object, holding `meta(key, value)` (key hash, highest app version, seq), `records`, `blobs(id, chunk, data)`.
 - The merge decision ("does the incoming change win?") is a pure function shared by the server and the client tests.
 

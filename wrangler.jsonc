@@ -15,5 +15,7 @@
   "durable_objects": {
     "bindings": [{ "name": "SYNC", "class_name": "SyncObject" }]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SyncObject"] }]
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SyncObject"] }],
+  // Variables set in the dashboard (SYNC_SPACE) survive deploys.
+  "keep_vars": true
 }

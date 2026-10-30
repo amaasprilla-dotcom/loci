@@ -3,6 +3,7 @@
 
 import { Node } from '@tiptap/core'
 import { getBlob } from '../../store/attachments'
+import { onFileArrived } from '../../sync/files'
 
 export const NoteImage = Node.create({
   name: 'noteImage',
@@ -32,15 +33,31 @@ export const NoteImage = Node.create({
       img.alt = node.attrs.alt
       let url: string | null = null
       let gone = false
-      void getBlob(node.attrs.blobId).then((blob) => {
-        if (!blob || gone) return
+      let stopWaiting = () => {}
+      const show = (blob: Blob) => {
         url = URL.createObjectURL(blob)
         img.src = url
+        img.classList.remove('downloading')
+        img.removeAttribute('title')
+      }
+      void getBlob(node.attrs.blobId).then((blob) => {
+        if (gone) return
+        if (blob) return show(blob)
+        // Still coming from another device (sync): a placeholder until it's here.
+        img.classList.add('downloading')
+        img.title = 'Downloading…'
+        stopWaiting = onFileArrived(async (blobId) => {
+          if (blobId !== node.attrs.blobId) return
+          stopWaiting()
+          const arrived = await getBlob(blobId)
+          if (arrived && !gone) show(arrived)
+        })
       })
       return {
         dom: img,
         destroy() {
           gone = true
+          stopWaiting()
           if (url) URL.revokeObjectURL(url)
         },
       }

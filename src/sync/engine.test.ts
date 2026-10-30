@@ -6,13 +6,15 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { hashKey, handleSync } from '../../worker/api.ts'
 import { SyncStore, type SqlLike } from '../../worker/store.ts'
 import { addCards, DEFAULT_FLASHCARDS_DATA, listCards } from '../elements/flashcards/store'
+import { createNote } from '../elements/notes/store'
+import { addFileAttachment } from '../store/attachments'
 import { createElement, createLocus, db, deleteElement, moveLocus } from '../store/db'
 import type { Locus, Tag } from '../types'
 import { SyncError } from './client'
-import { joinSync, onRemoteChanges, resetSyncKey, setUpSync, stopSync, syncNow, syncStatus } from './engine'
+import { joinSync, loadSync, onRemoteChanges, resetSyncKey, setUpSync, stopSync, syncNow, syncStatus } from './engine'
 import { startEditing, tellEditors } from './editing'
-import { setRecording } from './record'
-import type { Change } from './rules'
+import { markSilent, setRecording } from './record'
+import { PART_BYTES, type Change } from './rules'
 
 // Node's SQLite, imported by name so the app's type checking (no Node types) skips it.
 const sqliteModule = 'node:sqlite'
@@ -24,7 +26,7 @@ function newServer(): SyncStore {
   const sqlite = new DatabaseSync(':memory:')
   const sql: SqlLike = {
     exec: (query, ...bindings) => {
-      const rows = sqlite.prepare(query).all(...bindings)
+      const rows = sqlite.prepare(query).all(...bindings.map((b) => (b instanceof ArrayBuffer ? new Uint8Array(b) : b)))
       return { toArray: () => rows }
     },
   }
@@ -169,14 +171,6 @@ describe('rounds', () => {
     expect(onServer()).toHaveLength(3)
   })
 
-  it('waits with attachments and files', async () => {
-    await setUpSync()
-    await db.attachments.add({ id: 'a1', ownerType: 'note', ownerId: 'n1', kind: 'link', name: 'Docs', url: 'https://example.com', createdAt: 1, updatedAt: 1 } as never)
-    await syncNow()
-    expect(onServer()).toEqual([])
-    expect(await db.syncOutbox.count()).toBe(1)
-    expect(syncStatus().pending).toBe(0)
-  })
 })
 
 describe('joining', () => {
@@ -329,5 +323,95 @@ describe('editors', () => {
     stop()
     tellEditors([record('n1', false)])
     expect(heard).toEqual([false, true])
+  })
+})
+
+describe('attached files', () => {
+  const bytesOf = async (blob: Blob) => [...new Uint8Array(await blob.arrayBuffer())]
+  const fileRecords = (id: string, blobId: string, size: number, ownerId: string): Change[] => [
+    { table: 'blobs', id: blobId, op: 'put', changedAt: Date.now(), data: { id: blobId, mime: 'application/pdf', size, updatedAt: Date.now() } },
+    { table: 'attachments', id, op: 'put', changedAt: Date.now(), data: { id, ownerType: 'note', ownerId, kind: 'file', name: 'notes.pdf', blobId, mime: 'application/pdf', size, createdAt: 1, updatedAt: 1 } },
+  ]
+
+  async function noteHere() {
+    const { locus } = await seedDeck()
+    const notebook = await createElement(locus.id, 'notes', 'Notes', {})
+    return createNote(notebook.id)
+  }
+
+  it('go up in parts, before their record, which carries no bytes', async () => {
+    await setUpSync()
+    const note = await noteHere()
+    const size = 2 * PART_BYTES + 10
+    const content = new Uint8Array(size).map((_, i) => i % 251)
+    const attachment = await addFileAttachment({ type: 'note', id: note.id }, new File([content], 'big.pdf', { type: 'application/pdf' }))
+    await syncNow()
+    const record = serverRecord('blobs', attachment.blobId!)
+    expect(record?.data).toEqual({ id: attachment.blobId, mime: 'application/pdf', size, updatedAt: expect.any(Number) })
+    expect(onServer()).toContain(`attachments/${attachment.id}`)
+    const parts = [0, 1, 2].map((p) => server.getBlobPart(attachment.blobId!, p))
+    expect(parts.map((p) => [p?.parts, p?.data.byteLength])).toEqual([[3, PART_BYTES], [3, PART_BYTES], [3, 10]])
+  })
+
+  it('come down from other devices', async () => {
+    await setUpSync()
+    const note = await noteHere()
+    await syncNow()
+    server.putBlobPart('b1', 0, 2, new Uint8Array([1, 2]).buffer)
+    server.putBlobPart('b1', 1, 2, new Uint8Array([3]).buffer)
+    phone(fileRecords('a1', 'b1', 3, note.id))
+    await syncNow()
+    const blob = await db.blobs.get('b1')
+    expect(blob && (await bytesOf(blob.data))).toEqual([1, 2, 3])
+    expect(blob?.mime).toBe('application/pdf')
+    expect((await db.attachments.get('a1'))?.blobId).toBe('b1')
+  })
+
+  it('whose bytes aren’t up yet come down in a later round', async () => {
+    await setUpSync()
+    const note = await noteHere()
+    await syncNow()
+    phone(fileRecords('a1', 'b1', 1, note.id))
+    await syncNow()
+    expect(await db.blobs.get('b1')).toBeUndefined()
+    expect(await db.attachments.get('a1')).toBeDefined() // shows "Downloading…"
+    server.putBlobPart('b1', 0, 1, new Uint8Array([7]).buffer)
+    await syncNow()
+    const blob = await db.blobs.get('b1')
+    expect(blob && (await bytesOf(blob.data))).toEqual([7])
+  })
+
+  it('skipped by an older app version are pulled once after updating', async () => {
+    await setUpSync()
+    const note = await noteHere()
+    await syncNow()
+    server.putBlobPart('b1', 0, 1, new Uint8Array([9]).buffer)
+    phone(fileRecords('a1', 'b1', 1, note.id))
+    await syncNow()
+    // As an older version left it: the cursor past the file records, which it skipped.
+    await db.transaction('rw', db.attachments, db.blobs, db.syncState, async (tx) => {
+      markSilent(tx.idbtrans)
+      await db.attachments.clear()
+      await db.blobs.clear()
+      await db.syncState.delete('pullVersion')
+    })
+    await loadSync() // the app starting with the new version
+    await syncNow()
+    expect(await db.attachments.get('a1')).toBeDefined()
+    expect(await db.blobs.get('b1')).toBeDefined()
+  })
+
+  it('deleted elsewhere go here too', async () => {
+    await setUpSync()
+    const note = await noteHere()
+    const attachment = await addFileAttachment({ type: 'note', id: note.id }, new File([new Uint8Array([1])], 'a.pdf', { type: 'application/pdf' }))
+    await syncNow()
+    phone([
+      { table: 'attachments', id: attachment.id, op: 'delete', changedAt: Date.now() },
+      { table: 'blobs', id: attachment.blobId!, op: 'delete', changedAt: Date.now() },
+    ])
+    await syncNow()
+    expect(await db.attachments.get(attachment.id)).toBeUndefined()
+    expect(await db.blobs.get(attachment.blobId!)).toBeUndefined()
   })
 })

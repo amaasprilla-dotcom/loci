@@ -8,8 +8,10 @@
 //   GET  /api/sync/pull?since=<seq>  → { changes, more, seq }
 //   POST /api/sync/rekey   { key } → the new key replaces this one
 //   GET  /api/sync/live    a WebSocket that says when other devices pushed (worker/live.ts)
+//   PUT  /api/sync/blobs/<id>/<part>   one part of an attached file (X-Loci-Parts: how many)
+//   GET  /api/sync/blobs/<id>/<part>   → the part's bytes, with X-Loci-Parts
 
-import { BATCH_LIMIT, isSyncedTable, normalizeKey, VERSION_HEADER, type Change } from '../src/sync/rules.ts'
+import { BATCH_LIMIT, isSyncedTable, MAX_PARTS, normalizeKey, PART_BYTES, PARTS_HEADER, VERSION_HEADER, type Change } from '../src/sync/rules.ts'
 import type { SyncStore } from './store.ts'
 
 // What the Durable Object does after some requests: tell other devices about a
@@ -38,6 +40,9 @@ export async function handleSync(request: Request, store: SyncStore, hooks: Sync
   const version = Number(request.headers.get(VERSION_HEADER))
   if (!Number.isInteger(version) || version < 1) return json(400, { error: 'no-version' })
   const upToDate = store.noteVersion(version)
+
+  const blobPart = /^(GET|PUT) blobs\/([\w-]{1,200})\/(\d{1,5})$/.exec(route)
+  if (blobPart) return handleBlobPart(request, store, blobPart[1], blobPart[2], Number(blobPart[3]))
 
   switch (route) {
     case 'GET status':
@@ -71,6 +76,20 @@ export async function handleSync(request: Request, store: SyncStore, hooks: Sync
     }
   }
   return json(404, { error: 'not-found' })
+}
+
+async function handleBlobPart(request: Request, store: SyncStore, method: string, id: string, part: number): Promise<Response> {
+  if (method === 'GET') {
+    const found = store.getBlobPart(id, part)
+    if (!found) return json(404, { error: 'no-file' })
+    return new Response(found.data, { headers: { 'Content-Type': 'application/octet-stream', [PARTS_HEADER]: String(found.parts), 'Cache-Control': 'no-store' } })
+  }
+  const parts = Number(request.headers.get(PARTS_HEADER))
+  if (!Number.isInteger(parts) || parts < 1 || parts > MAX_PARTS || part >= parts) return json(400, { error: 'bad-part' })
+  const data = await request.arrayBuffer()
+  if (data.byteLength > PART_BYTES) return json(413, { error: 'part-too-big', limit: PART_BYTES })
+  store.putBlobPart(id, part, parts, data)
+  return json(200, {})
 }
 
 // Hex SHA-256 of the key: the server never stores the key itself.

@@ -4,14 +4,48 @@ Your projects as colored bubbles (**loci**) floating on one screen. Each locus h
 starting with flashcard decks that use spaced repetition. [SPEC.md](SPEC.md) is the v1 plan;
 [SPEC-v2.md](SPEC-v2.md) is v2 (more element types, FSRS, study sessions, exams).
 [SPEC-v3-coach.md](SPEC-v3-coach.md) is Coach (if-then plans, habits, WOOP, weekly reviews and
-other evidence-based practices), being built now.
+other evidence-based practices), being built now. [SPEC-v4-sync.md](SPEC-v4-sync.md) is sync
+between your devices.
 
-Everything runs in the browser and is saved on the device (IndexedDB). There is no server and no
-account. Loci replaces Echomathia; the old app is still in this repository's git history.
+Everything runs in the browser and is saved on the device (IndexedDB), and works offline. There
+is no account. Sync, when you turn it on, copies changes between your devices through your own
+Cloudflare account. Loci replaces Echomathia; the old app is still in this repository's git
+history.
+
+## Sync between devices
+
+Sync keeps Loci the same on your phone, laptop and any other device: edit on one, and the others
+show it within a second or two (or as soon as they're back online). It only works on the
+Cloudflare address (`loci.<your account>.workers.dev`), which runs the sync server
+(`worker/`); the GitHub Pages copy has none.
+
+1. On one device: **⋯** (Settings) → Sync → **Set up sync**. Everything on it is uploaded, and you
+   get a sync key like `K7QF-2M9X-…`.
+2. On each other device: Settings → Sync → **Join with a key**, and enter the key. If that device
+   already has loci, choose **Merge** (keep them and add them in) or **Replace this device**.
+
+Everything syncs: loci, elements and their contents, tags, settings, attachments and their files.
+If the same thing was changed on two devices while apart, the newer change wins. The key is the
+only login: anyone with it can read and change your Loci, so keep it private. Settings → Sync can
+show it again, stop syncing on one device, or **Reset sync key** (every other device then joins
+again with the new key). The data on Cloudflare isn't end-to-end encrypted: you, as the account
+owner, and Cloudflare can read it.
+
+**Limits.** One person's devices make a few hundred requests a day and keep one connection open
+per open app, far inside the Cloudflare Workers free plan (requests, Durable Object storage and
+time); Cloudflare's pricing page has the current numbers. Attached files count toward the
+storage, so very large ones cost the most.
+
+**If the key is lost on every device.** In the Cloudflare dashboard, open Workers & Pages → loci →
+Settings → Variables and Secrets, add a variable `SYNC_SPACE` with any new value (e.g. `2`), and
+deploy. Sync then starts over with empty storage: Set up sync on one device and join the others
+with Merge (each device still has its own full copy). The old synced copy stays, unused, in your
+account. Backups are the safety net either way.
 
 ## Backup, and moving between devices
 
-Your data lives only on the device you use. On the home screen, tap **⋯** (Settings), then Backup:
+Without sync, your data lives only on the device you use. On the home screen, tap **⋯**
+(Settings), then Backup:
 
 - **Export backup** saves one file, `loci-backup-<date>.zip`, with everything in it, attached
   files included.
@@ -19,8 +53,9 @@ Your data lives only on the device you use. On the home screen, tap **⋯** (Set
   is on both sides; nothing on this device is lost (but something you deleted here comes back if
   the file still has it). **Replace everything** wipes this device and restores the file.
 
-To move from phone to computer: export on the phone, send yourself the file (Drive, email, cable),
-import it on the computer with Merge. Export now and then as a backup, too.
+To move from phone to computer without sync: export on the phone, send yourself the file (Drive,
+email, cable), import it on the computer with Merge. Export now and then as a backup, too. With
+sync on, an import reaches every synced device: Replace replaces your Loci everywhere.
 
 ## Run it on your computer
 
@@ -67,8 +102,9 @@ files sit next to the code they test
   `.github/workflows/deploy.yml` then publishes the site on every push to `main`.
 - **Cloudflare Workers**: in the Cloudflare dashboard go to Workers & Pages → Create → Import a
   repository and pick this repository. Build command `npm run build`, deploy command
-  `npx wrangler deploy`. `wrangler.jsonc` tells it to serve the `dist` folder, and
-  `.node-version` sets the Node version. It then publishes the site on every push to `main`.
+  `npx wrangler deploy`. `wrangler.jsonc` tells it to serve the `dist` folder and run the sync
+  server (`worker/`, with its Durable Object), and `.node-version` sets the Node version. It then
+  publishes the site on every push to `main`.
   This runs alongside GitHub Pages; both can stay on.
 
 Data stays in each visitor's own browser, so a deployed copy starts empty for everyone. Each

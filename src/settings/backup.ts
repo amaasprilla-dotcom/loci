@@ -1,11 +1,13 @@
 // The Backup section of Settings: export everything to one .zip file, or import
-// one (or an older .json) by merging it in or replacing everything.
+// one (or an older .json) by merging it in or replacing everything. With sync on,
+// an import is synced like any other change.
 
 import { h } from '../dom'
 import { count } from '../locale'
 import { button, openSheet, sheetActions } from '../sheet'
 import { type Backup, BackupError, backupFileName, backupToZip, describeBackup, exportBackup, importBackup, type ImportSummary, readBackupFile } from '../store/backup'
 import { db } from '../store/db'
+import { syncStatus } from '../sync/engine'
 import { formatAgo } from '../time'
 
 const LAST_EXPORT_KEY = 'loci.lastExport'
@@ -83,7 +85,9 @@ export function backupSection(onImported: () => void): HTMLElement {
     h(
       'p',
       { class: 'settings-text' },
-      'Everything is stored only on this device. Export a backup file now and then; it’s also how you move your loci between phone and computer. Attached files are included.',
+      syncStatus().on
+        ? 'Sync keeps your devices and your Cloudflare account in step. A backup file is a copy that’s yours alone, outside both: export one now and then. Attached files are included.'
+        : 'Everything is stored only on this device. Export a backup file now and then; it’s also how you move your loci between phone and computer without sync. Attached files are included.',
     ),
     lastLine,
     error,
@@ -95,6 +99,9 @@ export function backupSection(onImported: () => void): HTMLElement {
 // Merge or replace, then a summary. Resolves true if anything was imported.
 function openImportSheet(backup: Backup): Promise<boolean | null> {
   return openSheet<boolean>('Import backup', (api) => {
+    // With sync on, an import reaches every synced device (SPEC-v4-sync.md, "Backups still work").
+    const synced = syncStatus().on
+
     function chooseMode() {
       const from = backup.exportedAt ? ` from ${new Date(backup.exportedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}` : ''
       return [
@@ -103,8 +110,8 @@ function openImportSheet(backup: Backup): Promise<boolean | null> {
         h(
           'div',
           { class: 'type-options' },
-          option('Merge', 'Add what’s new, and keep the newer copy of anything on both. Nothing here is lost.', () => void run('merge')),
-          option('Replace everything', 'Delete everything on this device and use the backup instead.', () => void confirmReplace()),
+          option('Merge', `Add what’s new, and keep the newer copy of anything on both. Nothing here is lost.${synced ? ' Your synced devices get the result too.' : ''}`, () => void run('merge')),
+          option('Replace everything', synced ? 'Delete everything on this device and every synced device, and use the backup instead.' : 'Delete everything on this device and use the backup instead.', () => void confirmReplace()),
         ),
         sheetActions(null, button('Cancel', () => api.close(null))),
       ]
@@ -113,8 +120,12 @@ function openImportSheet(backup: Backup): Promise<boolean | null> {
     async function confirmReplace() {
       const here = { loci: await db.loci.toArray(), elements: await db.elements.toArray(), cards: await db.cards.toArray(), blobs: await db.blobs.toCollection().primaryKeys() }
       api.show(
-        h('h2', {}, 'Replace everything on this device?'),
-        h('p', { class: 'sheet-text' }, `This deletes the ${describeBackup(here)} on this device and puts the backup’s ${describeBackup(backup)} in their place. This can’t be undone.`),
+        h('h2', {}, synced ? 'Replace everything on every device?' : 'Replace everything on this device?'),
+        h(
+          'p',
+          { class: 'sheet-text' },
+          `This deletes the ${describeBackup(here)} on this device${synced ? ' and your other synced devices' : ''} and puts the backup’s ${describeBackup(backup)} in their place. This can’t be undone.`,
+        ),
         sheetActions(null, button('Keep it', () => api.show(...chooseMode())), button('Replace', () => void run('replace'), 'danger')),
       )
     }

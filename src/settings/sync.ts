@@ -23,7 +23,7 @@ export function describeSync(s: SyncStatus, now = Date.now()): string {
     case 'wrong-key':
       return 'The sync key was changed on another device. Join again with the new key.'
     case 'not-set-up':
-      return 'Sync was reset on the server. Turn it off here, then set it up again.'
+      return 'Sync was reset on the server. Stop syncing here, then set it up again or join with the new key.'
     case 'update':
       return `Another device runs a newer Loci. Reload to update and keep syncing.${waiting}`
     case 'unavailable':

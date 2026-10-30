@@ -7,13 +7,13 @@ import { TaskItem, TaskList } from '@tiptap/extension-list'
 import { Mathematics } from '@tiptap/extension-mathematics'
 import { Placeholder } from '@tiptap/extensions'
 import StarterKit from '@tiptap/starter-kit'
-import { attachmentStrip, type AttachmentStrip } from '../../attachmentStrip'
+import { attachmentStrip, type AttachmentStrip, largeFilesText } from '../../attachmentStrip'
 import { changedElsewhereBar } from '../../changedElsewhere'
 import { textColorOn } from '../../colors'
 import { h } from '../../dom'
 import { backIcon, checklistIcon, imageIcon, moreIcon } from '../../icons'
 import { linkedItemsSection } from '../../linkedItems'
-import { count, formatBytes } from '../../locale'
+import { count } from '../../locale'
 import { onLongPress } from '../../press'
 import { back, elementHash, go, subHash } from '../../router'
 import { button, confirmDelete, openSheet, sheetActions } from '../../sheet'
@@ -238,7 +238,7 @@ export async function renderNoteEditor(el: LocusElement, noteId: string): Promis
       const ok = await openSheet<boolean>('Large file', (api) => ({
         content: [
           h('h2', {}, 'Large file'),
-          h('p', { class: 'sheet-text' }, `${big.map((f) => `${f.name} (${formatBytes(f.size)})`).join(', ')}. Large files fill up this device’s storage, and backups get big. Add anyway?`),
+          h('p', { class: 'sheet-text' }, largeFilesText(big)),
           sheetActions(null, button('Cancel', () => api.close(false)), button('Add anyway', () => api.close(true), 'primary')),
         ],
       }))
