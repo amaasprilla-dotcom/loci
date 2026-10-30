@@ -2,7 +2,9 @@
 
 Your projects as colored bubbles (**loci**) floating on one screen. Each locus holds elements,
 starting with flashcard decks that use spaced repetition. [SPEC.md](SPEC.md) is the v1 plan;
-[SPEC-v2.md](SPEC-v2.md) is v2 (more element types, FSRS, study sessions, exams), being built now.
+[SPEC-v2.md](SPEC-v2.md) is v2 (more element types, FSRS, study sessions, exams).
+[SPEC-v3-coach.md](SPEC-v3-coach.md) is Coach (if-then plans, habits, WOOP, weekly reviews and
+other evidence-based practices), being built now.
 
 Everything runs in the browser and is saved on the device (IndexedDB). There is no server and no
 account. Loci replaces Echomathia; the old app is still in this repository's git history.
