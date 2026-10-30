@@ -60,11 +60,11 @@ files sit next to the code they test
 - **GitHub Pages**: push this project to a GitHub repository, then in the repository go to
   Settings → Pages and set Source to "GitHub Actions". The workflow in
   `.github/workflows/deploy.yml` then publishes the site on every push to `main`.
-- **Cloudflare Pages**: in the Cloudflare dashboard go to Workers & Pages → Create → Pages →
-  Connect to Git and pick this repository. Build command `npm run build`, output directory
-  `dist`, production branch `main`. Cloudflare reads the Node version from `.node-version`.
-  It then publishes the site on every push to `main`, and every other branch gets its own
-  preview address. This runs alongside GitHub Pages; both can stay on.
+- **Cloudflare Workers**: in the Cloudflare dashboard go to Workers & Pages → Create → Import a
+  repository and pick this repository. Build command `npm run build`, deploy command
+  `npx wrangler deploy`. `wrangler.jsonc` tells it to serve the `dist` folder, and
+  `.node-version` sets the Node version. It then publishes the site on every push to `main`.
+  This runs alongside GitHub Pages; both can stay on.
 
 Data stays in each visitor's own browser, so a deployed copy starts empty for everyone. Each
 address keeps its own data too: to move to a new address, export a backup in Settings on the

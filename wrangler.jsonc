@@ -1,0 +1,10 @@
+// Cloudflare Workers: serves the built `dist` folder as a static site.
+// Cloudflare runs `npm run build`, then `npx wrangler deploy` on every push to main.
+// No server code: routes are hash-based (#/…), so every request is for a real file.
+{
+  "name": "loci",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist"
+  }
+}
