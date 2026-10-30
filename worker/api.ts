@@ -7,11 +7,19 @@
 //   POST /api/sync/push    { device, changes: Change[] } → { results, seq }
 //   GET  /api/sync/pull?since=<seq>  → { changes, more, seq }
 //   POST /api/sync/rekey   { key } → the new key replaces this one
+//   GET  /api/sync/live    a WebSocket that says when other devices pushed (worker/live.ts)
 
 import { BATCH_LIMIT, isSyncedTable, normalizeKey, VERSION_HEADER, type Change } from '../src/sync/rules.ts'
 import type { SyncStore } from './store.ts'
 
-export async function handleSync(request: Request, store: SyncStore): Promise<Response> {
+// What the Durable Object does after some requests: tell other devices about a
+// push, and drop live connections made with a key that no longer works.
+export interface SyncHooks {
+  pushed?(device: string): void
+  rekeyed?(): void
+}
+
+export async function handleSync(request: Request, store: SyncStore, hooks: SyncHooks = {}): Promise<Response> {
   const url = new URL(request.url)
   const route = `${request.method} ${url.pathname.replace(/^\/api\/sync\//, '')}`
 
@@ -48,7 +56,9 @@ export async function handleSync(request: Request, store: SyncStore): Promise<Re
       if (body.changes.length > BATCH_LIMIT) return json(413, { error: 'too-many', limit: BATCH_LIMIT })
       const bad = body.changes.findIndex((change) => !isChange(change))
       if (bad >= 0) return json(400, { error: 'bad-change', index: bad })
-      return json(200, store.push(body.device, body.changes as Change[]))
+      const result = store.push(body.device, body.changes as Change[])
+      if (result.results.includes('accepted')) hooks.pushed?.(body.device)
+      return json(200, result)
     }
 
     case 'POST rekey': {
@@ -56,6 +66,7 @@ export async function handleSync(request: Request, store: SyncStore): Promise<Re
       const newKey = isRecord(body) && typeof body.key === 'string' ? normalizeKey(body.key) : null
       if (!newKey) return json(400, { error: 'bad-key' })
       store.rekey(await hashKey(newKey))
+      hooks.rekeyed?.()
       return json(200, {})
     }
   }

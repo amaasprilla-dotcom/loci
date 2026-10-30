@@ -3,6 +3,7 @@
 // answer is a formula typed in MathLive's math field, and five generated
 // instances preview the result before saving.
 
+import { changedElsewhereBar } from '../../changedElsewhere'
 import { textColorOn } from '../../colors'
 import { h } from '../../dom'
 import { backIcon, closeIcon, settingsIcon } from '../../icons'
@@ -13,6 +14,8 @@ import { studyAdjustments } from '../../study/limits'
 import { studyPool, summarize } from '../../study/plan'
 import { button, confirmDelete, deleteConfirmation, describeCounts, openSheet, sheetActions, submitButton } from '../../sheet'
 import { db, deleteElement, updateElement } from '../../store/db'
+import { startEditing } from '../../sync/editing'
+import { toast } from '../../toast'
 import type { AnswerFormat, LocusElement, MathJSON, ProblemTemplate, VarSpec } from '../../types'
 import { detectNumbers, suggestTitle } from './authoring'
 import { formatAnswer, formulaNode, questionNode } from './display'
@@ -179,6 +182,19 @@ export async function renderTemplateEditor(el: LocusElement, id: string | null):
   }
   const title = h('h1', {}, existing ? existing.title || 'Problem' : 'New problem')
   const { node, main } = await shell(el, title, () => back(elementHash(el)))
+
+  // Changed on another device while open: saving keeps this version; their version
+  // means starting this editor over from it.
+  const changedBar = changedElsewhereBar({
+    note: 'Saving keeps your version; showing theirs drops your changes here.',
+    showTheirs: () => void window.dispatchEvent(new HashChangeEvent('hashchange')), // draws the editor again
+  })
+  const stopEditing = startEditing('problemTemplates', existing?.id ?? null, (deleted) => {
+    if (!deleted) return changedBar.show()
+    toast('Deleted on another device')
+    back(elementHash(el))
+  })
+  window.addEventListener('hashchange', stopEditing, { once: true })
 
   const draft: TemplateDraft = existing
     ? {
@@ -713,6 +729,7 @@ export async function renderTemplateEditor(el: LocusElement, id: string | null):
       h(
         'div',
         { class: 'template-editor' },
+        changedBar.el,
         section('Title', titleInput),
         section(
           'The problem',

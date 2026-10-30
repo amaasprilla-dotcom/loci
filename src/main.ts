@@ -12,7 +12,9 @@ import { renderSettingsScreen } from './settings/view'
 import { renderLocusView } from './locus/view'
 import { back, currentRoute, go, parentOf, type Route } from './router'
 import { onChange } from './changes'
-import { loadSync, startAutoSync } from './sync/engine'
+import { tellEditors, isEditing } from './sync/editing'
+import { loadSync, onRemoteChanges, startAutoSync } from './sync/engine'
+import { toast } from './toast'
 import { db, getElement, requestPersistentStorage } from './store/db'
 import { allTasks } from './tasks/tasks'
 import { createTasksScreen } from './tasks/view'
@@ -56,8 +58,15 @@ function setThemeColor(color: string) {
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', color)
 }
 
-async function show(route: Route): Promise<void> {
+// `quiet`: redrawing the screen already showing (changes from another device):
+// no transition, and the scroll position stays.
+async function show(route: Route, quiet = false): Promise<void> {
   const from = shown
+  const scrollTop = quiet ? ((screenLayer.firstElementChild as HTMLElement | null)?.scrollTop ?? 0) : 0
+  const place = (view: HTMLElement) => {
+    screenLayer.replaceChildren(view)
+    if (quiet) view.scrollTop = scrollTop
+  }
 
   if (route.name === 'home') {
     shown = route
@@ -151,8 +160,8 @@ async function show(route: Route): Promise<void> {
     const view = await type.renderScreen(el, route.sub)
     setHomeVisible(false)
     setThemeColor(locus.color)
-    screenLayer.replaceChildren(view)
-    if (motionAllowed()) await fadeIn(view)
+    place(view)
+    if (motionAllowed() && !quiet) await fadeIn(view)
     return
   }
 
@@ -171,7 +180,7 @@ async function show(route: Route): Promise<void> {
   }
   setHomeVisible(false)
   setThemeColor(locus.color)
-  screenLayer.replaceChildren(view)
+  place(view)
   if (cover) {
     await fadeIn(view)
     cover.remove()
@@ -206,6 +215,60 @@ window.addEventListener('hashchange', showCurrent)
 watchForStaleCode()
 // An edit in a sheet over any screen (e.g. an exam): the badge and Tasks catch up.
 onChange(() => void refreshTasks())
+
+// ---------- Changes from other devices (SPEC-v4-sync.md, "Everywhere else") ----------
+
+// Text typed on this screen and not saved or cleared yet (e.g. a to-do being written):
+// a redraw would lose it.
+const typedIn = new Set<HTMLInputElement | HTMLTextAreaElement>()
+screenLayer.addEventListener('input', (e) => {
+  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) typedIn.add(e.target)
+})
+
+// Redrawing now would get in the user's way: something is being edited, a sheet is
+// open, or there's unsaved typing.
+function busy(): boolean {
+  if (isEditing() || document.querySelector('.sheet')) return true
+  const active = document.activeElement
+  if (active instanceof HTMLElement && screenLayer.contains(active) && active.matches('input, textarea, select, [contenteditable], math-field')) return true
+  for (const field of typedIn) {
+    if (!field.isConnected) typedIn.delete(field)
+    else if (field.value !== '') return true
+  }
+  return false
+}
+
+let waitingToRedraw: ReturnType<typeof setInterval> | undefined
+function redrawWhenFree() {
+  clearInterval(waitingToRedraw)
+  if (!busy()) {
+    queue = queue.then(redrawCurrent).catch((err) => console.error(err))
+    return
+  }
+  waitingToRedraw = setInterval(() => {
+    if (busy()) return
+    clearInterval(waitingToRedraw)
+    redrawWhenFree()
+  }, 1000)
+}
+
+// The locus and element screens show synced data. Study sessions keep their own
+// state, and Tasks and home refresh themselves.
+async function redrawCurrent() {
+  const route = currentRoute()
+  if (!shown || shown.name !== route.name || (route.name !== 'locus' && route.name !== 'element')) return
+  const locusId = route.name === 'locus' ? route.id : route.locusId
+  const gone = !(await db.loci.get(locusId)) || (route.name === 'element' && !(await getElement(route.elementId)))
+  if (gone) toast('Deleted on another device')
+  await show(route, true) // a deleted screen sends itself back one level
+}
+
+onRemoteChanges((records) => {
+  tellEditors(records)
+  void home.refresh()
+  void refreshTasks()
+  redrawWhenFree()
+})
 
 // Escape goes back on desktop, unless a sheet is open (it closes itself).
 document.addEventListener('keydown', (e) => {

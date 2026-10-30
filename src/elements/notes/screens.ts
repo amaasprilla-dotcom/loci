@@ -8,6 +8,7 @@ import { Mathematics } from '@tiptap/extension-mathematics'
 import { Placeholder } from '@tiptap/extensions'
 import StarterKit from '@tiptap/starter-kit'
 import { attachmentStrip, type AttachmentStrip } from '../../attachmentStrip'
+import { changedElsewhereBar } from '../../changedElsewhere'
 import { textColorOn } from '../../colors'
 import { h } from '../../dom'
 import { backIcon, checklistIcon, imageIcon, moreIcon } from '../../icons'
@@ -18,7 +19,9 @@ import { back, elementHash, go, subHash } from '../../router'
 import { button, confirmDelete, openSheet, sheetActions } from '../../sheet'
 import { addFileAttachment, kindOf, LARGE_FILE_BYTES, linkLabel, normalizeUrl } from '../../store/attachments'
 import { db } from '../../store/db'
+import { startEditing } from '../../sync/editing'
 import { formatAgo } from '../../time'
+import { toast } from '../../toast'
 import type { LocusElement, Note } from '../../types'
 import { editMath } from './mathSheet'
 import { NoteImage } from './noteImage'
@@ -198,6 +201,34 @@ export async function renderNoteEditor(el: LocusElement, noteId: string): Promis
     status.textContent = 'Saved'
   }
 
+  // ----- Changed on another device: keep what's here, offer theirs -----
+  let theirs: Note | undefined
+  let mine: { title: string; content: ReturnType<Editor['getJSON']> } | null = null
+  function putInEditor(version: { title: string; content: Note['content'] }) {
+    title.value = version.title
+    editor.commands.setContent(version.content as object, { emitUpdate: false })
+    changed() // saved as the newest version
+  }
+  const changedBar = changedElsewhereBar({
+    showTheirs: () => {
+      if (!theirs) return
+      mine = { title: title.value, content: editor.getJSON() }
+      putInEditor(theirs)
+    },
+    undo: () => mine && putInEditor(mine),
+  })
+  const stopEditing = startEditing('notes', note.id, async (deleted) => {
+    if (deleted) {
+      clearTimeout(timer)
+      dirty = false
+      toast('Deleted on another device')
+      back(elementHash(el))
+      return
+    }
+    theirs = await db.notes.get(note.id)
+    if (theirs) changedBar.show()
+  })
+
   // ----- Files: images go into the text, anything else into the strip -----
   let strip: AttachmentStrip
 
@@ -361,6 +392,7 @@ export async function renderNoteEditor(el: LocusElement, noteId: string): Promis
   }
   const onHidden = () => document.visibilityState === 'hidden' && void save()
   window.addEventListener('hashchange', () => {
+    stopEditing()
     void leave().finally(() => editor.destroy())
     document.removeEventListener('visibilitychange', onHidden)
     window.removeEventListener('pagehide', onPageHide)
@@ -421,6 +453,7 @@ export async function renderNoteEditor(el: LocusElement, noteId: string): Promis
     h(
       'main',
       { class: 'locus-body note-main' },
+      changedBar.el,
       title,
       body,
       h('section', { class: 'note-extras' }, h('div', { class: 'field-label' }, 'Attachments', strip.el), linkedItemsSection(owner, () => {})),

@@ -41,8 +41,8 @@ A device with no loci just downloads.
 ### Everywhere else
 
 - **A small sync dot** on the home top bar while sync is on: hidden when all is synced, a spinner while syncing, amber when changes are waiting offline, red for an error (tap → Settings → Sync).
-- **Changes from other devices appear by themselves.** The screen showing redraws, the way it does today after an edit made in a sheet. Positions of bubbles move to their new place with the existing transition.
-- **An open editor is never changed under the user's hands.** If a note, card or problem being edited changes on another device, the editor keeps what the user has, and a bar above it says "Changed on another device · Show their version". Saving here makes this version the newest, so it wins. "Show their version" replaces the editor content (Undo restores).
+- **Changes from other devices appear by themselves.** Home and Tasks refresh; bubbles move to their new place with the existing motion. A locus or element screen redraws quietly (no transition, same scroll position), but not while the user is in the middle of something: an editor open, a sheet open, focus in a text field, or text typed and not yet saved or cleared (e.g. a half-written to-do). It redraws once they're done. Study sessions keep their own state and aren't redrawn.
+- **An open editor is never changed under the user's hands.** If a note, card or problem being edited changes on another device, the editor keeps what the user has, and a bar above it says "Changed on another device · Show their version". Saving here makes this version the newest, so it wins. "Show their version" replaces the editor content (Undo restores) in notes and cards. The problem editor has no Undo: its bar says saving keeps your version, and "Show their version" draws the editor again from the other device's version.
 - **Deleted on another device while open here:** the screen goes back one level and a toast says "Deleted on another device".
 
 ### Backups still work
@@ -117,7 +117,9 @@ Only one round runs at a time; a request during a round queues exactly one more.
 
 ### Live updates
 
-While the app is visible it keeps a WebSocket open to `/api/sync/live`. After every push the Durable Object sends `{ seq }` to the other connected devices, which then pull. The Durable Object uses the WebSocket hibernation API, so idle connections cost nothing. If the socket drops, polling still works and the socket reconnects with the same backoff.
+While the app is visible it keeps a WebSocket open to `/api/sync/live`; in the background it closes it. Browsers can't put the key in a WebSocket's headers and it never goes in a URL, so the device's first message is a hello with the key and its device id; a wrong key closes the socket (code 4401). After every push that changed something, the Durable Object sends `{ type: "changed", seq }` to the other greeted devices, which then pull. A key reset closes every socket, so each must say hello again with the new key.
+
+The Durable Object uses the WebSocket hibernation API, so idle connections cost nothing. Every 45 seconds the device sends `ping` and expects `pong` within 10 (answered by the runtime without waking the Durable Object); a socket that doesn't answer, e.g. after the device slept, is replaced. If the socket drops, rounds still run on their other triggers and the socket reconnects with backoff (2 s, 10 s, 30 s, then every 2 min).
 
 This is what makes the laptop and phone show the same thing within a second or two of each other.
 

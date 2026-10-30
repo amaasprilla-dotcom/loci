@@ -5,6 +5,7 @@
 import { db } from '../store/db'
 import type { Tag } from '../types'
 import { createClient, SyncError, type SyncProblem } from './client'
+import { createLive } from './live'
 import { markSilent, type OutboxRow, setRecording } from './record'
 import { repairAfterPull } from './repair'
 import { BATCH_LIMIT, generateKey, incomingWins, normalizeKey, SYNCED_TABLES, type Change, type ServerRecord, type SyncedTable } from './rules'
@@ -28,6 +29,9 @@ const client = createClient(() => db.verno)
 let config: { key: string; deviceId: string } | null = null
 let status: SyncStatus = { on: false, busy: false, lastSyncAt: null, pending: 0, problem: null }
 const listeners = new Set<(status: SyncStatus) => void>()
+const remoteListeners = new Set<(records: ServerRecord[]) => void>()
+// Another device pushed: pull now.
+const live = createLive({ hello: () => config && { key: config.key, device: config.deviceId }, changed: () => void syncNow({ force: true }) })
 
 export function syncStatus(): SyncStatus {
   return status
@@ -38,6 +42,13 @@ export function onSyncStatus(listener: (status: SyncStatus) => void): () => void
   listeners.add(listener)
   listener(status)
   return () => listeners.delete(listener)
+}
+
+// Calls `listener` after each round that brought changes from other devices,
+// with the records that changed here (screens redraw; editors warn).
+export function onRemoteChanges(listener: (records: ServerRecord[]) => void): () => void {
+  remoteListeners.add(listener)
+  return () => remoteListeners.delete(listener)
 }
 
 function setStatus(patch: Partial<SyncStatus>) {
@@ -102,6 +113,7 @@ export async function joinSync(input: string, mode: 'merge' | 'replace'): Promis
 export async function stopSync(): Promise<void> {
   setRecording(false)
   config = null
+  live.close()
   clearTimeout(soonTimer)
   clearTimeout(retryTimer)
   await db.transaction('rw', db.syncState, db.syncOutbox, async () => {
@@ -203,7 +215,8 @@ export function startAutoSync(): void {
   if (autoStarted) return
   autoStarted = true
   const visible = () => document.visibilityState === 'visible'
-  document.addEventListener('visibilitychange', () => visible() && void syncNow())
+  // In the background the live socket closes, so an idle device costs nothing.
+  document.addEventListener('visibilitychange', () => (visible() ? void syncNow() : live.close()))
   window.addEventListener('online', () => void syncNow())
   setInterval(() => visible() && void syncNow(), SAFETY_NET_MS)
   void syncNow()
@@ -220,12 +233,20 @@ async function round(): Promise<void> {
     if (pulled.length > 0) {
       await repairAfterPull(pulled, (await getState<Record<string, string>>('tagAliases')) ?? {})
       await pushAll(key, deviceId) // the repairs
+      for (const listener of remoteListeners) {
+        try {
+          listener(pulled)
+        } catch (err) {
+          console.error(err) // a screen failing to redraw isn't a sync problem
+        }
+      }
     }
     if (config?.deviceId !== deviceId) return // stopped or rejoined meanwhile
     const at = Date.now()
     await setState('lastSyncAt', at)
     retries = 0
     setStatus({ busy: false, lastSyncAt: at, problem: null, pending: await pendingCount() })
+    live.connect() // a working key: listen for other devices
   } catch (err) {
     const problem = err instanceof SyncError ? err.problem : 'server'
     if (!(err instanceof SyncError)) console.error(err)

@@ -5,6 +5,7 @@ import { DatabaseSync } from 'node:sqlite'
 import { describe, expect, it } from 'vitest'
 import { BATCH_LIMIT, formatKey, generateKey, MAX_CLOCK_LEAD_MS, VERSION_HEADER, type Change } from '../src/sync/rules.ts'
 import { handleSync } from './api.ts'
+import { parseHello } from './live.ts'
 import { SyncStore, type SqlLike, type Transact } from './store.ts'
 
 const NOW = Date.UTC(2026, 9, 30, 12)
@@ -210,5 +211,38 @@ describe('bad requests', () => {
     expect((await push(store, 'laptop', tooMany)).status).toBe(413)
     expect((await pull(store, -1)).status).toBe(400)
     expect((await call(store, 'GET', 'nothing-here')).status).toBe(404)
+  })
+})
+
+describe('live updates', () => {
+  it('accept a hello with a well-formed key and device', () => {
+    expect(parseHello(JSON.stringify({ type: 'hello', key: formatKey(KEY).toLowerCase(), device: 'laptop-1' }))).toEqual({ key: KEY, device: 'laptop-1' })
+  })
+
+  it('refuse anything else as a hello', () => {
+    for (const message of ['not json', JSON.stringify({ type: 'hello', key: 'short', device: 'x' }), JSON.stringify({ type: 'hello', key: KEY, device: 'no spaces allowed' }), JSON.stringify({ type: 'pull', key: KEY, device: 'x' }), new ArrayBuffer(4)]) {
+      expect(parseHello(message)).toBeNull()
+    }
+  })
+
+  it('tell other devices after a push that changed something, not after a stale one', async () => {
+    const store = await claimedStore()
+    const pushed: string[] = []
+    const send = (device: string, changes: Change[]) =>
+      handleSync(
+        new Request('https://loci.test/api/sync/push', { method: 'POST', headers: { Authorization: `Bearer ${KEY}`, [VERSION_HEADER]: '11' }, body: JSON.stringify({ device, changes }) }),
+        store,
+        { pushed: (d) => pushed.push(d) },
+      )
+    await send('laptop', [put('n1', NOW)])
+    await send('phone', [put('n1', NOW - 1)]) // stale
+    expect(pushed).toEqual(['laptop'])
+  })
+
+  it('drop live connections when the key is reset', async () => {
+    const store = await claimedStore()
+    let rekeyed = false
+    await handleSync(new Request('https://loci.test/api/sync/rekey', { method: 'POST', headers: { Authorization: `Bearer ${KEY}`, [VERSION_HEADER]: '11' }, body: JSON.stringify({ key: generateKey() }) }), store, { rekeyed: () => (rekeyed = true) })
+    expect(rekeyed).toBe(true)
   })
 })

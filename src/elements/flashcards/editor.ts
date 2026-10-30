@@ -1,6 +1,7 @@
 // The deck screen: every card in the deck, with add, edit, delete, bulk import,
 // search (for big decks) and the deck's settings.
 
+import { changedElsewhereBar } from '../../changedElsewhere'
 import { textColorOn } from '../../colors'
 import { h } from '../../dom'
 import { backIcon, settingsIcon } from '../../icons'
@@ -8,7 +9,9 @@ import { onLongPress } from '../../press'
 import { back, go, reviewHash } from '../../router'
 import { button, confirmDelete, deleteConfirmation, describeCounts, openSheet, sheetActions, submitButton } from '../../sheet'
 import { db, deleteElement, updateElement } from '../../store/db'
+import { startEditing } from '../../sync/editing'
 import { formatIn } from '../../time'
+import { toast } from '../../toast'
 import type { Card, LocusElement } from '../../types'
 import { linkedItemsSection } from '../../linkedItems'
 import { parseImport } from './import'
@@ -150,6 +153,7 @@ export async function renderDeckScreen(initial: LocusElement<FlashcardsData>): P
 function openCardSheet(elementId: string, card?: Card): Promise<boolean | null> {
   const editing = card != null
   let saved = false
+  let stopEditing = () => {}
 
   return openSheet<boolean>(editing ? 'Edit card' : 'New card', (api) => {
     const front = h('textarea', { class: 'input', rows: 3, 'aria-label': 'Front', oninput: () => sync() })
@@ -200,8 +204,38 @@ function openCardSheet(elementId: string, card?: Card): Promise<boolean | null> 
     front.addEventListener('keydown', shortcut)
     back.addEventListener('keydown', shortcut)
 
+    // Changed on another device while open: keep what's typed here, offer theirs.
+    let theirs: Card | undefined
+    let mine = { front: '', back: '' }
+    const changedBar = changedElsewhereBar({
+      showTheirs: () => {
+        if (!theirs) return
+        mine = { front: front.value, back: back.value }
+        front.value = theirs.front
+        back.value = theirs.back
+        sync()
+      },
+      undo: () => {
+        front.value = mine.front
+        back.value = mine.back
+        sync()
+      },
+    })
+    if (card) {
+      stopEditing = startEditing('cards', card.id, async (deleted) => {
+        if (deleted) {
+          toast('Deleted on another device')
+          api.close(true)
+          return
+        }
+        theirs = await db.cards.get(card.id)
+        if (theirs) changedBar.show()
+      })
+    }
+
     const form = [
       h('h2', {}, editing ? 'Edit card' : 'New card'),
+      changedBar.el,
       h('label', { class: 'field-label' }, 'Front', front),
       h('label', { class: 'field-label' }, 'Back', back),
       note,
@@ -231,7 +265,10 @@ function openCardSheet(elementId: string, card?: Card): Promise<boolean | null> 
     ]
     sync()
     return { content: form, onSubmit: () => void submit(), focus: editing ? undefined : front }
-  }).then((result) => result ?? saved) // closed with Escape after "add another": still refresh
+  }).then((result) => {
+    stopEditing()
+    return result ?? saved // closed with Escape after "add another": still refresh
+  })
 }
 
 // Paste lines of "front<TAB>back". Resolves with how many cards were added.

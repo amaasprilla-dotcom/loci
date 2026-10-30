@@ -38,6 +38,15 @@ export const VERSION_HEADER = 'X-Loci-Version'
 // The most changes one push may carry, and the most one pull returns.
 export const BATCH_LIMIT = 500
 
+// The live socket (worker/live.ts) closes with this code when the key is wrong
+// or was reset on another device.
+export const WRONG_KEY_CLOSE = 4401
+
+// Heartbeat on the live socket: a socket that stops answering (e.g. after the
+// device slept) is replaced.
+export const PING = 'ping'
+export const PONG = 'pong'
+
 // A change's clock may run ahead of the server's by at most this much.
 export const MAX_CLOCK_LEAD_MS = 5 * 60 * 1000
 

@@ -3189,3 +3189,51 @@ details.editor-section > summary {
 .goal-reason-why {
   color: var(--text);
 }
+
+/* ---------- Sync: changes from other devices ---------- */
+
+/* Above an editor whose record changed on another device. */
+.changed-elsewhere {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--blue-soft);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.changed-elsewhere[hidden] {
+  display: none;
+}
+
+.link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--blue-ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  z-index: 20;
+  max-width: calc(100% - 32px);
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: var(--text);
+  color: #fff;
+  font-size: 0.9rem;
+  transform: translateX(-50%);
+  box-shadow: var(--shadow-md);
+  animation: fade-in 0.2s ease-out;
+}

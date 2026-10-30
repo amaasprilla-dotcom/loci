@@ -98,7 +98,10 @@ them.
 - `src/sync/`: sync between devices (SPEC-v4-sync.md). Recording every change in an outbox
   (`record.ts`, a Dexie middleware), the engine: push and pull rounds, when they run, joining
   and leaving (`engine.ts`), talking to the server (`client.ts`), fixing what two devices
-  editing apart leave behind (`repair.ts`). Settings → Sync is `src/settings/sync.ts`
+  editing apart leave behind (`repair.ts`), the live socket that says when another device
+  pushed (`live.ts`; server side `worker/live.ts`), and what's being edited, so remote changes
+  don't redraw it (`editing.ts`; the bar it shows is `src/changedElsewhere.ts`). Settings → Sync
+  is `src/settings/sync.ts`
 - `worker/`: the Cloudflare Worker behind sync (SPEC-v4-sync.md). The routes and checks
   (`api.ts`), the synced records in SQLite (`store.ts`), and the Worker with its Durable Object
   (`index.ts`). `src/sync/rules.ts` holds what the app and the server share: which tables sync,

@@ -9,7 +9,8 @@ import { addCards, DEFAULT_FLASHCARDS_DATA, listCards } from '../elements/flashc
 import { createElement, createLocus, db, deleteElement, moveLocus } from '../store/db'
 import type { Locus, Tag } from '../types'
 import { SyncError } from './client'
-import { joinSync, resetSyncKey, setUpSync, stopSync, syncNow, syncStatus } from './engine'
+import { joinSync, onRemoteChanges, resetSyncKey, setUpSync, stopSync, syncNow, syncStatus } from './engine'
+import { startEditing, tellEditors } from './editing'
 import { setRecording } from './record'
 import type { Change } from './rules'
 
@@ -113,6 +114,22 @@ describe('rounds', () => {
     const seq = server.seq()
     await syncNow()
     expect(server.seq()).toBe(seq)
+  })
+
+  it('tells screens what other devices changed, and only that', async () => {
+    const seen: string[][] = []
+    const stop = onRemoteChanges((records) => seen.push(records.map((r) => `${r.table}/${r.id}`)))
+    try {
+      await setUpSync()
+      await seedDeck()
+      await syncNow()
+      expect(seen).toEqual([]) // our own changes coming back aren't news
+      phone([{ table: 'loci', id: 'from-phone', op: 'put', changedAt: Date.now(), data: { ...locusData('from-phone', 'Chemistry') } }])
+      await syncNow()
+      expect(seen).toEqual([['loci/from-phone']])
+    } finally {
+      stop()
+    }
   })
 
   it('keeps the newer side when both changed the same record', async () => {
@@ -298,5 +315,19 @@ describe('repairs', () => {
     await syncNow()
     expect(await db.links.get('l1')).toBeUndefined()
     expect(serverRecord('links', 'l1')?.deleted).toBe(true)
+  })
+})
+
+describe('editors', () => {
+  it('hear about changes to what they edit, and deletions', () => {
+    const heard: boolean[] = []
+    const stop = startEditing('notes', 'n1', (deleted) => heard.push(deleted))
+    const record = (id: string, deleted: boolean) => ({ table: 'notes' as const, id, deleted, data: null, changedAt: 1, device: 'phone', seq: 1 })
+    tellEditors([record('other', false)])
+    tellEditors([record('n1', false)])
+    tellEditors([record('n1', true)])
+    stop()
+    tellEditors([record('n1', false)])
+    expect(heard).toEqual([false, true])
   })
 })
