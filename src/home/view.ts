@@ -1,5 +1,5 @@
-// The home screen: a top bar (the name and today's date; the sync dot, Settings and the
-// Tasks button; the tag filter), the bubble field on a soft grey canvas, and docked at the
+// The home screen: a top bar (the name and today's date; the sync dot, Settings, and the
+// Notes and Tasks buttons; the tag filter), the bubble field on a soft grey canvas, and docked at the
 // bottom the Now card and the + button.
 // It stays in the page while other screens cover it, so the bubbles keep their
 // places (and motion) when you come back.
@@ -26,7 +26,7 @@ export interface Home {
   setTasks(tasks: Task[], candidates?: Task[], studyAnywayLocusId?: string | null): void
 }
 
-export function createHome(options: { onOpen(locus: Locus): void; onTasks(): void; onSettings(): void }): Home {
+export function createHome(options: { onOpen(locus: Locus): void; onTasks(): void; onNotes(): void; onSettings(): void }): Home {
   const field = createField({
     onTap: options.onOpen,
     onMove: (locus, x, y) => void moveLocus(locus.id, x, y),
@@ -38,6 +38,7 @@ export function createHome(options: { onOpen(locus: Locus): void; onTasks(): voi
   const nowCard = createNowCard()
   const badge = h('span', { class: 'badge badge-dot', hidden: true })
   const tasksButton = h('button', { type: 'button', class: 'pill-btn', onclick: options.onTasks }, h('span', {}, 'Tasks'), badge, arrowUpRightIcon())
+  const notesButton = h('button', { type: 'button', class: 'pill-btn pill-btn-outline', onclick: options.onNotes }, h('span', {}, 'Notes'), arrowUpRightIcon())
   const today = h('p', { class: 'brand-sub' })
 
   const moreButton = h(
@@ -162,7 +163,7 @@ export function createHome(options: { onOpen(locus: Locus): void; onTasks(): voi
     h(
       'header',
       { class: 'topbar' },
-      h('div', { class: 'topbar-row' }, h('div', { class: 'brand-block' }, h('h1', { class: 'brand' }, 'Loci'), today), h('div', { class: 'topbar-actions' }, syncDot, moreButton, tasksButton)),
+      h('div', { class: 'topbar-row' }, h('div', { class: 'brand-block' }, h('h1', { class: 'brand' }, 'Loci'), today), h('div', { class: 'topbar-actions' }, syncDot, moreButton, notesButton, tasksButton)),
       filter.el,
     ),
     field.el,

@@ -20,6 +20,7 @@ import { toast } from './toast'
 import { db, getElement, requestPersistentStorage } from './store/db'
 import { allTasks } from './tasks/tasks'
 import { createTasksScreen } from './tasks/view'
+import { createNotesScreen } from './notes/view'
 import { isStaleCodeError, reloadForStaleCode, watchForStaleCode } from './staleCode'
 import { coverFor, fadeIn, fadeOut, growFrom, motionAllowed, shrinkInto } from './transition'
 import { playIntro } from './intro'
@@ -31,10 +32,12 @@ const root = document.getElementById('app')!
 const home = createHome({
   onOpen: (locus) => go(`#/locus/${encodeURIComponent(locus.id)}`),
   onTasks: () => go('#/tasks'),
+  onNotes: () => go('#/notes'),
   onSettings: () => go('#/settings'),
 })
 // Ticking a task off changes what's due: refresh everything that shows tasks.
 const tasksScreen = createTasksScreen(() => void refreshTasks())
+const notesScreen = createNotesScreen()
 const screenLayer = h('div', { class: 'screen-layer' })
 root.append(home.el, screenLayer)
 
@@ -117,6 +120,26 @@ async function show(route: Route, quiet = false): Promise<void> {
     setThemeColor(CANVAS_THEME_COLOR)
     screenLayer.replaceChildren(tasksScreen.el)
     if (motionAllowed()) await fadeIn(tasksScreen.el)
+    return
+  }
+
+  if (route.name === 'notes') {
+    shown = route
+    // A loose note: its editor, back to the Notes screen.
+    if (route.noteId) {
+      const { renderNoteEditor } = await import('./elements/notes/screens')
+      const view = await renderNoteEditor(null, route.noteId)
+      setHomeVisible(false)
+      setThemeColor(CANVAS_THEME_COLOR)
+      place(view)
+      if (motionAllowed() && !quiet) await fadeIn(view)
+      return
+    }
+    await notesScreen.update()
+    setHomeVisible(false)
+    setThemeColor(CANVAS_THEME_COLOR)
+    screenLayer.replaceChildren(notesScreen.el)
+    if (motionAllowed()) await fadeIn(notesScreen.el)
     return
   }
 
@@ -298,6 +321,7 @@ onRemoteChanges((records) => {
   tellEditors(records)
   void home.refresh()
   void refreshTasks()
+  if (shown?.name === 'notes' && !shown.noteId) void notesScreen.update()
   redrawWhenFree()
 })
 

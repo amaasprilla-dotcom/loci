@@ -3,6 +3,7 @@
 // to-do, goal…) adds its case here.
 
 import { registry } from './elements/registry'
+import { LOOSE, noteHash } from './elements/notes/store'
 import { elementHash, go, subHash } from './router'
 import { db } from './store/db'
 import type { Goal, ItemRef, Locus } from './types'
@@ -53,16 +54,16 @@ export async function describeItem(ref: ItemRef): Promise<ItemInfo | null> {
     }
     case 'note': {
       const note = await db.notes.get(ref.id)
-      const book = note && (await db.elements.get(note.elementId))
-      if (!note || !book) return null
-      const locus = await db.loci.get(book.locusId)
+      const book = note?.elementId ? await db.elements.get(note.elementId) : undefined
+      if (!note || (note.elementId !== LOOSE && !book)) return null
+      const locus = book && (await db.loci.get(book.locusId))
       return {
         ref,
         title: note.title.trim() || 'Untitled',
         kind: 'Note',
-        context: [locus?.name, book.title].filter(Boolean).join(' › '),
+        context: book ? [locus?.name, book.title].filter(Boolean).join(' › ') : 'Notes',
         color: locus?.color ?? NO_COLOR,
-        open: () => go(subHash(book, 'note', note.id)),
+        open: () => go(noteHash(note, book)),
       }
     }
     case 'todo': {
@@ -167,15 +168,15 @@ export async function searchItems(query: string, exclude: ItemRef[]): Promise<It
     const notes = await db.notes.filter((n) => n.title.toLowerCase().includes(q) || n.plainText.toLowerCase().includes(q)).limit(MAX_RESULTS).toArray()
     for (const note of notes) {
       const book = elementById.get(note.elementId)
-      if (!book) continue
-      const locus = locusById.get(book.locusId)
+      if (!book && note.elementId !== LOOSE) continue
+      const locus = book && locusById.get(book.locusId)
       results.push({
         ref: { type: 'note', id: note.id },
         title: note.title.trim() || 'Untitled',
         kind: 'Note',
-        context: [locus?.name, book.title].filter(Boolean).join(' › '),
+        context: book ? [locus?.name, book.title].filter(Boolean).join(' › ') : 'Notes',
         color: locus?.color ?? NO_COLOR,
-        open: () => go(subHash(book, 'note', note.id)),
+        open: () => go(noteHash(note, book)),
       })
     }
     const todos = await db.todos.filter((t) => t.status !== 'archived' && t.title.toLowerCase().includes(q)).limit(MAX_RESULTS).toArray()

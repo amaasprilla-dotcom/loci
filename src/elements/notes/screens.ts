@@ -34,7 +34,7 @@ import { editMath } from './mathSheet'
 import { NoteImage } from './noteImage'
 import { looksLikeMarkdown, tidyPastedHtml } from './paste'
 import { practising, setRecall } from './recall'
-import { createNote, deleteNote, firstLine, listNotes, noteTitle, removeUnusedInlineImages, saveNote, searchNotes, setPinned } from './store'
+import { createNote, deleteNote, firstLine, listNotes, LOOSE, noteTitle, removeUnusedInlineImages, saveNote, searchNotes, setPinned } from './store'
 
 const AUTOSAVE_MS = 500
 const WEEK = 7 * 86_400_000
@@ -43,8 +43,9 @@ function when(at: number, now: number): string {
   return now - at < WEEK ? formatAgo(now - at) : new Date(at).toLocaleDateString(undefined, { dateStyle: 'medium' })
 }
 
-async function header(el: LocusElement, title: Node, onBack: () => void, ...end: Node[]) {
-  const locus = await db.loci.get(el.locusId)
+// el: the notebook; null for a loose note, which belongs to the Notes screen.
+async function header(el: LocusElement | null, title: Node, onBack: () => void, ...end: Node[]) {
+  const locus = el && (await db.loci.get(el.locusId))
   const color = locus?.color ?? '#0b0f14'
   return {
     color,
@@ -52,7 +53,7 @@ async function header(el: LocusElement, title: Node, onBack: () => void, ...end:
       'header',
       { class: 'locus-header', style: { '--c': color, '--fg': textColorOn(color) } },
       h('button', { class: 'icon-btn', 'aria-label': 'Back', onclick: onBack }, backIcon()),
-      h('div', { class: 'locus-title' }, h('span', { class: 'header-kicker' }, locus?.name ?? ''), title),
+      h('div', { class: 'locus-title' }, h('span', { class: 'header-kicker' }, el ? (locus?.name ?? '') : 'Notes'), title),
       ...end,
     ),
   }
@@ -139,10 +140,12 @@ export async function renderNotebook(el: LocusElement): Promise<HTMLElement> {
 }
 
 // A note's options: pin (from the list; the editor has its own pin button),
-// recall practice, delete.
+// recall practice, delete. Recall happens in a locus's Study sessions, so a
+// loose note can't start it.
 function openNoteMenu(n: Note, withPin: boolean): Promise<'pin' | 'recall' | 'delete' | null> {
   const recallOn = n.recall?.on === true
   const empty = n.plainText.trim() === ''
+  const loose = n.elementId === LOOSE
   const option = (title: string, description: string, onclick: () => void, disabled = false) =>
     h('button', { type: 'button', class: 'type-option', disabled, onclick }, h('span', {}, h('strong', {}, title), h('span', { class: 'type-desc' }, description)))
   return openSheet<'pin' | 'recall' | 'delete'>('Note', (api) => ({
@@ -156,11 +159,13 @@ function openNoteMenu(n: Note, withPin: boolean): Promise<'pin' | 'recall' | 'de
           recallOn ? 'Stop recall practice' : 'Practise recall',
           recallOn
             ? 'It leaves Study sessions. Its schedule is kept if you turn it on again.'
-            : empty
-              ? 'Write something in this note first.'
-              : 'In Study sessions, write down everything you remember of it, then compare. Spaced over days and weeks.',
+            : loose
+              ? 'Move it into a locus first: recall happens in its Study sessions.'
+              : empty
+                ? 'Write something in this note first.'
+                : 'In Study sessions, write down everything you remember of it, then compare. Spaced over days and weeks.',
           () => api.close('recall'),
-          !recallOn && empty,
+          !recallOn && (empty || loose),
         ),
       ),
       sheetActions(button('Delete', () => api.close('delete'), 'danger-text'), button('Cancel', () => api.close(null))),
@@ -170,10 +175,12 @@ function openNoteMenu(n: Note, withPin: boolean): Promise<'pin' | 'recall' | 'de
 
 // ---------- Note editor ----------
 
-export async function renderNoteEditor(el: LocusElement, noteId: string): Promise<HTMLElement> {
+// el: the note's notebook, or null for a loose note (opened from the Notes screen).
+export async function renderNoteEditor(el: LocusElement | null, noteId: string): Promise<HTMLElement> {
+  const parent = el ? elementHash(el) : '#/notes'
   const note = await db.notes.get(noteId)
-  if (!note || note.elementId !== el.id) {
-    location.replace(elementHash(el)) // deleted, or a bad link
+  if (!note || note.elementId !== (el?.id ?? LOOSE)) {
+    location.replace(parent) // deleted, moved, or a bad link
     return h('div')
   }
   const owner = { type: 'note' as const, id: note.id }
@@ -230,7 +237,7 @@ export async function renderNoteEditor(el: LocusElement, noteId: string): Promis
       clearTimeout(timer)
       dirty = false
       toast('Deleted on another device')
-      back(elementHash(el))
+      back(parent)
       return
     }
     theirs = await db.notes.get(note.id)
@@ -464,7 +471,7 @@ export async function renderNoteEditor(el: LocusElement, noteId: string): Promis
           clearTimeout(timer)
           dirty = false
           await deleteNote(note.id)
-          back(elementHash(el))
+          back(parent)
         }
       },
     },
@@ -472,7 +479,7 @@ export async function renderNoteEditor(el: LocusElement, noteId: string): Promis
   )
 
   strip = attachmentStrip(owner)
-  const top = await header(el, h('span', { class: 'header-title-small' }, el.title, status), () => back(elementHash(el)), pinButton, menuButton)
+  const top = await header(el, h('span', { class: 'header-title-small' }, el?.title ?? 'Loose note', status), () => back(parent), pinButton, menuButton)
   const screen = h(
     'div',
     { class: 'deck-screen note-screen', style: { '--c': top.color, '--fg': textColorOn(top.color) } },

@@ -120,6 +120,7 @@ h2 {
 .locus-view,
 .deck-screen,
 .tasks-screen,
+.notes-screen,
 .settings-screen,
 .review-screen {
   background:
@@ -217,6 +218,25 @@ h2 {
 .pill-btn svg {
   width: 16px;
   height: 16px;
+}
+
+/* The outline pill: Notes, beside Tasks. */
+.pill-btn-outline {
+  border: 1px solid color-mix(in srgb, var(--text) 75%, transparent);
+  background: transparent;
+  color: var(--text);
+}
+
+.pill-btn-outline:hover {
+  background: rgba(11, 15, 20, 0.05);
+}
+
+/* Phones: two pills and Settings beside the name, so a little tighter. */
+@media (max-width: 420px) {
+  .topbar-actions .pill-btn {
+    gap: 6px;
+    padding: 0 12px 0 14px;
+  }
 }
 
 .pill-btn .badge-dot {
@@ -1730,6 +1750,277 @@ button.now-summary {
 
 .btn[hidden] {
   display: none;
+}
+
+/* ---------- Notes screen ---------- */
+
+.notes-screen {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+}
+
+/* Rows are dragged, not selected. */
+.nt-tree {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.nt-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.nt-section-head .task-section-title {
+  margin: 0;
+}
+
+/* A quiet glass panel holding rows, like a sidebar. */
+.nt-panel {
+  padding: 6px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 20px;
+  background: var(--glass);
+  box-shadow: var(--glass-shadow);
+  transition: box-shadow 0.12s, background-color 0.12s;
+}
+
+.nt-head {
+  display: flex;
+  align-items: center;
+  border-radius: 12px;
+}
+
+.nt-toggle,
+.nt-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 40px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nt-toggle {
+  flex: 1;
+  font-weight: 550;
+}
+
+.nt-toggle:hover,
+.nt-note:hover {
+  background: rgba(11, 15, 20, 0.05);
+}
+
+.nt-toggle:focus-visible,
+.nt-note:focus-visible,
+.nt-add:focus-visible {
+  outline: 2px solid var(--blue-ink);
+  outline-offset: -2px;
+}
+
+.nt-toggle > svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+
+.nt-toggle[aria-expanded="true"] > svg {
+  transform: rotate(90deg);
+}
+
+.nt-toggle .dot {
+  width: 10px;
+  height: 10px;
+}
+
+.nt-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nt-count,
+.nt-when {
+  flex: none;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 400;
+}
+
+/* New note: shown on hover with a mouse, always on touch. */
+.nt-add {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.nt-add svg {
+  width: 18px;
+  height: 18px;
+}
+
+.nt-add:hover {
+  background: rgba(11, 15, 20, 0.07);
+  color: var(--text);
+}
+
+@media (hover: hover) {
+  .nt-head .nt-add {
+    opacity: 0;
+  }
+
+  .nt-head:hover .nt-add,
+  .nt-head .nt-add:focus-visible {
+    opacity: 1;
+  }
+}
+
+.nt-note {
+  width: 100%;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.nt-note > svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
+}
+
+.nt-note-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Inside an open locus: indented under its name, with a faint guide line. */
+.nt-body {
+  margin: 0 0 4px 22px;
+  padding-left: 8px;
+  border-left: 1px solid color-mix(in srgb, var(--c, var(--text)) 35%, transparent);
+}
+
+.nt-book {
+  border-radius: 12px;
+}
+
+.nt-book-title {
+  padding: 8px 10px 2px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.nt-empty {
+  margin: 0;
+  padding: 8px 10px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* Dragging: the note held, its floating copy, and where it would land. */
+.nt-note.nt-armed {
+  background: rgba(11, 15, 20, 0.08);
+}
+
+.nt-note.nt-dragging {
+  opacity: 0.35;
+}
+
+.nt-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 260px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--text);
+  color: #fff;
+  font-size: 0.9rem;
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.nt-ghost svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.nt-ghost span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nt-section.nt-over > .nt-panel {
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: inset 0 0 0 2px var(--text), var(--glass-shadow);
+}
+
+.nt-group.nt-over > .nt-head,
+.nt-book.nt-over {
+  background: color-mix(in srgb, var(--c) 18%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--c);
+}
+
+/* Just moved here: a brief glow so it can be found. */
+.nt-note.nt-moved {
+  animation: nt-moved 1.4s ease-out;
+}
+
+@keyframes nt-moved {
+  from {
+    background: color-mix(in srgb, var(--c, var(--blue)) 30%, transparent);
+  }
+}
+
+.nt-move-option .dot {
+  background: var(--c);
+}
+
+.nt-move-option > svg {
+  flex: none;
+  width: 12px;
+  height: 12px;
+}
+
+.nt-move-option:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 /* ---------- Tasks screen ---------- */

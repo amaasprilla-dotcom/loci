@@ -10,6 +10,7 @@ export type Route =
   | { name: 'study'; locusId: string; start?: boolean; anyway?: boolean } // a locus's Study button: cards and problems together; `start` skips the length picker, `anyway` adds a day's new cards
   | { name: 'focus'; todoId: string } // the focus timer on a to-do
   | { name: 'tasks' }
+  | { name: 'notes'; noteId?: string } // every note; with noteId, a loose note's editor
   | { name: 'settings' }
 
 export function parseRoute(hash: string): Route {
@@ -20,6 +21,7 @@ export function parseRoute(hash: string): Route {
   if (parts[0] === 'study' && parts[1]) return { name: 'study', locusId: parts[1], ...(parts[2] === 'start' && { start: true }), ...(parts[2] === 'anyway' && { start: true, anyway: true }) }
   if (parts[0] === 'focus' && parts[1]) return { name: 'focus', todoId: parts[1] }
   if (parts[0] === 'tasks') return { name: 'tasks' }
+  if (parts[0] === 'notes') return { name: 'notes', ...(parts[1] && { noteId: parts[1] }) }
   if (parts[0] === 'settings') return { name: 'settings' }
   return { name: 'home' }
 }
@@ -45,6 +47,11 @@ export function focusHash(todoId: string): string {
   return `#/focus/${encodeURIComponent(todoId)}`
 }
 
+// A loose note (in no locus) is opened from the Notes screen.
+export function looseNoteHash(noteId: string): string {
+  return `#/notes/${encodeURIComponent(noteId)}`
+}
+
 export function reviewHash(el: { id: string }): string {
   return `#/review/${encodeURIComponent(el.id)}`
 }
@@ -67,6 +74,7 @@ export function back(parent = '#/'): void {
 
 // The screen that back leads to when there's no history to go back through.
 export function parentOf(route: Route): string {
+  if (route.name === 'notes' && route.noteId) return '#/notes'
   if (route.name === 'element' && route.sub.length > 0) return elementHash({ locusId: route.locusId, id: route.elementId })
   return route.name === 'element' ? `#/locus/${encodeURIComponent(route.locusId)}` : '#/'
 }

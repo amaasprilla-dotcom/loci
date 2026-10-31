@@ -290,6 +290,14 @@ describe('repairs', () => {
     expect(onServer()).toEqual([])
   })
 
+  it('a loose note from elsewhere (in no locus) stays', async () => {
+    await setUpSync()
+    const now = Date.now()
+    phone([{ table: 'notes', id: 'phone-note', op: 'put', changedAt: now, data: { id: 'phone-note', elementId: '', title: 'Idea', content: {}, plainText: '', pinned: 0, createdAt: now, updatedAt: now } }])
+    await syncNow()
+    expect(await db.notes.get('phone-note')).toMatchObject({ title: 'Idea' })
+  })
+
   it('what was added elsewhere under something deleted here goes too', async () => {
     await setUpSync()
     const { deck } = await seedDeck()

@@ -54,8 +54,9 @@ function parentOf(record: ServerRecord): { table: SyncedTable; id: string } | nu
     case 'elements':
     case 'exams':
       return { table: 'loci', id: data.locusId }
-    case 'cards':
     case 'notes':
+      return data.elementId ? { table: 'elements', id: data.elementId } : null // a loose note has no parent
+    case 'cards':
     case 'todos':
     case 'goals':
     case 'problemTemplates':

@@ -145,7 +145,7 @@ export interface Setting {
 // plainText is derived from it on every save, for search and the list's first line.
 export interface Note {
   id: string;
-  elementId: string;
+  elementId: string; // '' = a loose note, in no locus: only the Notes screen shows it
   title: string;
   content: unknown;
   plainText: string;

@@ -5,7 +5,7 @@ import { addFileAttachment, listAttachments } from '../../store/attachments'
 import { exportBackup, importBackup } from '../../store/backup'
 import { createElement, createLocus, db, deleteElement, deleteLocus } from '../../store/db'
 import { addLink } from '../../store/links'
-import { createNote, deleteNote, docText, firstLine, listNotes, removeUnusedInlineImages, saveNote, searchNotes, setPinned } from './store'
+import { createNote, deleteNote, docText, firstLine, listNotes, LOOSE, moveNote, notebookFor, removeUnusedInlineImages, saveNote, searchNotes, setPinned } from './store'
 
 const doc = (...content: unknown[]) => ({ type: 'doc', content })
 const p = (...content: unknown[]) => ({ type: 'paragraph', content })
@@ -97,5 +97,32 @@ describe('notes', () => {
     await Promise.all(db.tables.map((t) => t.clear()))
     await importBackup(backup, 'replace')
     expect((await db.notes.get(n.id))).toMatchObject({ title: 'Kept', plainText: 'hello' })
+  })
+})
+
+describe('loose notes and moving', () => {
+  it('a loose note is in no notebook, and survives deleting every locus', async () => {
+    const n = await createNote(LOOSE)
+    await deleteLocus(locusId)
+    expect(await db.notes.get(n.id)).toMatchObject({ elementId: LOOSE })
+  })
+
+  it('moves between a notebook and Misc, newest first where it lands', async () => {
+    const n = await createNote(LOOSE)
+    const before = (await db.notes.get(n.id))!.updatedAt
+    await new Promise((r) => setTimeout(r, 2))
+    await moveNote(n.id, notebookId)
+    expect((await listNotes(notebookId)).map((x) => x.id)).toEqual([n.id])
+    expect((await db.notes.get(n.id))!.updatedAt).toBeGreaterThan(before)
+    await moveNote(n.id, LOOSE)
+    expect(await listNotes(notebookId)).toEqual([])
+  })
+
+  it('filing into a locus uses its first notebook, or makes one called Notes', async () => {
+    expect((await notebookFor(locusId)).id).toBe(notebookId)
+    const empty = (await createLocus({ name: 'Art', color: '#ffffff', x: 0.2, y: 0.2 })).id
+    const made = await notebookFor(empty)
+    expect(made).toMatchObject({ locusId: empty, type: 'notes', title: 'Notes' })
+    expect((await notebookFor(empty)).id).toBe(made.id) // made once
   })
 })

@@ -39,3 +39,8 @@ export const settingsIcon = () =>
 export const arrowIcon = () => icon(`<path d="M5 12h14M13 6l6 6-6 6" ${STROKE}/>`)
 
 export const arrowUpRightIcon = () => icon(`<path d="M7 17L17 7M9 7h8v8" ${STROKE}/>`)
+
+// A page with a folded corner: a note, and the Notes screen.
+export const noteIcon = () => icon(`<path d="M6.5 3.5h7.5l4 4v13h-11.5z" ${STROKE}/><path d="M14 3.5v4h4M9.5 12h5M9.5 15.5h5" ${STROKE}/>`)
+
+export const plusIcon = () => icon(`<path d="M12 5v14M5 12h14" ${STROKE}/>`)
