@@ -25,6 +25,7 @@ import { coverFor, fadeIn, fadeOut, growFrom, motionAllowed, shrinkInto } from '
 import { playIntro } from './intro'
 
 const DEFAULT_THEME_COLOR = '#ffffff'
+const HOME_THEME_COLOR = '#f1f1f0' // the top of home's grey canvas (--canvas-top)
 const REFRESH_MS = 60_000 // cards fall due as time passes
 
 const root = document.getElementById('app')!
@@ -84,14 +85,14 @@ async function show(route: Route, quiet = false): Promise<void> {
       home.field.pause() // hold the bubble still while we shrink into it
       home.el.style.visibility = ''
       const cover = coverFor(bubble, view.style.getPropertyValue('--c'))
-      setThemeColor(DEFAULT_THEME_COLOR)
+      setThemeColor(HOME_THEME_COLOR)
       await fadeOut(view)
       screenLayer.replaceChildren()
       await shrinkInto(bubble, cover)
     } else {
       screenLayer.replaceChildren()
     }
-    setThemeColor(DEFAULT_THEME_COLOR)
+    setThemeColor(HOME_THEME_COLOR)
     setHomeVisible(true)
     return
   }

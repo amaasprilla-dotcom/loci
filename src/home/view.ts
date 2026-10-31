@@ -1,12 +1,13 @@
-// The home screen: the Now card, the bubble field, a top bar with the Tasks button, the
-// sync dot and the tag filter, and the + button.
+// The home screen: a top bar (the name and today's date; the sync dot, Settings and the
+// Tasks button; the tag filter), the bubble field on a soft grey canvas, and docked at the
+// bottom the Now card and the + button.
 // It stays in the page while other screens cover it, so the bubbles keep their
 // places (and motion) when you come back.
 
 import { PALETTE } from '../colors'
 import { h } from '../dom'
 import { isActive, type Task } from '../elements/registry'
-import { moreIcon, tasksIcon } from '../icons'
+import { arrowUpRightIcon, settingsIcon } from '../icons'
 import { createNowCard } from '../now/card'
 import { describeSync } from '../settings/sync'
 import { createLocus, deleteLocus, findOrCreateTag, listLoci, listTags, moveLocus, updateLocus } from '../store/db'
@@ -36,22 +37,23 @@ export function createHome(options: { onOpen(locus: Locus): void; onTasks(): voi
 
   const nowCard = createNowCard()
   const badge = h('span', { class: 'badge badge-dot', hidden: true })
-  const tasksButton = h('button', { type: 'button', class: 'tasks-btn', onclick: options.onTasks }, tasksIcon(), h('span', {}, 'Tasks'), badge)
+  const tasksButton = h('button', { type: 'button', class: 'pill-btn', onclick: options.onTasks }, h('span', {}, 'Tasks'), badge, arrowUpRightIcon())
+  const today = h('p', { class: 'brand-sub' })
 
   const moreButton = h(
     'button',
     {
       type: 'button',
-      class: 'tasks-btn round',
+      class: 'round-btn',
       'aria-label': 'Settings',
       title: 'Settings',
       onclick: options.onSettings,
     },
-    moreIcon(),
+    settingsIcon(),
   )
 
   // Shows only when sync wants attention, or a round is slow. Opens Settings.
-  const syncDot = h('button', { type: 'button', class: 'tasks-btn round sync-dot', hidden: true, onclick: options.onSettings }, h('span', { class: 'sync-dot-mark' }))
+  const syncDot = h('button', { type: 'button', class: 'round-btn sync-dot', hidden: true, onclick: options.onSettings }, h('span', { class: 'sync-dot-mark' }))
   let busyTimer: ReturnType<typeof setTimeout> | undefined
   onSyncStatus((s) => {
     clearTimeout(busyTimer)
@@ -91,6 +93,8 @@ export function createHome(options: { onOpen(locus: Locus): void; onTasks(): voi
     tasksButton.setAttribute('aria-label', waiting ? 'Tasks, something due' : 'Tasks, nothing due')
     field.setPulse(candidates[0]?.locusId ?? null)
     nowCard.set(candidates, loci, studyAnywayLocusId)
+    // Refreshed with the tasks (every minute), so it turns over at midnight.
+    today.textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
   }
 
   function setTasks(next: Task[], nextCandidates: Task[] = [], nextStudyAnyway: string | null = null) {
@@ -155,10 +159,15 @@ export function createHome(options: { onOpen(locus: Locus): void; onTasks(): voi
   const el = h(
     'div',
     { class: 'home' },
-    h('header', { class: 'topbar' }, h('div', { class: 'topbar-row' }, h('h1', { class: 'brand' }, 'Loci'), h('div', { class: 'topbar-actions' }, syncDot, tasksButton, moreButton)), filter.el),
-    nowCard.el,
+    h(
+      'header',
+      { class: 'topbar' },
+      h('div', { class: 'topbar-row' }, h('div', { class: 'brand-block' }, h('h1', { class: 'brand' }, 'Loci'), today), h('div', { class: 'topbar-actions' }, syncDot, moreButton, tasksButton)),
+      filter.el,
+    ),
     field.el,
     empty,
+    nowCard.el,
     h('button', { class: 'fab', 'aria-label': 'New locus', onclick: onCreate }, '+'),
   )
 

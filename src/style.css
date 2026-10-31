@@ -28,6 +28,13 @@
   --shadow-lg: 0 -4px 12px rgba(11, 15, 20, 0.05), 0 -16px 48px rgba(11, 15, 20, 0.1);
 
   --font: "Inter Variable", system-ui, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Consolas, monospace;
+
+  /* Home's canvas: a soft studio grey, lighter at the top. Glass: the cards floating on it. */
+  --canvas-top: #f1f1f0;
+  --canvas: #e8e8e7;
+  --glass: rgba(255, 255, 255, 0.58);
+  --glass-edge: rgba(255, 255, 255, 0.85);
 
   font-family: var(--font);
   font-size: 16px;
@@ -71,7 +78,7 @@ h2 {
 
 .intro-word {
   display: flex;
-  font-family: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Consolas, monospace;
+  font-family: var(--mono);
   font-size: clamp(2.6rem, 11vw, 4.75rem);
   font-weight: 400;
   line-height: 1;
@@ -104,6 +111,7 @@ h2 {
   inset: 0;
   display: flex;
   flex-direction: column;
+  background: radial-gradient(130% 90% at 50% 0%, var(--canvas-top) 0%, var(--canvas) 75%);
 }
 
 .topbar {
@@ -113,8 +121,8 @@ h2 {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 10px;
-  padding: calc(14px + env(safe-area-inset-top)) 20px 14px;
+  gap: 14px;
+  padding: calc(18px + env(safe-area-inset-top)) 20px 10px;
   pointer-events: none; /* only its buttons catch taps; the field shows through */
 }
 
@@ -122,13 +130,37 @@ h2 {
   pointer-events: auto;
 }
 
+.brand-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .brand {
-  font-size: 1.4rem;
+  font-size: 1.6rem;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+}
+
+/* Small print in capitals and mono, as on a lab report: the date, card labels. */
+.brand-sub,
+.now-label {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.brand-sub {
+  color: var(--muted);
 }
 
 .topbar-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   width: 100%;
@@ -139,43 +171,78 @@ h2 {
   pointer-events: auto;
 }
 
-.tasks-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 12px 7px 10px;
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
 .topbar-actions {
   display: flex;
+  align-items: center;
   gap: 8px;
 }
 
-.tasks-btn.round {
-  padding: 7px;
+/* The black pill: the way to another screen (Tasks, with an arrow up and out). */
+.pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 16px 0 20px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--text);
+  color: #fff;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: background-color 0.15s;
 }
 
-.tasks-btn:hover {
-  border-color: var(--text);
+.pill-btn:hover {
+  background: #262b31;
 }
 
-.tasks-btn svg {
+.pill-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.pill-btn .badge-dot {
+  background: #fff;
+}
+
+/* The round outline button: Settings, the sync dot. */
+.round-btn {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--text) 75%, transparent);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.round-btn:hover {
+  background: rgba(11, 15, 20, 0.05);
+}
+
+.round-btn svg {
   width: 18px;
   height: 18px;
 }
 
+.pill-btn:focus-visible,
+.round-btn:focus-visible {
+  outline: 2px solid var(--blue-ink);
+  outline-offset: 2px;
+}
+
 .badge.badge-dot {
   min-width: 0;
-  width: 9px;
-  height: 9px;
+  width: 7px;
+  height: 7px;
   padding: 0;
 }
 
@@ -197,13 +264,6 @@ h2 {
 
 /* Sync dot: hidden while all is synced; a spinner while a slow round runs,
    amber while changes wait for a connection, red when sync needs the user. */
-.sync-dot {
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  justify-content: center;
-}
-
 .sync-dot[hidden] {
   display: none;
 }
@@ -269,7 +329,14 @@ h2 {
   cursor: pointer;
 }
 
-.chip[aria-pressed="true"] {
+.home .chip {
+  border-color: color-mix(in srgb, var(--text) 22%, transparent);
+  background: rgba(255, 255, 255, 0.45);
+  font-weight: 500;
+}
+
+.chip[aria-pressed="true"],
+.home .chip[aria-pressed="true"] {
   border-color: var(--text);
   background: var(--text);
   color: #fff;
@@ -420,8 +487,9 @@ h2 {
   color: #fff;
   font: inherit;
   font-size: 1.9rem;
+  font-weight: 300;
   line-height: 1;
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 8px 24px rgba(11, 15, 20, 0.18);
   cursor: pointer;
 }
 
@@ -1193,42 +1261,143 @@ textarea.input {
 /* ---------- Now card (SPEC-v5-now.md) ---------- */
 
 .now-card {
-  position: relative;
+  /* Docked bottom left, leaving room for the + button. */
+  position: absolute;
+  left: 20px;
+  bottom: calc(20px + env(safe-area-inset-bottom));
   z-index: 2;
-  flex: none;
-  margin: 0 20px 4px;
-  padding: 14px 16px;
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--c, var(--border-strong));
-  border-radius: var(--radius);
-  background: var(--surface);
+  width: min(380px, calc(100% - 20px - 20px - 56px - 12px));
+  max-height: calc(100% - 140px);
+  overflow-y: auto;
+  padding: 12px 12px 12px 16px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 24px;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  backdrop-filter: blur(18px) saturate(1.3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 14px 40px rgba(11, 15, 20, 0.1);
 }
 
 .now-card[hidden] {
   display: none;
 }
 
+.now-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.now-summary {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+
+button.now-summary {
+  cursor: pointer;
+}
+
+.now-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+  color: var(--muted);
+}
+
+/* The locus behind the card, matching its pulsing bubble. */
+.now-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--c, var(--border-strong));
+}
+
+.now-title,
+.now-why {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .now-title {
-  margin: 0;
-  font-size: 1.1rem;
-  font-weight: 650;
+  font-size: 1.02rem;
+  font-weight: 550;
+  letter-spacing: -0.01em;
 }
 
 .now-why {
-  margin: 2px 0 0;
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+}
+
+.now-card.open .now-title,
+.now-card.open .now-why {
+  white-space: normal;
+}
+
+.now-go {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--text);
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.now-go:hover {
+  transform: translateX(2px);
+}
+
+.now-go svg {
+  width: 20px;
+  height: 20px;
+}
+
+.now-panel {
+  display: flex;
+  flex-direction: column;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(11, 15, 20, 0.08);
 }
 
 .now-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 12px;
+  margin-bottom: 10px;
 }
 
-.now-more {
-  margin-top: 10px;
+.now-card .btn {
+  border-color: rgba(11, 15, 20, 0.15);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+}
+
+.now-card .now-more {
+  color: var(--text);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .now-alternatives {
@@ -1246,7 +1415,7 @@ textarea.input {
   width: 100%;
   padding: 8px 0;
   border: 0;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid rgba(11, 15, 20, 0.08);
   background: none;
   color: var(--text);
   font: inherit;
@@ -1255,7 +1424,7 @@ textarea.input {
 }
 
 .now-alt-title {
-  font-weight: 600;
+  font-weight: 550;
 }
 
 .now-alt-why {

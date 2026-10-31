@@ -19,7 +19,7 @@ show it within a second or two (or as soon as they're back online). It only work
 Cloudflare address (`loci.<your account>.workers.dev`), which runs the sync server
 (`worker/`); the GitHub Pages copy has none.
 
-1. On one device: **⋯** (Settings) → Sync → **Set up sync**. Everything on it is uploaded, and you
+1. On one device: the round **Settings** button (sliders) → Sync → **Set up sync**. Everything on it is uploaded, and you
    get a sync key like `K7QF-2M9X-…`.
 2. On each other device: Settings → Sync → **Join with a key**, and enter the key. If that device
    already has loci, choose **Merge** (keep them and add them in) or **Replace this device**.
@@ -44,8 +44,8 @@ account. Backups are the safety net either way.
 
 ## Backup, and moving between devices
 
-Without sync, your data lives only on the device you use. On the home screen, tap **⋯**
-(Settings), then Backup:
+Without sync, your data lives only on the device you use. On the home screen, tap the round
+**Settings** button (sliders), then Backup:
 
 - **Export backup** saves one file, `loci-backup-<date>.zip`, with everything in it, attached
   files included.
@@ -204,7 +204,7 @@ them.
 - `src/store/db.ts`: the IndexedDB database (Dexie) and the functions that read and write it
 - `src/store/backup.ts`: backup files (.zip with data.json and attached files): export, checking a
   file, and import (merge or replace)
-- `src/settings/`: the Settings screen (⋯ on home): number format, storage, backup
+- `src/settings/`: the Settings screen (the round sliders button on home): number format, storage, backup
 - `src/store/attachments.ts`: links and files attached to notes, to-dos and goals (files stored as
   Blobs, photos scaled down); `src/attachmentStrip.ts`: the strip that shows and adds them
 - `src/locale.ts`: number format (Auto, 1,234.5 or 1.234,5), formatting and reading numbers,

@@ -34,3 +34,8 @@ export const settingsIcon = () =>
   icon(
     `<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1" ${STROKE}/><circle cx="15" cy="6" r="2" ${STROKE}/><circle cx="9" cy="12" r="2" ${STROKE}/><circle cx="17" cy="18" r="2" ${STROKE}/>`,
   )
+
+// Arrows: → starts something, ↗ goes to another screen.
+export const arrowIcon = () => icon(`<path d="M5 12h14M13 6l6 6-6 6" ${STROKE}/>`)
+
+export const arrowUpRightIcon = () => icon(`<path d="M7 17L17 7M9 7h8v8" ${STROKE}/>`)
