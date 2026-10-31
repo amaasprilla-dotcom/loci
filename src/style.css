@@ -118,7 +118,10 @@ h2 {
 /* The inner screens' canvas: the same grey, with a faint glow of the locus color
    in the top corner (--c), like light falling on it. */
 .locus-view,
-.deck-screen {
+.deck-screen,
+.tasks-screen,
+.settings-screen,
+.review-screen {
   background:
     radial-gradient(640px 360px at 0% 0%, color-mix(in srgb, var(--c, transparent) 16%, transparent), transparent 70%),
     linear-gradient(var(--canvas-top), var(--canvas) 80vh) var(--canvas);
@@ -544,6 +547,8 @@ h2 {
   display: flex;
   align-items: flex-start;
   gap: 14px;
+  max-width: 920px; /* the body's column, so the two line up on wide screens */
+  margin: 0 auto;
   padding: calc(18px + env(safe-area-inset-top)) 20px 18px;
   color: var(--text);
 }
@@ -1099,8 +1104,8 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 10px 20px calc(20px + env(safe-area-inset-bottom));
-  border-radius: 20px 20px 0 0;
+  padding: 10px 22px calc(22px + env(safe-area-inset-bottom));
+  border-radius: 28px 28px 0 0;
   background: var(--surface);
   max-height: 92dvh;
   overflow-y: auto;
@@ -1142,9 +1147,9 @@ h2 {
 
 .input {
   width: 100%;
-  padding: 11px 12px;
+  padding: 11px 14px;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 14px;
   background: var(--surface-muted);
   color: var(--text);
   font: inherit;
@@ -1502,12 +1507,16 @@ button.now-summary {
 .focus-task {
   margin: 0;
   font-size: 1.4rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
 }
 
+/* Big light numerals, like a reading on an instrument. */
 .focus-clock {
   margin: 16px 0 0;
-  font-size: 3.4rem;
-  font-weight: 650;
+  font-size: clamp(4rem, 18vw, 6rem);
+  font-weight: 250;
+  letter-spacing: -0.05em;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1546,34 +1555,47 @@ button.now-summary {
   inset: 0;
   display: flex;
   flex-direction: column;
-  background: var(--bg);
 }
 
 .review-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: calc(10px + env(safe-area-inset-top)) 16px 10px 8px;
+  gap: 12px;
+  padding: calc(14px + env(safe-area-inset-top)) 20px 12px;
+}
+
+.review-bar .icon-btn {
+  border: 1px solid color-mix(in srgb, var(--text) 75%, transparent);
+}
+
+.review-bar .icon-btn svg {
+  width: 20px;
+  height: 20px;
 }
 
 .review-title {
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  font-weight: 650;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .review-count {
   color: var(--muted);
-  font-size: 0.9rem;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
   white-space: nowrap;
 }
 
 .review-progress {
-  height: 4px;
-  background: var(--surface-muted);
+  height: 3px;
+  margin: 0 20px;
+  border-radius: 2px;
+  background: rgba(11, 15, 20, 0.08);
+  overflow: hidden;
 }
 
 .review-progress-fill {
@@ -1595,11 +1617,11 @@ button.now-summary {
   width: 100%;
   max-width: 640px;
   margin: auto 0; /* vertically centered when short, scrolls when long */
-  padding: 32px 24px;
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  background: var(--surface);
-  box-shadow: inset 0 4px 0 var(--c), var(--shadow-md);
+  padding: 36px 26px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: var(--glass-shadow);
   text-align: center;
 }
 
@@ -1612,7 +1634,8 @@ button.now-summary {
 }
 
 .review-front {
-  font-weight: 650;
+  font-weight: 500;
+  letter-spacing: -0.02em;
 }
 
 .review-divider {
@@ -1645,6 +1668,7 @@ button.now-summary {
   align-items: center;
   gap: 2px;
   padding: 10px 4px;
+  border-radius: 18px;
 }
 
 .grade-wait {
@@ -1714,15 +1738,6 @@ button.now-summary {
   position: absolute;
   inset: 0;
   overflow-y: auto;
-  background: var(--bg);
-}
-
-.tasks-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: calc(14px + env(safe-area-inset-top)) 20px 16px 12px;
-  border-bottom: 1px solid var(--border);
 }
 
 .tasks-summary {
@@ -1922,27 +1937,27 @@ details.task-section > summary {
   position: absolute;
   inset: 0;
   overflow-y: auto;
-  background: var(--bg);
 }
 
-.settings-body {
-  max-width: 640px;
-}
 
+/* Each part of Settings is a glass card. */
 .settings-section {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 20px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.settings-section:last-child {
-  border-bottom: 0;
+  max-width: 640px;
+  margin-bottom: 12px;
+  padding: 20px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 22px;
+  background: var(--glass);
+  box-shadow: var(--glass-shadow);
 }
 
 .settings-section h2 {
-  font-size: 1.1rem;
+  font-size: 1.15rem;
+  font-weight: 500;
+  letter-spacing: -0.015em;
 }
 
 .settings-text,

@@ -100,9 +100,9 @@ export function createTasksScreen(onChanged: () => void): TasksScreen {
     { class: 'tasks-screen' },
     h(
       'header',
-      { class: 'tasks-header' },
+      { class: 'locus-header' },
       h('button', { class: 'icon-btn', 'aria-label': 'Back', onclick: () => back() }, backIcon()),
-      h('div', { class: 'locus-title' }, h('h1', {}, 'Tasks')),
+      h('div', { class: 'locus-title' }, h('span', { class: 'header-kicker' }, 'Every locus'), h('h1', {}, 'Tasks')),
     ),
     h('main', { class: 'locus-body' }, filterNote, body),
   )

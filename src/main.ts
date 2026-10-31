@@ -24,8 +24,7 @@ import { isStaleCodeError, reloadForStaleCode, watchForStaleCode } from './stale
 import { coverFor, fadeIn, fadeOut, growFrom, motionAllowed, shrinkInto } from './transition'
 import { playIntro } from './intro'
 
-const DEFAULT_THEME_COLOR = '#ffffff'
-const CANVAS_THEME_COLOR = '#f1f1f0' // the top of the grey canvas (--canvas-top): home, loci and what's in them
+const CANVAS_THEME_COLOR = '#f1f1f0' // the top of the grey canvas (--canvas-top) every screen sits on
 const REFRESH_MS = 60_000 // cards fall due as time passes
 
 const root = document.getElementById('app')!
@@ -105,7 +104,7 @@ async function show(route: Route, quiet = false): Promise<void> {
       location.reload()
     })
     setHomeVisible(false)
-    setThemeColor(DEFAULT_THEME_COLOR)
+    setThemeColor(CANVAS_THEME_COLOR)
     screenLayer.replaceChildren(view)
     if (motionAllowed()) await fadeIn(view)
     return
@@ -115,7 +114,7 @@ async function show(route: Route, quiet = false): Promise<void> {
     shown = route
     await refreshTasks()
     setHomeVisible(false)
-    setThemeColor(DEFAULT_THEME_COLOR)
+    setThemeColor(CANVAS_THEME_COLOR)
     screenLayer.replaceChildren(tasksScreen.el)
     if (motionAllowed()) await fadeIn(tasksScreen.el)
     return
@@ -132,7 +131,7 @@ async function show(route: Route, quiet = false): Promise<void> {
     shown = route
     const view = await type.renderSession(el)
     setHomeVisible(false)
-    setThemeColor(locus.color)
+    setThemeColor(CANVAS_THEME_COLOR)
     screenLayer.replaceChildren(view)
     if (motionAllowed()) await fadeIn(view)
     return
@@ -156,7 +155,7 @@ async function show(route: Route, quiet = false): Promise<void> {
       extraNew: route.anyway,
     })
     setHomeVisible(false)
-    setThemeColor(locus.color)
+    setThemeColor(CANVAS_THEME_COLOR)
     screenLayer.replaceChildren(view)
     if (motionAllowed()) await fadeIn(view)
     return
@@ -173,7 +172,7 @@ async function show(route: Route, quiet = false): Promise<void> {
     const { renderFocusScreen } = await import('./now/focus')
     const view = renderFocusScreen(todo, locus, tasks.find((t) => t.itemId === todo.id))
     setHomeVisible(false)
-    setThemeColor(locus.color)
+    setThemeColor(CANVAS_THEME_COLOR)
     screenLayer.replaceChildren(view)
     if (motionAllowed()) await fadeIn(view)
     return

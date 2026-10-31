@@ -17,8 +17,8 @@ export async function renderSettingsScreen(onImported: () => void): Promise<HTML
   return h(
     'div',
     { class: 'settings-screen' },
-    h('header', { class: 'tasks-header' }, h('button', { class: 'icon-btn', 'aria-label': 'Back', onclick: () => back() }, backIcon()), h('div', { class: 'locus-title' }, h('h1', {}, 'Settings'))),
-    h('main', { class: 'locus-body settings-body' }, numbersSection(), await studySection(), syncSection(onImported), await storageSection(), await statsSection(), backupSection(onImported)),
+    h('header', { class: 'locus-header' }, h('button', { class: 'icon-btn', 'aria-label': 'Back', onclick: () => back() }, backIcon()), h('div', { class: 'locus-title' }, h('span', { class: 'header-kicker' }, 'Loci'), h('h1', {}, 'Settings'))),
+    h('main', { class: 'locus-body' }, numbersSection(), await studySection(), syncSection(onImported), await storageSection(), await statsSection(), backupSection(onImported)),
   )
 }
 
