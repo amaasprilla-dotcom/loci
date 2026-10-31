@@ -84,10 +84,10 @@ export async function renderLocusView(locus: Locus, options: { onBack(): void })
     items.replaceChildren(
       ...[
         block('Now', s.now),
-        block('Goals and exams', s.goals),
         block('Planned', s.planned, 'muted'),
         s.someday.length > 0 &&
           h('details', { class: 'task-section muted' }, h('summary', { class: 'task-section-title' }, `Someday (${s.someday.length})`), h('div', { class: 'task-list' }, s.someday.map(row))),
+        block('Goals and exams', s.goals), // last, under every task, as on the Tasks screen
       ].filter((x): x is HTMLElement => x !== false),
     )
   }

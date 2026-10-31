@@ -1,6 +1,6 @@
 // The Tasks screen (SPEC-v2.md, "Tasks screen v2"): everything across every locus,
-// in four sections. Due: active tasks by priority, late ones say so in plain text. Goals and exams:
-// never red. Planned: greyed but still tickable. Someday: greyed, collapsed.
+// in four sections. Due: active tasks by priority, late ones say so in plain text. Planned:
+// greyed but still tickable. Someday: greyed, collapsed. Goals and exams: last, never red.
 // Follows the home tag filter.
 
 import { h } from '../dom'
@@ -75,9 +75,9 @@ export function createTasksScreen(onChanged: () => void): TasksScreen {
     })
 
     const nowList = s.now.length > 0 ? taskList(s.now.map(row)) : await emptyNow(now, inFilter, tag?.name)
+    // Goals and exams go last, under every task, so they're always in the same place.
     const parts: (HTMLElement | false)[] = [
       section('now', nowList),
-      s.goals.length > 0 && section('goals', taskList(s.goals.map(row))),
       s.planned.length > 0 && section('planned', taskList(s.planned.map(row)), 'muted'),
       s.someday.length > 0 &&
         h(
@@ -90,6 +90,7 @@ export function createTasksScreen(onChanged: () => void): TasksScreen {
           h('summary', { class: 'task-section-title' }, `${SECTION_TITLES.someday} (${s.someday.length})`),
           taskList(s.someday.map(row)),
         ),
+      s.goals.length > 0 && section('goals', taskList(s.goals.map(row))),
     ]
     body.replaceChildren(...parts.filter((p): p is HTMLElement => p !== false))
   }

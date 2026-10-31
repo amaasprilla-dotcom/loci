@@ -25,6 +25,11 @@ export function spiralPoint(index: number, width: number, height: number): { x: 
 const STEP_MS = 1000 / 60 // physics runs at 60 steps a second whatever the screen's refresh rate
 const DRAG_THRESHOLD = 8 // px a press must move before it counts as a drag
 const LONG_PRESS_MS = 500 // a press held this long without moving opens the editor
+// Letting go of a moving bubble throws it: its speed over the last moments of the drag
+// carries on. A finger that stopped before lifting (no move in THROW_WINDOW_MS) just drops it.
+const THROW_WINDOW_MS = 80
+const MIN_THROW = 1.2 // px per physics step; slower than this is a drop
+const MAX_THROW = 45
 
 export interface FieldOptions {
   onTap(locus: Locus): void
@@ -59,6 +64,7 @@ interface Drag {
   moved: boolean
   longPressTimer: number
   longPressed: boolean // the long-press fired, so letting go is neither a tap nor a drop
+  trail: { t: number; x: number; y: number }[] // recent bubble positions, to measure a throw
 }
 
 export function createField(options: FieldOptions): Field {
@@ -72,6 +78,7 @@ export function createField(options: FieldOptions): Field {
   let rendered = false
 
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)')
+  const gliding = new Set<Body>() // thrown and still coasting: saved once they stop
 
   function setHome(b: Body, locus: Locus) {
     b.hx = clamp(locus.x * width, b.r, width - b.r)
@@ -116,6 +123,7 @@ export function createField(options: FieldOptions): Field {
         offsetY: b.y - p.y,
         moved: false,
         longPressed: false,
+        trail: [],
         longPressTimer: window.setTimeout(() => {
           if (!drag || drag.moved) return
           drag.longPressed = true
@@ -124,6 +132,8 @@ export function createField(options: FieldOptions): Field {
         }, LONG_PRESS_MS),
       }
       b.held = true
+      b.gliding = false // caught mid-glide: the drop will save it
+      gliding.delete(b)
       b.vx = 0
       b.vy = 0
     })
@@ -142,12 +152,15 @@ export function createField(options: FieldOptions): Field {
       b.x = p.x + drag.offsetX
       b.y = p.y + drag.offsetY
       clampInside(b, width, height)
+      const t = e.timeStamp
+      drag.trail.push({ t, x: b.x, y: b.y })
+      while (drag.trail.length > 2 && t - drag.trail[0].t > THROW_WINDOW_MS) drag.trail.shift()
     })
 
     // pointerup ends a tap or a drop; pointercancel (the browser took the gesture) only drops.
     const release = (e: PointerEvent, isTap: boolean) => {
       if (!drag || e.pointerId !== drag.pointerId) return
-      const { moved, longPressed } = drag
+      const { moved, longPressed, trail } = drag
       clearTimeout(drag.longPressTimer)
       drag = null
       node.classList.remove('dragging')
@@ -155,7 +168,13 @@ export function createField(options: FieldOptions): Field {
       if (!b) return
       b.held = false
       const current = loci.get(locus.id)!
-      if (moved) {
+      const throwV = isTap && moved ? throwVelocity(trail, e.timeStamp) : null
+      if (throwV) {
+        b.vx = throwV.vx
+        b.vy = throwV.vy
+        b.gliding = true
+        gliding.add(b)
+      } else if (moved) {
         b.hx = b.x
         b.hy = b.y
         const x = b.x / width
@@ -180,6 +199,20 @@ export function createField(options: FieldOptions): Field {
     return node
   }
 
+  // A thrown bubble came to rest: that's its new home.
+  function settleGliders() {
+    for (const b of gliding) {
+      if (b.gliding) continue
+      gliding.delete(b)
+      const current = loci.get(b.id)
+      if (!current) continue
+      const x = b.x / width
+      const y = b.y / height
+      loci.set(current.id, { ...current, x, y })
+      options.onMove(current, x, y)
+    }
+  }
+
   function updateBubble(node: HTMLElement, locus: Locus) {
     node.title = locus.name
     node.style.setProperty('--c', locus.color)
@@ -194,6 +227,7 @@ export function createField(options: FieldOptions): Field {
     const ids = new Set(next.map((l) => l.id))
     for (const id of [...bodies.keys()]) {
       if (ids.has(id)) continue
+      gliding.delete(bodies.get(id)!)
       nodes.get(id)!.remove()
       nodes.delete(id)
       bodies.delete(id)
@@ -211,14 +245,14 @@ export function createField(options: FieldOptions): Field {
         }
         nodes.set(locus.id, node)
         el.append(node)
-        b = { id: locus.id, x: 0, y: 0, vx: 0, vy: 0, hx: 0, hy: 0, r: locus.radius, phase: Math.random() * Math.PI * 2, held: false }
+        b = { id: locus.id, x: 0, y: 0, vx: 0, vy: 0, hx: 0, hy: 0, r: locus.radius, phase: Math.random() * Math.PI * 2, held: false, gliding: false }
         bodies.set(locus.id, b)
         setHome(b, locus)
         b.x = b.hx
         b.y = b.hy
       }
       b.r = locus.radius
-      if (!b.held) setHome(b, locus)
+      if (!b.held && !b.gliding) setHome(b, locus)
       updateBubble(node, locus)
     }
     list = [...bodies.values()]
@@ -249,6 +283,7 @@ export function createField(options: FieldOptions): Field {
       step(list, width, height, now - pending, drift)
       pending -= STEP_MS
     }
+    if (gliding.size > 0) settleGliders()
     draw(now)
   }
 
@@ -298,4 +333,22 @@ export function createField(options: FieldOptions): Field {
       document.removeEventListener('visibilitychange', onVisibility)
     },
   }
+}
+
+// The bubble's speed as the finger left it, in px per physics step, or null for a plain drop.
+function throwVelocity(trail: { t: number; x: number; y: number }[], releasedAt: number): { vx: number; vy: number } | null {
+  if (trail.length < 2) return null
+  const first = trail[0]
+  const last = trail[trail.length - 1]
+  const dt = last.t - first.t
+  if (dt <= 0 || releasedAt - last.t > THROW_WINDOW_MS) return null
+  let vx = ((last.x - first.x) / dt) * STEP_MS
+  let vy = ((last.y - first.y) / dt) * STEP_MS
+  const speed = Math.hypot(vx, vy)
+  if (speed < MIN_THROW) return null
+  if (speed > MAX_THROW) {
+    vx *= MAX_THROW / speed
+    vy *= MAX_THROW / speed
+  }
+  return { vx, vy }
 }

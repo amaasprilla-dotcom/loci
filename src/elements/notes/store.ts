@@ -60,7 +60,7 @@ interface PMNode {
   content?: PMNode[]
 }
 
-const BLOCKS = new Set(['paragraph', 'heading', 'blockquote', 'codeBlock', 'listItem', 'taskItem', 'blockMath'])
+const BLOCKS = new Set(['paragraph', 'heading', 'blockquote', 'codeBlock', 'listItem', 'taskItem', 'blockMath', 'tableCell', 'tableHeader'])
 
 // The note's text, one line per block, for search and the list's preview.
 // Math counts as its LaTeX source, so "\\frac" or "sigma" finds it.

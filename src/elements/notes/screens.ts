@@ -6,6 +6,13 @@ import { Editor } from '@tiptap/core'
 import { TaskItem, TaskList } from '@tiptap/extension-list'
 import { Mathematics } from '@tiptap/extension-mathematics'
 import { Placeholder } from '@tiptap/extensions'
+import { Highlight } from '@tiptap/extension-highlight'
+import { Subscript } from '@tiptap/extension-subscript'
+import { Superscript } from '@tiptap/extension-superscript'
+import { TableKit } from '@tiptap/extension-table'
+import { TextAlign } from '@tiptap/extension-text-align'
+import { BackgroundColor, Color, FontSize, TextStyle } from '@tiptap/extension-text-style'
+import { Markdown } from '@tiptap/markdown'
 import StarterKit from '@tiptap/starter-kit'
 import { attachmentStrip, type AttachmentStrip, largeFilesText } from '../../attachmentStrip'
 import { changedElsewhereBar } from '../../changedElsewhere'
@@ -25,6 +32,7 @@ import { toast } from '../../toast'
 import type { LocusElement, Note } from '../../types'
 import { editMath } from './mathSheet'
 import { NoteImage } from './noteImage'
+import { looksLikeMarkdown, tidyPastedHtml } from './paste'
 import { practising, setRecall } from './recall'
 import { createNote, deleteNote, firstLine, listNotes, noteTitle, removeUnusedInlineImages, saveNote, searchNotes, setPinned } from './store'
 
@@ -303,7 +311,7 @@ export async function renderNoteEditor(el: LocusElement, noteId: string): Promis
     content: note.content as object,
     extensions: [
       StarterKit.configure({
-        heading: { levels: [1, 2, 3] },
+        heading: { levels: [1, 2, 3, 4, 5, 6] },
         link: { openOnClick: true, autolink: true, linkOnPaste: false, HTMLAttributes: { rel: 'noopener noreferrer nofollow', target: '_blank' } },
       }),
       TaskList,
@@ -315,6 +323,18 @@ export async function renderNoteEditor(el: LocusElement, noteId: string): Promis
         blockOptions: { onClick: (node, pos) => void mathAt('block', node.attrs.latex, pos) },
       }),
       NoteImage,
+      // So pasted text keeps its look: colors, highlights, sizes, sub- and superscript,
+      // alignment and tables (see paste.ts for what's dropped on the way in).
+      TextStyle,
+      Color,
+      BackgroundColor,
+      FontSize,
+      Highlight.configure({ multicolor: true }),
+      Subscript,
+      Superscript,
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      TableKit.configure({ table: { resizable: false } }),
+      Markdown,
     ],
     editorProps: {
       attributes: { class: 'note-content', 'aria-label': 'Note' },
@@ -325,8 +345,16 @@ export async function renderNoteEditor(el: LocusElement, noteId: string): Promis
           return true
         }
         const text = event.clipboardData?.getData('text/plain')?.trim()
-        return text ? pasteLink(text) : false
+        if (!text) return false
+        if (pasteLink(text)) return true
+        // Formatting copied as Markdown text (e.g. a chat's Copy button) becomes formatting.
+        // Copied rich text (HTML) is left to the editor.
+        if (!event.clipboardData?.types.includes('text/html') && looksLikeMarkdown(text) && editor.markdown) {
+          return editor.chain().focus().insertContent(editor.markdown.parse(text).content ?? []).run()
+        }
+        return false
       },
+      transformPastedHTML: tidyPastedHtml,
       handleDrop: (view, event, _slice, moved) => {
         const files = [...(event.dataTransfer?.files ?? [])]
         if (moved || files.length === 0) return false

@@ -58,6 +58,45 @@ h2 {
   letter-spacing: -0.015em;
 }
 
+/* ---------- Intro (src/intro.ts) ---------- */
+
+.intro {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+}
+
+.intro-word {
+  display: flex;
+  font-family: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Consolas, monospace;
+  font-size: clamp(2.6rem, 11vw, 4.75rem);
+  font-weight: 400;
+  line-height: 1;
+  user-select: none;
+}
+
+/* One fixed-width cell per character, so changing glyphs never shift the word. */
+.intro-char {
+  width: 0.72em;
+  text-align: center;
+  color: var(--border-strong);
+}
+
+.intro-char.settled {
+  color: var(--text);
+  animation: intro-settle 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes intro-settle {
+  from {
+    opacity: 0.3;
+    transform: translateY(0.12em);
+  }
+}
+
 /* ---------- Home ---------- */
 
 .home {
@@ -1939,7 +1978,10 @@ details.task-section > summary {
 
 .note-content h1,
 .note-content h2,
-.note-content h3 {
+.note-content h3,
+.note-content h4,
+.note-content h5,
+.note-content h6 {
   margin: 1em 0 0.3em;
 }
 
@@ -1953,6 +1995,56 @@ details.task-section > summary {
 
 .note-content h3 {
   font-size: 1.05rem;
+}
+
+.note-content h4,
+.note-content h5,
+.note-content h6 {
+  font-size: 1rem;
+}
+
+.note-content h5,
+.note-content h6 {
+  color: var(--muted);
+}
+
+.note-content mark {
+  padding: 0 2px;
+  border-radius: 3px;
+  background: #fff3a3;
+  color: inherit;
+}
+
+/* Pasted tables */
+.note-content .tableWrapper {
+  overflow-x: auto;
+}
+
+.note-content table {
+  border-collapse: collapse;
+  min-width: 100%;
+}
+
+.note-content th,
+.note-content td {
+  padding: 6px 10px;
+  border: 1px solid var(--border-strong);
+  text-align: left;
+  vertical-align: top;
+}
+
+.note-content th {
+  background: var(--surface-muted);
+  font-weight: 600;
+}
+
+.note-content th > p,
+.note-content td > p {
+  margin: 0;
+}
+
+.note-content .selectedCell {
+  background: var(--blue-soft);
 }
 
 .note-content ul,

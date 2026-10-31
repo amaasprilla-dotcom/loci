@@ -22,6 +22,7 @@ import { allTasks } from './tasks/tasks'
 import { createTasksScreen } from './tasks/view'
 import { isStaleCodeError, reloadForStaleCode, watchForStaleCode } from './staleCode'
 import { coverFor, fadeIn, fadeOut, growFrom, motionAllowed, shrinkInto } from './transition'
+import { playIntro } from './intro'
 
 const DEFAULT_THEME_COLOR = '#ffffff'
 const REFRESH_MS = 60_000 // cards fall due as time passes
@@ -222,7 +223,7 @@ async function show(route: Route, quiet = false): Promise<void> {
 // Tasks are refreshed after every change of screen, which covers returning home
 // and finishing a review.
 let queue = Promise.resolve()
-function showCurrent() {
+function showCurrent(): Promise<void> {
   queue = queue
     .then(() => show(currentRoute()))
     .then(refreshTasks)
@@ -230,6 +231,7 @@ function showCurrent() {
       if (isStaleCodeError(err) && reloadForStaleCode()) return
       console.error(err)
     })
+  return queue
 }
 
 // While the app is open, refresh every minute; when it comes back to the front, at once.
@@ -309,8 +311,10 @@ void pruneEvents()
 requestPersistentStorage().catch(() => {})
 // The number format must be known before anything with numbers is drawn.
 // Sync must know whether it's on before anything is written, so every change is recorded.
-Promise.all([loadLocaleSettings(), loadSync()])
+const firstScreen = Promise.all([loadLocaleSettings(), loadSync()])
   .catch((err) => console.error(err))
   .then(() => home.refresh())
   .then(showCurrent)
-  .then(startAutoSync)
+// The opening word covers the app while its first screen is drawn.
+void playIntro(firstScreen)
+void firstScreen.then(startAutoSync)

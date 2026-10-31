@@ -192,7 +192,7 @@ them.
   "Goals and exams" (`tasks.ts`); adding and editing one (`sheet.ts`, from a locus's + button)
 - `src/changes.ts`: tells whatever is on screen to redraw after an edit made in a sheet
 - `src/tasks/`: every task across all loci, their ranking (score = 3 × importance − difficulty)
-  and sections (`tasks.ts`), and the Tasks screen: Now, Goals and exams, Planned, Someday
+  and sections (`tasks.ts`), and the Tasks screen: Now, Planned, Someday, then Goals and exams last
   (`view.ts`). Active tasks make bubbles pulse and set the badge on home
 - `src/levels.ts`: importance and difficulty (four steps each) and their picker
 - `src/store/links.ts`: links between any two items; `src/linkedItems.ts`: the Linked items section
