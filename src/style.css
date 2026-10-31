@@ -2008,17 +2008,17 @@ button.now-summary {
   }
 }
 
-.nt-move-option .dot {
+.move-option .dot {
   background: var(--c);
 }
 
-.nt-move-option > svg {
+.move-option > svg {
   flex: none;
   width: 12px;
   height: 12px;
 }
 
-.nt-move-option:disabled {
+.move-option:disabled {
   opacity: 0.5;
   cursor: default;
 }
@@ -2776,6 +2776,15 @@ details.task-section > summary {
   border-radius: 22px;
   background: var(--glass);
   box-shadow: var(--glass-shadow);
+}
+
+/* On the Tasks screen: "I will … Add" first, and alone until the form is used. */
+.tasks-add .todo-add-action {
+  order: -1;
+}
+
+.tasks-add:not(.open) > :not(.todo-add-action) {
+  display: none;
 }
 
 .todo-sentence {

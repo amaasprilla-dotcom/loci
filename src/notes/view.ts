@@ -279,7 +279,7 @@ export function createNotesScreen(): NotesScreen {
     const option = (target: Target, label: string, color: string | null, current: boolean) =>
       h(
         'button',
-        { type: 'button', class: 'type-option nt-move-option', disabled: current, style: color ? { '--c': color } : {}, onclick: () => api?.close(target) },
+        { type: 'button', class: 'type-option move-option', disabled: current, style: color ? { '--c': color } : {}, onclick: () => api?.close(target) },
         color ? h('span', { class: 'dot' }) : noteIcon(),
         h('span', {}, h('strong', {}, label), current && h('span', { class: 'type-desc' }, 'It’s here now')),
       )

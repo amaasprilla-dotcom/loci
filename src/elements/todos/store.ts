@@ -1,7 +1,7 @@
 // Reading and writing to-dos and their completions.
 
-import { CONTENT_TABLES, db, deleteAttachmentsOf, deleteLinksFor, removeTodoContributors } from '../../store/db'
-import type { ItemRef, Level, Todo, TodoCompletion, TodoPlan, When } from '../../types'
+import { CONTENT_TABLES, db, deleteAttachmentsOf, deleteLinksFor, elementFor, removeTodoContributors } from '../../store/db'
+import type { ItemRef, Level, LocusElement, Todo, TodoCompletion, TodoPlan, When } from '../../types'
 import { fireGoalTriggers, goalsCountingTodo } from '../goals/store'
 import { dueOf, resolveRepeat } from './when'
 
@@ -18,6 +18,19 @@ export interface TodoDraft {
 export type WaitsFor = { type: 'todo' | 'goal'; id: string } | null
 
 const ref = (id: string): ItemRef => ({ type: 'todo', id })
+
+// The elementId of a loose to-do: one in no locus, made and kept on the Tasks screen.
+export const LOOSE = ''
+
+// Where a to-do filed into a locus goes: its first to-do list, or a new one called To-dos.
+export function todoListFor(locusId: string): Promise<LocusElement> {
+  return elementFor(locusId, 'todos', 'To-dos')
+}
+
+// Moves a to-do to another list, or out of every locus (LOOSE).
+export async function moveTodo(id: string, elementId: string): Promise<void> {
+  await db.todos.update(id, { elementId, updatedAt: Date.now() })
+}
 
 export async function listTodos(elementId: string): Promise<Todo[]> {
   return db.todos.where('elementId').equals(elementId).toArray()

@@ -13,13 +13,13 @@ import { linkedItemsSection } from '../../linkedItems'
 import { count, firstDayOfWeek, formatNumber } from '../../locale'
 import { back, elementHash } from '../../router'
 import { button, deleteConfirmation, openSheet, type SheetApi, sheetActions, submitButton } from '../../sheet'
-import { deleteAttachmentsOf, db } from '../../store/db'
+import { deleteAttachmentsOf, db, listLoci } from '../../store/db'
+import { NO_LOCUS, taskRow } from '../../tasks/view'
 import { sections } from '../../tasks/tasks'
-import { taskRow } from '../../tasks/view'
 import type { Level, LocusElement, Todo, TodoPlan, When } from '../../types'
 import { openGoals } from '../goals/type'
 import { checkPlan, type PlanInput, type PlanProblem } from './plan'
-import { archiveTodo, completeTodo, countDependents, createTodo, deleteTodo, goalsCountingTodo, itHappened, listTodos, reopenTodo, skipTodo, type TodoDraft, updateTodo, type WaitsFor, waitsForOf } from './store'
+import { archiveTodo, completeTodo, countDependents, createTodo, deleteTodo, goalsCountingTodo, itHappened, listTodos, LOOSE, moveTodo, reopenTodo, skipTodo, todoListFor, type TodoDraft, updateTodo, type WaitsFor, waitsForOf } from './store'
 import { todoTask } from './type'
 import { rememberTime, timeField } from './timeField'
 import { dayStartOf, formatDay, makeRepeat, parseTyped, repeatText, whenText } from './when'
@@ -80,7 +80,7 @@ export async function renderTodoList(el: LocusElement, openId?: string): Promise
     )
   }
 
-  const addForm = createAddForm(el, render)
+  const addForm = createAddForm(el.id, render)
   const screen = h(
     'div',
     { class: 'deck-screen', style: { '--c': color, '--fg': textColorOn(color) } },
@@ -180,7 +180,8 @@ function backupFields(plan: TodoPlan | undefined, onInput: () => void) {
 
 // ---------- Adding: "When [when] [cue], I will [action]" ----------
 
-function createAddForm(el: LocusElement, onAdded: () => Promise<void>): HTMLElement {
+// elementId: the list it adds to; LOOSE ('') on the Tasks screen, for a to-do in no locus.
+export function createAddForm(elementId: string, onAdded: () => Promise<void>): HTMLElement {
   let pendingId = crypto.randomUUID() // attachments added before the to-do exists hang on this id
   let chosen: { when: When; waitsFor: WaitsFor } | null = null // picked in the When picker
   let parsedTitle: string | null = null // the action text without the typed when
@@ -295,7 +296,7 @@ function createAddForm(el: LocusElement, onAdded: () => Promise<void>): HTMLElem
     }
     const title = c.fromText && parsedTitle ? parsedTitle : text
     const draft: TodoDraft = { title: title || text, why: why.value, importance: importance.value(), difficulty: difficulty.value(), when: c.when, plan: plan() }
-    await createTodo(el.id, draft, c.waitsFor, pendingId)
+    await createTodo(elementId, draft, c.waitsFor, pendingId)
     // Reset for the next one.
     pendingId = crypto.randomUUID()
     const fresh = attachmentStrip({ type: 'todo', id: pendingId })
@@ -326,7 +327,7 @@ function createAddForm(el: LocusElement, onAdded: () => Promise<void>): HTMLElem
     'section',
     { class: 'todo-add' },
     h('div', { class: 'todo-sentence' }, h('span', { class: 'todo-word' }, 'When'), whenChip, cue),
-    h('div', { class: 'todo-sentence' }, h('span', { class: 'todo-word' }, 'I will'), action, addButton),
+    h('div', { class: 'todo-sentence todo-add-action' }, h('span', { class: 'todo-word' }, 'I will'), action, addButton),
     check.el,
     nudge,
     backupToggle,
@@ -589,7 +590,7 @@ async function afterView(api: SheetApi<{ when: When; waitsFor: WaitsFor }>, self
               h(
                 'button',
                 { type: 'button', class: 'linked-main', onclick: () => done({ kind: 'after' }, { type: 'todo', id: t.id }) },
-                h('span', { class: 'linked-text' }, h('span', { class: 'linked-title' }, t.title), h('span', { class: 'linked-context' }, listName.get(t.elementId) ?? '')),
+                h('span', { class: 'linked-text' }, h('span', { class: 'linked-title' }, t.title), h('span', { class: 'linked-context' }, t.elementId === LOOSE ? 'Tasks' : (listName.get(t.elementId) ?? ''))),
               ),
             ),
           )),
@@ -674,9 +675,46 @@ function conditionView(current: When | null, done: Done, backToMain: () => void)
 
 // ---------- Editing ----------
 
+// ---------- Which list a to-do is in ----------
+
+// A list's id, 'locus:<id>' for a locus with no to-do list yet (one is made on
+// saving), or LOOSE for no locus.
+type Place = string
+
+async function placeName(place: Place): Promise<string> {
+  if (place === LOOSE) return 'No locus'
+  if (place.startsWith('locus:')) return (await db.loci.get(place.slice(6)))?.name ?? ''
+  const list = await db.elements.get(place)
+  const locus = list && (await db.loci.get(list.locusId))
+  const several = list && (await db.elements.where('locusId').equals(list.locusId).filter((e) => e.type === 'todos').count()) > 1
+  return [locus?.name, several && list?.title].filter(Boolean).join(' › ')
+}
+
+// No locus, or a locus; a locus with several to-do lists lists each.
+async function pickPlace(current: Place): Promise<Place | null> {
+  const [loci, lists] = await Promise.all([listLoci(), db.elements.toArray()])
+  return openSheet<Place>('Move to', (api) => {
+    const option = (place: Place, label: string, desc: string, color: string | null) =>
+      h(
+        'button',
+        { type: 'button', class: 'type-option move-option', disabled: place === current, style: color ? { '--c': color } : {}, onclick: () => api.close(place) },
+        h('span', { class: 'dot', style: { '--c': color ?? NO_LOCUS.color } }),
+        h('span', {}, h('strong', {}, label), h('span', { class: 'type-desc' }, place === current ? 'It’s here now' : desc)),
+      )
+    const options = [option(LOOSE, 'No locus', 'Only on the Tasks screen.', null)]
+    for (const locus of loci) {
+      const own = lists.filter((e) => e.locusId === locus.id && e.type === 'todos').sort((a, b) => a.order - b.order)
+      if (own.length > 1) for (const l of own) options.push(option(l.id, `${locus.name} › ${l.title}`, '', locus.color))
+      else options.push(option(own[0]?.id ?? `locus:${locus.id}`, locus.name, own.length ? '' : 'A To-dos list is made for it.', locus.color))
+    }
+    return { content: [h('h2', {}, 'Move to'), h('div', { class: 'type-options' }, options), sheetActions(null, button('Cancel', () => api.close(null)))] }
+  })
+}
+
 export async function openTodoSheet(todo: Todo): Promise<void> {
   let when = todo.when
   let waitsFor = await waitsForOf(todo.id)
+  let place: Place = todo.elementId
   const goals = await goalsCountingTodo(todo.id)
 
   await openSheet<boolean>('To-do', (api) => {
@@ -761,7 +799,23 @@ export async function openTodoSheet(todo: Todo): Promise<void> {
     const save = async () => {
       // Keep what it waits for when the when wasn't changed to something else.
       await updateTodo(todo.id, draft(), when.kind === 'after' || when.kind === 'goal' ? waitsFor : null)
+      if (place === todo.elementId) return
+      const to = place.startsWith('locus:') ? (await todoListFor(place.slice(6))).id : place
+      await moveTodo(todo.id, to)
+      todo.elementId = place = to // saved again (e.g. Done after Save): not moved again
     }
+
+    const placeChip = h('button', {
+      type: 'button',
+      class: 'when-chip',
+      onclick: async () => {
+        const picked = await pickPlace(place)
+        if (picked == null) return
+        place = picked
+        placeChip.textContent = await placeName(place)
+      },
+    })
+    void placeName(place).then((name) => (placeChip.textContent = name))
 
     const isOpen = todo.status === 'open'
     const form = [
@@ -777,6 +831,7 @@ export async function openTodoSheet(todo: Todo): Promise<void> {
       h('div', { class: 'todo-sentence' }, h('span', { class: 'todo-word' }, 'I will'), title),
       check.el,
       firstStepRow,
+      h('div', { class: 'todo-sentence' }, h('span', { class: 'todo-word' }, 'In'), placeChip),
       h('div', { class: 'field-label' }, 'Backup plan', backup.el),
       h('label', { class: 'field-label' }, 'Why', why),
       h(

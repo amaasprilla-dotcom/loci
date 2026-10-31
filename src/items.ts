@@ -4,6 +4,7 @@
 
 import { registry } from './elements/registry'
 import { LOOSE, noteHash } from './elements/notes/store'
+import { openLooseTodo } from './elements/todos/type'
 import { elementHash, go, subHash } from './router'
 import { db } from './store/db'
 import type { Goal, ItemRef, Locus } from './types'
@@ -68,16 +69,16 @@ export async function describeItem(ref: ItemRef): Promise<ItemInfo | null> {
     }
     case 'todo': {
       const todo = await db.todos.get(ref.id)
-      const list = todo && (await db.elements.get(todo.elementId))
-      if (!todo || !list) return null
-      const locus = await db.loci.get(list.locusId)
+      const list = todo?.elementId ? await db.elements.get(todo.elementId) : undefined
+      if (!todo || (todo.elementId !== LOOSE && !list)) return null
+      const locus = list && (await db.loci.get(list.locusId))
       return {
         ref,
         title: todo.title,
         kind: todo.status === 'done' ? 'To-do (done)' : 'To-do',
-        context: [locus?.name, list.title].filter(Boolean).join(' › '),
+        context: list ? [locus?.name, list.title].filter(Boolean).join(' › ') : 'Tasks',
         color: locus?.color ?? NO_COLOR,
-        open: () => go(subHash(list, 'todo', todo.id)),
+        open: () => (list ? go(subHash(list, 'todo', todo.id)) : void openLooseTodo(todo.id)),
       }
     }
     case 'goal': {
@@ -182,15 +183,15 @@ export async function searchItems(query: string, exclude: ItemRef[]): Promise<It
     const todos = await db.todos.filter((t) => t.status !== 'archived' && t.title.toLowerCase().includes(q)).limit(MAX_RESULTS).toArray()
     for (const todo of todos) {
       const list = elementById.get(todo.elementId)
-      if (!list) continue
-      const locus = locusById.get(list.locusId)
+      if (!list && todo.elementId !== LOOSE) continue
+      const locus = list && locusById.get(list.locusId)
       results.push({
         ref: { type: 'todo', id: todo.id },
         title: todo.title,
         kind: todo.status === 'done' ? 'To-do (done)' : 'To-do',
-        context: [locus?.name, list.title].filter(Boolean).join(' › '),
+        context: list ? [locus?.name, list.title].filter(Boolean).join(' › ') : 'Tasks',
         color: locus?.color ?? NO_COLOR,
-        open: () => go(subHash(list, 'todo', todo.id)),
+        open: () => (list ? go(subHash(list, 'todo', todo.id)) : void openLooseTodo(todo.id)),
       })
     }
     const goals = await db.goals.filter((g) => g.status !== 'archived' && (g.title.toLowerCase().includes(q) || (g.why ?? '').toLowerCase().includes(q))).limit(MAX_RESULTS).toArray()

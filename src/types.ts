@@ -190,7 +190,7 @@ export interface TodoPlan {
 
 export interface Todo {
   id: string;
-  elementId: string;
+  elementId: string; // '' = a loose to-do, in no locus: it lives on the Tasks screen
   title: string; // the action
   why?: string;
   plan?: TodoPlan;

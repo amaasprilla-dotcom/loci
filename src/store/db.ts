@@ -379,6 +379,13 @@ export async function createElement<TData>(locusId: string, type: string, title:
   })
 }
 
+// The locus's first element of this type, or a new one with this title: where a
+// loose note or to-do goes when it's filed into the locus.
+export async function elementFor(locusId: string, type: string, title: string): Promise<LocusElement> {
+  const found = (await listElements(locusId)).find((e) => e.type === type)
+  return found ?? createElement(locusId, type, title, {})
+}
+
 export async function updateElement(id: string, patch: Partial<Pick<LocusElement, 'title' | 'data'>>): Promise<void> {
   await db.elements.update(id, { ...patch, ...(patch.title != null && { title: patch.title.trim() }), updatedAt: Date.now() })
 }

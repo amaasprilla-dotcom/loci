@@ -1,7 +1,7 @@
 // Reading and writing the notes in a notebook (a Notes element).
 
 import { looseNoteHash, subHash } from '../../router'
-import { createElement, db, deleteAttachmentsOf, deleteBlobIfUnused, deleteLinksFor, listElements } from '../../store/db'
+import { db, deleteAttachmentsOf, deleteBlobIfUnused, deleteLinksFor, elementFor } from '../../store/db'
 import type { LocusElement, Note } from '../../types'
 
 export const EMPTY_DOC = { type: 'doc', content: [{ type: 'paragraph' }] }
@@ -33,9 +33,8 @@ export async function moveNote(id: string, elementId: string): Promise<void> {
 }
 
 // Where a note filed into a locus goes: its first notebook, or a new one called Notes.
-export async function notebookFor(locusId: string): Promise<LocusElement> {
-  const book = (await listElements(locusId)).find((e) => e.type === 'notes')
-  return book ?? createElement(locusId, 'notes', 'Notes', {})
+export function notebookFor(locusId: string): Promise<LocusElement> {
+  return elementFor(locusId, 'notes', 'Notes')
 }
 
 // The note's editor: inside its notebook, or on the Notes screen for a loose note.

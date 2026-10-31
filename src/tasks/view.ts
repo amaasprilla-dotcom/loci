@@ -1,7 +1,8 @@
 // The Tasks screen (SPEC-v2.md, "Tasks screen v2"): everything across every locus,
 // in four sections. Due: active tasks by priority, late ones say so in plain text. Planned:
 // greyed but still tickable. Someday: greyed, collapsed. Goals and exams: last, never red.
-// Follows the home tag filter.
+// Follows the home tag filter. At the top, a to-do can be added straight here: a loose
+// one, in no locus (it shows under any filter, since it has no tags).
 
 import { h } from '../dom'
 import type { Task } from '../elements/registry'
@@ -21,13 +22,19 @@ export interface TasksScreen {
   el: HTMLElement
   // Called with fresh tasks on every refresh (start, navigation, every minute).
   update(tasks: Task[]): Promise<void>
+  // A fresh add form, each time the screen is opened.
+  resetAddForm(): Promise<void>
 }
+
+// Loose to-dos have no locus; they draw as one in a quiet grey, with no name.
+export const NO_LOCUS: Pick<Locus, 'name' | 'color'> = { name: '', color: '#9aa5b1' }
 
 const SECTION_TITLES: Record<Section, string> = { now: 'Due', goals: 'Goals and exams', planned: 'Planned', someday: 'Someday' }
 
 export function createTasksScreen(onChanged: () => void): TasksScreen {
   const filterNote = h('div', { class: 'tasks-filter' })
   const body = h('div', { class: 'tasks-body' })
+  let addForm: HTMLElement = h('div')
   let last: Task[] = []
   let somedayOpen = false
 
@@ -41,7 +48,7 @@ export function createTasksScreen(onChanged: () => void): TasksScreen {
     // The home tag filter applies here too.
     const tag = tags.find((t) => t.id === getTagFilter())
     const inFilter = tag ? new Set(loci.filter((l) => l.tagIds.includes(tag.id)).map((l) => l.id)) : undefined
-    const shown = tasks.filter((t) => locusById.has(t.locusId) && (!inFilter || inFilter.has(t.locusId)))
+    const shown = tasks.filter((t) => t.locusId === '' || (locusById.has(t.locusId) && (!inFilter || inFilter.has(t.locusId))))
     const s = sections(shown)
 
     filterNote.replaceChildren(
@@ -68,7 +75,7 @@ export function createTasksScreen(onChanged: () => void): TasksScreen {
     )
     filterNote.hidden = !tag
 
-    const row = (t: Task) => taskRow(t, locusById.get(t.locusId)!, titleById.get(t.elementId) ?? '', async () => {
+    const row = (t: Task) => taskRow(t, locusById.get(t.locusId) ?? NO_LOCUS, titleById.get(t.elementId) ?? '', async () => {
       await logEvent('done', t, { rank: 0 }) // not from the card
       await t.complete?.()
       onChanged()
@@ -104,10 +111,20 @@ export function createTasksScreen(onChanged: () => void): TasksScreen {
       h('button', { class: 'icon-btn', 'aria-label': 'Back', onclick: () => back() }, backIcon()),
       h('div', { class: 'locus-title' }, h('span', { class: 'header-kicker' }, 'Every locus'), h('h1', {}, 'Tasks')),
     ),
-    h('main', { class: 'locus-body' }, filterNote, body),
+    h('main', { class: 'locus-body' }, addForm, filterNote, body),
   )
 
-  return { el, update }
+  async function resetAddForm() {
+    const { createAddForm } = await import('../elements/todos/screens')
+    const fresh = createAddForm('', async () => onChanged())
+    // Quick capture: one line until it's used, then the rest of the form.
+    fresh.classList.add('tasks-add')
+    fresh.addEventListener('focusin', () => fresh.classList.add('open'))
+    addForm.replaceWith(fresh)
+    addForm = fresh
+  }
+
+  return { el, update, resetAddForm }
 }
 
 function section(which: Section, content: Node, extraClass = ''): HTMLElement {
@@ -134,7 +151,7 @@ async function emptyNow(now: number, inFilter: Set<string> | undefined, tagName?
 // `showLocus: false` inside a locus's own screens, where the locus goes without saying.
 export function taskRow(
   t: Task,
-  locus: Locus,
+  locus: Pick<Locus, 'name' | 'color'>,
   elementTitle: string,
   onComplete: () => Promise<void>,
   { showLocus = true, onSecondary }: { showLocus?: boolean; onSecondary?: () => void | Promise<void> } = {},

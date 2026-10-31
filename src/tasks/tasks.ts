@@ -9,6 +9,7 @@ import { mergeStudyTasks, splitStudyTasks } from '../study/tasks'
 import { examTasks } from '../exams/tasks'
 import { rankTasks } from '../now/candidates'
 import { compareRanked } from '../now/priority'
+import { looseNextDueAt, looseTodoTasks } from '../elements/todos/type'
 
 // Active tasks: highest priority first (src/now/priority.ts); ties go to the overdue one, then the earlier one.
 export const compareActive = compareRanked
@@ -50,12 +51,14 @@ export async function allTasks(now = Date.now()): Promise<Task[]> {
     elements.map((el) => registry.get(el.type)?.getTasks(el, now) ?? Promise.resolve([])),
   )
   // Decks and sets study as one task per locus, unless set otherwise.
+  lists.push(await looseTodoTasks(now))
   const tasks = (await splitStudyTasks()) ? lists.flat() : mergeStudyTasks(lists.flat())
   return rankTasks([...tasks, ...(await examTasks(now))], now)
 }
 
 // The element whose work falls due soonest after now, for the empty "Now" section.
-// `locusIds` limits it to some loci (the tag filter).
+// `locusIds` limits it to some loci (the tag filter). Loose to-dos count either way,
+// as "To-dos" (they show under any filter too).
 export async function nextUpcoming(now: number, locusIds?: Set<string>): Promise<{ elementId: string; title: string; at: number } | null> {
   const elements = (await db.elements.toArray()).filter((el) => !locusIds || locusIds.has(el.locusId))
   let best: { elementId: string; title: string; at: number } | null = null
@@ -63,5 +66,7 @@ export async function nextUpcoming(now: number, locusIds?: Set<string>): Promise
     const at = await registry.get(el.type)?.nextDueAt?.(el, now)
     if (at != null && (best == null || at < best.at)) best = { elementId: el.id, title: el.title, at }
   }
+  const loose = await looseNextDueAt(now)
+  if (loose != null && (best == null || loose < best.at)) best = { elementId: '', title: 'To-dos', at: loose }
   return best
 }

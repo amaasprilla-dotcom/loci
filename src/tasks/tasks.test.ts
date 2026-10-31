@@ -96,3 +96,27 @@ describe('nextUpcoming', () => {
     expect(await nextUpcoming(at(10, 12), new Set([locus.id]))).toMatchObject({ title: 'Verbs', at: due })
   })
 })
+
+describe('loose to-dos (in no locus)', () => {
+  beforeEach(async () => {
+    await Promise.all(db.tables.map((t) => t.clear()))
+  })
+
+  it('are tasks with no locus, due like any other, and filed into a locus on moving', async () => {
+    const { createTodo, LOOSE, moveTodo, todoListFor } = await import('../elements/todos/store')
+    const todo = await createTodo(LOOSE, { title: 'Call the bank', importance: 2, difficulty: 2, when: { kind: 'at', at: at(10, 9), hasTime: true } })
+    expect((await allTasks(at(10, 10))).map((t) => [t.label, t.locusId, t.state])).toEqual([['Call the bank', '', 'due']])
+
+    const locus = await createLocus({ name: 'Admin', color: '#000000', x: 0.5, y: 0.5 })
+    const list = await todoListFor(locus.id)
+    expect(list).toMatchObject({ type: 'todos', title: 'To-dos' })
+    await moveTodo(todo.id, list.id)
+    expect((await allTasks(at(10, 10))).map((t) => [t.label, t.locusId])).toEqual([['Call the bank', locus.id]])
+  })
+
+  it('count for "Next" whatever the tag filter', async () => {
+    const { createTodo, LOOSE } = await import('../elements/todos/store')
+    await createTodo(LOOSE, { title: 'Later', importance: 2, difficulty: 2, when: { kind: 'at', at: at(12, 9), hasTime: true } })
+    expect(await nextUpcoming(at(10, 10), new Set(['some-locus']))).toMatchObject({ title: 'To-dos', at: at(12, 9) })
+  })
+})

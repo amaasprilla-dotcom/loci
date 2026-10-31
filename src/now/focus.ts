@@ -19,7 +19,7 @@ const clockText = (ms: number) => {
 }
 
 // `task` is the ranked task the card showed, so the events carry its score.
-export function renderFocusScreen(todo: Todo, locus: Locus, task?: Task): HTMLElement {
+export function renderFocusScreen(todo: Todo, locus: Pick<Locus, 'name' | 'color'>, task?: Task): HTMLElement {
   const startedAt = Date.now()
   const total = FOCUS_MINUTES * 60_000
   const clock = h('p', { class: 'focus-clock', role: 'timer' }, clockText(total))

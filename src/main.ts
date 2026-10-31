@@ -19,7 +19,7 @@ import { loadSync, onRemoteChanges, startAutoSync } from './sync/engine'
 import { toast } from './toast'
 import { db, getElement, requestPersistentStorage } from './store/db'
 import { allTasks } from './tasks/tasks'
-import { createTasksScreen } from './tasks/view'
+import { createTasksScreen, NO_LOCUS } from './tasks/view'
 import { createNotesScreen } from './notes/view'
 import { isStaleCodeError, reloadForStaleCode, watchForStaleCode } from './staleCode'
 import { coverFor, fadeIn, fadeOut, growFrom, motionAllowed, shrinkInto } from './transition'
@@ -115,6 +115,7 @@ async function show(route: Route, quiet = false): Promise<void> {
 
   if (route.name === 'tasks') {
     shown = route
+    await tasksScreen.resetAddForm()
     await refreshTasks()
     setHomeVisible(false)
     setThemeColor(CANVAS_THEME_COLOR)
@@ -186,7 +187,8 @@ async function show(route: Route, quiet = false): Promise<void> {
 
   if (route.name === 'focus') {
     const todo = await db.todos.get(route.todoId)
-    const locus = todo && (await getElement(todo.elementId).then((el) => el && db.loci.get(el.locusId)))
+    // A loose to-do (in no locus) is timed under a plain grey.
+    const locus = todo && (todo.elementId === '' ? { ...NO_LOCUS, name: 'To-do' } : await getElement(todo.elementId).then((el) => el && db.loci.get(el.locusId)))
     if (!todo || todo.status !== 'open' || !locus) {
       location.replace('#/')
       return

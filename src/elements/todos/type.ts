@@ -1,6 +1,7 @@
 // The To-do list element type (SPEC-v2.md, "To-dos"): plans written as a when plus
 // an action, e.g. "Sunday 10:00 · Gather receipts".
 
+import { announceChange } from '../../changes'
 import { h } from '../../dom'
 import { formatNumber } from '../../locale'
 import { go, subHash } from '../../router'
@@ -8,7 +9,7 @@ import { db } from '../../store/db'
 import type { LocusElement, Todo } from '../../types'
 import { iconNode } from '../flashcards/type'
 import type { ElementType, Task } from '../registry'
-import { completeTodo, itHappened } from './store'
+import { completeTodo, itHappened, LOOSE } from './store'
 import { dueOf, todoState, whenText } from './when'
 
 const ICON =
@@ -26,10 +27,20 @@ async function waitingTitles(todos: Todo[]): Promise<Map<string, string>> {
   return titles
 }
 
-export function todoTask(el: LocusElement, t: Todo, now: number, waitsFor?: string): Task {
+// A loose to-do (in no locus) opens its sheet in place, over whatever screen it's on.
+export async function openLooseTodo(id: string) {
+  const todo = await db.todos.get(id)
+  if (!todo) return
+  const { openTodoSheet } = await import('./screens')
+  await openTodoSheet(todo)
+  announceChange()
+}
+
+// el: the to-do's list; null for a loose to-do (locusId and elementId are then '').
+export function todoTask(el: LocusElement | null, t: Todo, now: number, waitsFor?: string): Task {
   return {
-    locusId: el.locusId,
-    elementId: el.id,
+    locusId: el?.locusId ?? LOOSE,
+    elementId: el?.id ?? LOOSE,
     itemId: t.id,
     kind: 'todo',
     state: todoState(t, now),
@@ -39,10 +50,24 @@ export function todoTask(el: LocusElement, t: Todo, now: number, waitsFor?: stri
     importance: t.importance,
     difficulty: t.difficulty,
     dueAt: dueOf(t.when, now) ?? undefined,
-    open: () => go(subHash(el, 'todo', t.id)),
+    open: () => (el ? go(subHash(el, 'todo', t.id)) : void openLooseTodo(t.id)),
     complete: () => completeTodo(t.id),
     ...(t.when.kind === 'when' && !t.when.firedAt && { secondary: { label: 'It happened', run: () => itHappened(t.id) } }),
   }
+}
+
+// The open loose to-dos' tasks: they belong to no element, so allTasks asks for them apart.
+export async function looseTodoTasks(now: number): Promise<Task[]> {
+  const open = await db.todos.where('elementId').equals(LOOSE).filter((t) => t.status === 'open').toArray()
+  const titles = await waitingTitles(open)
+  return open.map((t) => todoTask(null, t, now, titles.get(t.id)))
+}
+
+// When the next loose to-do falls due, after now.
+export async function looseNextDueAt(now: number): Promise<number | null> {
+  const open = await db.todos.where('elementId').equals(LOOSE).filter((t) => t.status === 'open').toArray()
+  const upcoming = open.map((t) => dueOf(t.when, now)).filter((d): d is number => d != null && d > now)
+  return upcoming.length ? Math.min(...upcoming) : null
 }
 
 export const todosType: ElementType<Record<string, never>> = {
