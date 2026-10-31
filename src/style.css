@@ -35,6 +35,7 @@
   --canvas: #e8e8e7;
   --glass: rgba(255, 255, 255, 0.58);
   --glass-edge: rgba(255, 255, 255, 0.85);
+  --glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 8px 28px rgba(11, 15, 20, 0.06);
 
   font-family: var(--font);
   font-size: 16px;
@@ -112,6 +113,16 @@ h2 {
   display: flex;
   flex-direction: column;
   background: radial-gradient(130% 90% at 50% 0%, var(--canvas-top) 0%, var(--canvas) 75%);
+}
+
+/* The inner screens' canvas: the same grey, with a faint glow of the locus color
+   in the top corner (--c), like light falling on it. */
+.locus-view,
+.deck-screen {
+  background:
+    radial-gradient(640px 360px at 0% 0%, color-mix(in srgb, var(--c, transparent) 16%, transparent), transparent 70%),
+    linear-gradient(var(--canvas-top), var(--canvas) 80vh) var(--canvas);
+  background-repeat: no-repeat;
 }
 
 .topbar {
@@ -525,29 +536,40 @@ h2 {
   position: absolute;
   inset: 0;
   overflow-y: auto;
-  background: var(--bg);
 }
 
+/* The header of a locus and of everything in it: a round back button, a small
+   kicker (the locus, with its color as a dot) and a large light title. */
 .locus-header {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  padding: calc(14px + env(safe-area-inset-top)) 20px 22px 12px;
-  background: var(--c);
-  color: var(--fg);
+  gap: 14px;
+  padding: calc(18px + env(safe-area-inset-top)) 20px 18px;
+  color: var(--text);
+}
+
+.locus-header .icon-btn {
+  border: 1px solid color-mix(in srgb, var(--text) 75%, transparent);
+}
+
+.locus-header .icon-btn svg {
+  width: 20px;
+  height: 20px;
 }
 
 .locus-title {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
-  padding-top: 4px;
+  padding-top: 1px;
 }
 
 .locus-title h1 {
-  font-size: 1.6rem;
-  line-height: 1.2;
+  font-size: clamp(1.7rem, 6vw, 2.3rem);
+  font-weight: 450;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
   overflow-wrap: anywhere;
 }
 
@@ -555,14 +577,16 @@ h2 {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  margin-top: 4px;
 }
 
 .tag {
-  padding: 2px 10px;
+  padding: 3px 10px;
+  border: 1px solid color-mix(in srgb, var(--text) 18%, transparent);
   border-radius: 999px;
-  background: color-mix(in srgb, currentColor 16%, transparent);
-  font-size: 0.8rem;
-  font-weight: 600;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 500;
 }
 
 .icon-btn {
@@ -596,7 +620,8 @@ h2 {
 .locus-body {
   max-width: 920px;
   margin: 0 auto;
-  padding: 24px 20px calc(96px + env(safe-area-inset-bottom));
+  padding: 8px 20px calc(96px + env(safe-area-inset-bottom));
+  counter-reset: section; /* numbers the task sections: 01, 02... */
 }
 
 .locus-empty {
@@ -607,9 +632,24 @@ h2 {
 }
 
 .header-kicker {
-  font-size: 0.85rem;
-  font-weight: 600;
-  opacity: 0.8;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.header-kicker::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c, var(--text));
 }
 
 .header-end {
@@ -626,19 +666,29 @@ h2 {
 
 .tile {
   position: relative;
-  padding: 14px 16px 16px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: var(--surface);
-  box-shadow: inset 0 3px 0 var(--c), var(--shadow-sm);
+  padding: 16px 18px 18px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 22px;
+  background: var(--glass);
+  box-shadow: var(--glass-shadow);
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+  transition: background-color 0.15s, transform 0.15s;
+}
+
+.tile::after {
+  content: "\2197"; /* an arrow up and out: opens */
+  position: absolute;
+  top: 13px;
+  right: 16px;
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
 .tile:hover {
-  border-color: var(--border-strong);
+  background: rgba(255, 255, 255, 0.8);
 }
 
 .tile:focus-visible {
@@ -654,7 +704,7 @@ h2 {
 .tile.dragging {
   z-index: 2;
   border-color: var(--text);
-  box-shadow: inset 0 3px 0 var(--c), var(--shadow-md);
+  box-shadow: var(--shadow-md);
   cursor: grabbing;
 }
 
@@ -663,8 +713,16 @@ h2 {
   align-items: center;
   gap: 6px;
   color: var(--muted);
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tile-head .icon svg {
+  width: 16px;
+  height: 16px;
 }
 
 .icon {
@@ -678,8 +736,10 @@ h2 {
 }
 
 .tile-title {
-  margin: 8px 0 2px;
-  font-size: 1.05rem;
+  margin: 12px 0 2px;
+  font-size: 1.1rem;
+  font-weight: 500;
+  letter-spacing: -0.015em;
   line-height: 1.3;
   overflow-wrap: anywhere;
 }
@@ -705,7 +765,7 @@ h2 {
 .pill {
   padding: 2px 9px;
   border-radius: 999px;
-  background: var(--surface-muted);
+  background: rgba(11, 15, 20, 0.06);
   color: var(--muted);
   font-size: 0.8rem;
   font-weight: 600;
@@ -765,7 +825,6 @@ h2 {
   position: absolute;
   inset: 0;
   overflow-y: auto;
-  background: var(--bg);
 }
 
 .deck-toolbar {
@@ -796,8 +855,9 @@ h2 {
 }
 
 .card-list {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border: 1px solid var(--glass-edge);
+  border-radius: 20px;
+  box-shadow: var(--glass-shadow);
   overflow: hidden;
 }
 
@@ -1191,13 +1251,13 @@ textarea.input {
 }
 
 .btn {
-  padding: 10px 18px;
+  padding: 10px 20px;
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
+  border-radius: 999px;
   background: var(--surface);
   color: var(--text);
   font: inherit;
-  font-weight: 600;
+  font-weight: 550;
   cursor: pointer;
 }
 
@@ -1705,11 +1765,19 @@ button.now-summary {
 }
 
 .task-section-title {
-  margin: 0 0 10px;
-  font-size: 0.85rem;
-  font-weight: 650;
-  letter-spacing: 0.04em;
+  margin: 0 0 12px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.task-section-title::before {
+  counter-increment: section;
+  content: counter(section, decimal-leading-zero);
+  margin-right: 12px;
   color: var(--muted);
 }
 
@@ -1736,20 +1804,19 @@ details.task-section > summary {
 }
 
 .task-list {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .task-row {
   display: flex;
   align-items: stretch;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
-}
-
-.task-row:last-child {
-  border-bottom: 0;
+  border: 1px solid var(--glass-edge);
+  border-radius: 18px;
+  background: var(--glass);
+  box-shadow: var(--glass-shadow);
+  overflow: hidden;
 }
 
 .task-main {
@@ -1768,7 +1835,7 @@ details.task-section > summary {
 }
 
 .task-main:hover {
-  background: var(--surface-muted);
+  background: rgba(255, 255, 255, 0.5);
 }
 
 .task-main:focus-visible,
@@ -1787,7 +1854,7 @@ details.task-section > summary {
 }
 
 .task-title {
-  font-weight: 600;
+  font-weight: 550;
 }
 
 .task-details {
@@ -1807,10 +1874,10 @@ details.task-section > summary {
   flex: none;
   width: 22px;
   height: 22px;
-  margin: 14px 0 0 14px;
-  border: 2px solid var(--border-strong);
-  border-radius: 6px;
-  background: var(--surface);
+  margin: 15px 0 0 16px;
+  border: 1.5px solid color-mix(in srgb, var(--text) 45%, transparent);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
   cursor: pointer;
 }
 
@@ -2044,8 +2111,9 @@ details.task-section > summary {
   display: flex;
   align-items: baseline;
   gap: 10px;
-  font-size: 1.1rem;
-  font-weight: 650;
+  font-size: 1.15rem;
+  font-weight: 500;
+  letter-spacing: -0.015em;
 }
 
 .save-status {
@@ -2063,17 +2131,25 @@ details.task-section > summary {
   opacity: 1;
 }
 
-/* Formatting tools: one row under the header, sideways scroll on small screens. */
+/* Formatting tools: a floating glass bar under the header that stays in view,
+   scrolling sideways on small screens. */
 .note-toolbar {
   position: sticky;
-  top: 0;
+  top: 10px;
   z-index: 1;
   display: flex;
   gap: 2px;
-  padding: 6px 12px;
+  width: calc(100% - 24px);
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 5px 8px;
   overflow-x: auto;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  border: 1px solid var(--glass-edge);
+  border-radius: 999px;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  backdrop-filter: blur(18px) saturate(1.3);
+  box-shadow: var(--glass-shadow);
   scrollbar-width: none;
 }
 
@@ -2087,7 +2163,7 @@ details.task-section > summary {
   height: 36px;
   padding: 0 8px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 999px;
   background: transparent;
   color: var(--text);
   font: inherit;
@@ -2096,7 +2172,7 @@ details.task-section > summary {
 }
 
 .tool:hover {
-  background: var(--surface-muted);
+  background: rgba(11, 15, 20, 0.06);
 }
 
 .tool[aria-pressed="true"] {
@@ -2109,8 +2185,16 @@ details.task-section > summary {
   font-family: Georgia, serif;
 }
 
+/* The note itself: a white page on the grey canvas. */
 .note-main {
+  width: calc(100% - 24px);
   max-width: 760px;
+  margin: 14px auto 40px;
+  padding: 26px clamp(18px, 5vw, 44px) 80px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: var(--glass-shadow);
 }
 
 .note-title {
@@ -2121,9 +2205,9 @@ details.task-section > summary {
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 1.6rem;
-  font-weight: 700;
-  letter-spacing: -0.015em;
+  font-size: 1.9rem;
+  font-weight: 500;
+  letter-spacing: -0.035em;
 }
 
 .note-title:focus {
@@ -2381,11 +2465,11 @@ details.task-section > summary {
   flex-direction: column;
   gap: 10px;
   margin-bottom: 24px;
-  padding: 14px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: var(--surface);
-  box-shadow: inset 0 3px 0 var(--c), var(--shadow-sm);
+  padding: 16px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 22px;
+  background: var(--glass);
+  box-shadow: var(--glass-shadow);
 }
 
 .todo-sentence {
@@ -3290,13 +3374,13 @@ details.editor-section > summary {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 14px;
   margin-bottom: 18px;
-  padding: 14px 16px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: var(--surface);
-  box-shadow: inset 0 3px 0 var(--c), var(--shadow-sm);
+  padding: 18px 18px 18px 20px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 24px;
+  background: var(--glass);
+  box-shadow: var(--glass-shadow);
 }
 
 .locus-study:empty {
@@ -3305,7 +3389,9 @@ details.editor-section > summary {
 
 .locus-study-text {
   margin: 0;
-  font-weight: 600;
+  font-size: 1.15rem;
+  font-weight: 500;
+  letter-spacing: -0.015em;
 }
 
 @media (max-width: 480px) {
@@ -3460,7 +3546,7 @@ details.editor-section > summary {
 .spacing-dot {
   aspect-ratio: 1;
   border-radius: 50%;
-  background: var(--border);
+  background: rgba(11, 15, 20, 0.1);
 }
 
 .spacing-dot.on {
@@ -3475,7 +3561,10 @@ details.editor-section > summary {
 
 .spacing-text {
   color: var(--muted);
-  font-size: 0.8rem;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 /* ---------- Coach: if-then plans ---------- */

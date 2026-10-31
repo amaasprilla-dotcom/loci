@@ -1,4 +1,4 @@
-// The locus screen: a header tinted in the locus color (back button, name, tags)
+// The locus screen: a header (back button, the locus color as a dot, name, tags)
 // and a grid of element tiles. The + button adds an element of any registered type.
 
 import { textColorOn } from '../colors'
@@ -153,6 +153,7 @@ export async function renderLocusView(locus: Locus, options: { onBack(): void })
       h(
         'div',
         { class: 'locus-title' },
+        h('span', { class: 'header-kicker' }, 'Locus'),
         h('h1', {}, locus.name),
         tags.length > 0 && h('div', { class: 'locus-tags' }, tags.map((t) => h('span', { class: 'tag' }, t.name))),
       ),

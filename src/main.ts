@@ -25,7 +25,7 @@ import { coverFor, fadeIn, fadeOut, growFrom, motionAllowed, shrinkInto } from '
 import { playIntro } from './intro'
 
 const DEFAULT_THEME_COLOR = '#ffffff'
-const HOME_THEME_COLOR = '#f1f1f0' // the top of home's grey canvas (--canvas-top)
+const CANVAS_THEME_COLOR = '#f1f1f0' // the top of the grey canvas (--canvas-top): home, loci and what's in them
 const REFRESH_MS = 60_000 // cards fall due as time passes
 
 const root = document.getElementById('app')!
@@ -85,14 +85,14 @@ async function show(route: Route, quiet = false): Promise<void> {
       home.field.pause() // hold the bubble still while we shrink into it
       home.el.style.visibility = ''
       const cover = coverFor(bubble, view.style.getPropertyValue('--c'))
-      setThemeColor(HOME_THEME_COLOR)
+      setThemeColor(CANVAS_THEME_COLOR)
       await fadeOut(view)
       screenLayer.replaceChildren()
       await shrinkInto(bubble, cover)
     } else {
       screenLayer.replaceChildren()
     }
-    setThemeColor(HOME_THEME_COLOR)
+    setThemeColor(CANVAS_THEME_COLOR)
     setHomeVisible(true)
     return
   }
@@ -190,7 +190,7 @@ async function show(route: Route, quiet = false): Promise<void> {
     shown = route
     const view = await type.renderScreen(el, route.sub)
     setHomeVisible(false)
-    setThemeColor(locus.color)
+    setThemeColor(CANVAS_THEME_COLOR)
     place(view)
     if (motionAllowed() && !quiet) await fadeIn(view)
     return
@@ -210,7 +210,7 @@ async function show(route: Route, quiet = false): Promise<void> {
     cover = await growFrom(bubble, locus.color)
   }
   setHomeVisible(false)
-  setThemeColor(locus.color)
+  setThemeColor(CANVAS_THEME_COLOR)
   place(view)
   if (cover) {
     await fadeIn(view)
