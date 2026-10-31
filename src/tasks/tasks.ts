@@ -1,4 +1,5 @@
-// Every task from every element in every locus (SPEC-v2.md, "Task model v2").
+// Every task from every element in every locus (SPEC-v2.md, "Task model v2"), ranked
+// by the priority score (SPEC-v5-now.md).
 // Never stored: worked out from the elements each time, so it's always current.
 // One result drives the Tasks screen, the home badge and which bubbles pulse.
 
@@ -6,24 +7,16 @@ import { isActive, registry, type Task } from '../elements/registry'
 import { db } from '../store/db'
 import { mergeStudyTasks, splitStudyTasks } from '../study/tasks'
 import { examTasks } from '../exams/tasks'
+import { rankTasks } from '../now/candidates'
+import { compareRanked } from '../now/priority'
 
-// How much one step of importance outweighs difficulty (SPEC-v2.md, "Ordering").
-// With 3, one step of importance beats up to two steps of difficulty.
-export const W_IMPORTANCE = 3
-
-export const score = (t: Task): number => W_IMPORTANCE * t.importance - t.difficulty
-
-// Active tasks: highest score first; ties go to the overdue one, then the earlier one.
-export function compareActive(a: Task, b: Task): number {
-  return score(b) - score(a) || overdueFirst(a, b) || (a.dueAt ?? Infinity) - (b.dueAt ?? Infinity)
-}
+// Active tasks: highest priority first (src/now/priority.ts); ties go to the overdue one, then the earlier one.
+export const compareActive = compareRanked
 
 // Inactive tasks: soonest first, someday last.
 export function compareInactive(a: Task, b: Task): number {
   return Number(a.state === 'someday') - Number(b.state === 'someday') || (a.dueAt ?? Infinity) - (b.dueAt ?? Infinity)
 }
-
-const overdueFirst = (a: Task, b: Task) => Number(b.state === 'overdue') - Number(a.state === 'overdue')
 
 export type Section = 'now' | 'goals' | 'planned' | 'someday'
 
@@ -58,7 +51,7 @@ export async function allTasks(now = Date.now()): Promise<Task[]> {
   )
   // Decks and sets study as one task per locus, unless set otherwise.
   const tasks = (await splitStudyTasks()) ? lists.flat() : mergeStudyTasks(lists.flat())
-  return [...tasks, ...(await examTasks(now))]
+  return rankTasks([...tasks, ...(await examTasks(now))], now)
 }
 
 // The element whose work falls due soonest after now, for the empty "Now" section.

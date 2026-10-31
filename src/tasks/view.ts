@@ -1,5 +1,5 @@
 // The Tasks screen (SPEC-v2.md, "Tasks screen v2"): everything across every locus,
-// in four sections. Now: active tasks by score, overdue marked red. Goals and exams:
+// in four sections. Due: active tasks by priority, late ones say so in plain text. Goals and exams:
 // never red. Planned: greyed but still tickable. Someday: greyed, collapsed.
 // Follows the home tag filter.
 
@@ -13,7 +13,9 @@ import { db } from '../store/db'
 import { formatIn } from '../time'
 import type { Locus } from '../types'
 import { nextUpcoming, type Section, sections } from './tasks'
-import { formatNumber } from '../locale'
+import { count } from '../locale'
+import { daysLate } from '../now/candidates'
+import { logEvent } from '../now/events'
 
 export interface TasksScreen {
   el: HTMLElement
@@ -21,10 +23,9 @@ export interface TasksScreen {
   update(tasks: Task[]): Promise<void>
 }
 
-const SECTION_TITLES: Record<Section, string> = { now: 'Now', goals: 'Goals and exams', planned: 'Planned', someday: 'Someday' }
+const SECTION_TITLES: Record<Section, string> = { now: 'Due', goals: 'Goals and exams', planned: 'Planned', someday: 'Someday' }
 
 export function createTasksScreen(onChanged: () => void): TasksScreen {
-  const summary = h('p', { class: 'tasks-summary' })
   const filterNote = h('div', { class: 'tasks-filter' })
   const body = h('div', { class: 'tasks-body' })
   let last: Task[] = []
@@ -66,9 +67,9 @@ export function createTasksScreen(onChanged: () => void): TasksScreen {
         : []),
     )
     filterNote.hidden = !tag
-    summary.textContent = s.now.length > 0 ? `${formatNumber(s.now.length)} to do now` : ''
 
     const row = (t: Task) => taskRow(t, locusById.get(t.locusId)!, titleById.get(t.elementId) ?? '', async () => {
+      await logEvent('done', t, { rank: 0 }) // not from the card
       await t.complete?.()
       onChanged()
     })
@@ -100,7 +101,7 @@ export function createTasksScreen(onChanged: () => void): TasksScreen {
       'header',
       { class: 'tasks-header' },
       h('button', { class: 'icon-btn', 'aria-label': 'Back', onclick: () => back() }, backIcon()),
-      h('div', { class: 'locus-title' }, h('h1', {}, 'Tasks'), summary),
+      h('div', { class: 'locus-title' }, h('h1', {}, 'Tasks')),
     ),
     h('main', { class: 'locus-body' }, filterNote, body),
   )
@@ -140,7 +141,9 @@ export function taskRow(
   // A deck's or set's own study task names it; a locus's Study task stands alone.
   const title = t.kind === 'review' && t.elementId ? `${elementTitle} · ${t.label}` : t.label
   const priority = t.kind === 'todo' && t.importance >= 3 ? levelName('importance', t.importance) : ''
-  const details = [showLocus && locus.name, t.sublabel, priority].filter(Boolean).join(' · ')
+  // Late is plain secondary text, not an alarm (SPEC-v5-now.md, "Signals").
+  const late = t.kind === 'todo' && t.state === 'overdue' && t.dueAt != null ? `${count(daysLate(t.dueAt, Date.now()), 'day', 'days')} late` : ''
+  const details = [showLocus && locus.name, t.sublabel, late, priority].filter(Boolean).join(' · ')
   return h(
     'div',
     { class: `task-row ${t.state === 'overdue' ? 'overdue' : ''}`, style: { '--c': locus.color } },
@@ -158,7 +161,7 @@ export function taskRow(
       h(
         'span',
         { class: 'task-text' },
-        h('span', { class: 'task-title' }, title, t.state === 'overdue' && h('span', { class: 'overdue-tag' }, 'Overdue')),
+        h('span', { class: 'task-title' }, title),
         h('span', { class: 'task-details' }, details),
         t.progress != null &&
           h('span', { class: 'progress' }, h('span', { class: 'progress-fill', style: { width: `${Math.round(t.progress * 100)}%` } })),

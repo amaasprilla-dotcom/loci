@@ -7,7 +7,8 @@ export type Route =
   // `sub`: a place inside the element, e.g. ['note', id] for one note in a notebook.
   | { name: 'element'; locusId: string; elementId: string; sub: string[] }
   | { name: 'review'; elementId: string }
-  | { name: 'study'; locusId: string } // a locus's Study button: cards and problems together
+  | { name: 'study'; locusId: string; start?: boolean; anyway?: boolean } // a locus's Study button: cards and problems together; `start` skips the length picker, `anyway` adds a day's new cards
+  | { name: 'focus'; todoId: string } // the focus timer on a to-do
   | { name: 'tasks' }
   | { name: 'settings' }
 
@@ -16,7 +17,8 @@ export function parseRoute(hash: string): Route {
   if (parts[0] === 'locus' && parts[1] && parts[2] === 'el' && parts[3]) return { name: 'element', locusId: parts[1], elementId: parts[3], sub: parts.slice(4) }
   if (parts[0] === 'locus' && parts[1]) return { name: 'locus', id: parts[1] }
   if (parts[0] === 'review' && parts[1]) return { name: 'review', elementId: parts[1] }
-  if (parts[0] === 'study' && parts[1]) return { name: 'study', locusId: parts[1] }
+  if (parts[0] === 'study' && parts[1]) return { name: 'study', locusId: parts[1], ...(parts[2] === 'start' && { start: true }), ...(parts[2] === 'anyway' && { start: true, anyway: true }) }
+  if (parts[0] === 'focus' && parts[1]) return { name: 'focus', todoId: parts[1] }
   if (parts[0] === 'tasks') return { name: 'tasks' }
   if (parts[0] === 'settings') return { name: 'settings' }
   return { name: 'home' }
@@ -35,8 +37,12 @@ export function subHash(el: { locusId: string; id: string }, ...sub: string[]): 
   return `${elementHash(el)}/${sub.map(encodeURIComponent).join('/')}`
 }
 
-export function studyHash(locusId: string): string {
-  return `#/study/${encodeURIComponent(locusId)}`
+export function studyHash(locusId: string, mode?: 'start' | 'anyway'): string {
+  return `#/study/${encodeURIComponent(locusId)}${mode ? `/${mode}` : ''}`
+}
+
+export function focusHash(todoId: string): string {
+  return `#/focus/${encodeURIComponent(todoId)}`
 }
 
 export function reviewHash(el: { id: string }): string {

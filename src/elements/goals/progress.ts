@@ -97,11 +97,18 @@ export function expectedProgress(goal: Goal, now: number): number | null {
   return clamp01((now - goal.startAt) / (goal.deadline - goal.startAt))
 }
 
-// "On pace" or "Behind by 12%": plain text, never an alarm. Null without a deadline.
-export function paceText(goal: Goal, progress: number, now: number): string | null {
+// How many percentage points behind a steady rate the goal is (0 when ahead). Null
+// without a deadline, or once it has passed.
+export function behindPace(goal: Goal, progress: number, now: number): number | null {
   const expected = expectedProgress(goal, now)
   if (expected == null || now > goal.deadline!) return null
-  const behind = Math.round((expected - progress) * 100)
+  return Math.max(0, Math.round((expected - progress) * 100))
+}
+
+// "On pace" or "Behind by 12%": plain text, never an alarm. Null without a deadline.
+export function paceText(goal: Goal, progress: number, now: number): string | null {
+  const behind = behindPace(goal, progress, now)
+  if (behind == null) return null
   return behind <= 2 ? 'On pace' : `Behind by ${behind}%`
 }
 

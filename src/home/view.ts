@@ -1,5 +1,5 @@
-// The home screen: the bubble field, a top bar with the Tasks button, the sync dot
-// and the tag filter, and the + button.
+// The home screen: the Now card, the bubble field, a top bar with the Tasks button, the
+// sync dot and the tag filter, and the + button.
 // It stays in the page while other screens cover it, so the bubbles keep their
 // places (and motion) when you come back.
 
@@ -7,6 +7,7 @@ import { PALETTE } from '../colors'
 import { h } from '../dom'
 import { isActive, type Task } from '../elements/registry'
 import { moreIcon, tasksIcon } from '../icons'
+import { createNowCard } from '../now/card'
 import { describeSync } from '../settings/sync'
 import { createLocus, deleteLocus, findOrCreateTag, listLoci, listTags, moveLocus, updateLocus } from '../store/db'
 import { onSyncStatus } from '../sync/engine'
@@ -19,8 +20,9 @@ export interface Home {
   el: HTMLElement
   field: Field
   refresh(): Promise<void>
-  // The current tasks: loci with active ones pulse, and the badge counts the active ones.
-  setTasks(tasks: Task[]): void
+  // The current tasks and the Now card's candidates (best first): loci with active tasks
+  // wear a ring, the one behind the card pulses, and the badge is a dot when anything is due.
+  setTasks(tasks: Task[], candidates?: Task[], studyAnywayLocusId?: string | null): void
 }
 
 export function createHome(options: { onOpen(locus: Locus): void; onTasks(): void; onSettings(): void }): Home {
@@ -32,7 +34,8 @@ export function createHome(options: { onOpen(locus: Locus): void; onTasks(): voi
   const empty = h('p', { class: 'home-empty' }, 'No loci yet. Tap + to create your first one.')
   const filter = createTagFilter(() => applyFilter())
 
-  const badge = h('span', { class: 'badge', hidden: true })
+  const nowCard = createNowCard()
+  const badge = h('span', { class: 'badge badge-dot', hidden: true })
   const tasksButton = h('button', { type: 'button', class: 'tasks-btn', onclick: options.onTasks }, tasksIcon(), h('span', {}, 'Tasks'), badge)
 
   const moreButton = h(
@@ -72,6 +75,8 @@ export function createHome(options: { onOpen(locus: Locus): void; onTasks(): voi
 
   let loci: Locus[] = []
   let tasks: Task[] = []
+  let candidates: Task[] = []
+  let studyAnywayLocusId: string | null = null
 
   // The tag filter greys out other loci, and focuses the badge on what's left.
   function applyFilter() {
@@ -80,14 +85,18 @@ export function createHome(options: { onOpen(locus: Locus): void; onTasks(): voi
     field.setDimmed(outside)
     const active = tasks.filter(isActive)
     field.setActive(new Set(active.map((t) => t.locusId)))
-    const count = active.filter((t) => !outside.has(t.locusId)).length
-    badge.hidden = count === 0
-    badge.textContent = count > 99 ? '99+' : String(count)
-    tasksButton.setAttribute('aria-label', count === 0 ? 'Tasks, nothing due' : `Tasks, ${count} due`)
+    // A dot says something is waiting; it never says how much (SPEC-v5-now.md, "Signals").
+    const waiting = active.some((t) => !outside.has(t.locusId))
+    badge.hidden = !waiting
+    tasksButton.setAttribute('aria-label', waiting ? 'Tasks, something due' : 'Tasks, nothing due')
+    field.setPulse(candidates[0]?.locusId ?? null)
+    nowCard.set(candidates, loci, studyAnywayLocusId)
   }
 
-  function setTasks(next: Task[]) {
+  function setTasks(next: Task[], nextCandidates: Task[] = [], nextStudyAnyway: string | null = null) {
     tasks = next
+    candidates = nextCandidates
+    studyAnywayLocusId = nextStudyAnyway
     applyFilter()
   }
 
@@ -147,6 +156,7 @@ export function createHome(options: { onOpen(locus: Locus): void; onTasks(): voi
     'div',
     { class: 'home' },
     h('header', { class: 'topbar' }, h('div', { class: 'topbar-row' }, h('h1', { class: 'brand' }, 'Loci'), h('div', { class: 'topbar-actions' }, syncDot, tasksButton, moreButton)), filter.el),
+    nowCard.el,
     field.el,
     empty,
     h('button', { class: 'fab', 'aria-label': 'New locus', onclick: onCreate }, '+'),

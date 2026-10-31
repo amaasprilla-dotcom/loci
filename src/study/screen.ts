@@ -22,15 +22,17 @@ import { minutesText, studyCounts } from './text'
 const COMES_BACK_WITHIN = 60 * 60_000 // a card due again within the hour returns in this session
 export const LENGTHS: (number | null)[] = [5, 10, 15, 25, null] // minutes; null = until done
 const LENGTH_KEY = 'loci.studyMinutes'
+const DEFAULT_LENGTH = 25 // minutes, until another is picked (SPEC-v5-now.md)
+export const EXTRA_NEW_CARDS = 10 // "Study anyway": one more day's new cards
 
 function savedLength(): number | null {
   try {
     const v = localStorage.getItem(LENGTH_KEY)
     if (v === 'all') return null
     const n = Number(v)
-    return LENGTHS.includes(n) ? n : 15
+    return LENGTHS.includes(n) ? n : DEFAULT_LENGTH
   } catch {
-    return 15
+    return DEFAULT_LENGTH
   }
 }
 
@@ -40,6 +42,8 @@ export interface StudyOptions {
   backHash: string
   title: string
   chooseLength: boolean
+  autoStart?: boolean // skip the length picker: start at once with the last-used length
+  extraNew?: boolean // "Study anyway": allow EXTRA_NEW_CARDS more new items per deck or set
 }
 
 export async function renderStudyScreen(opts: StudyOptions): Promise<HTMLElement> {
@@ -50,7 +54,14 @@ export async function renderStudyScreen(opts: StudyOptions): Promise<HTMLElement
   const elements = (await db.elements.where('locusId').equals(opts.locusId).toArray()).filter(
     (e) => isStudyable(e) && (!opts.elementIds || opts.elementIds.includes(e.id)),
   )
-  const pool = await studyPool(elements, now0, await studyAdjustments(elements, now0))
+  const adj = await studyAdjustments(elements, now0)
+  if (opts.extraNew) {
+    for (const el of elements) {
+      const own = (el.data as { newPerDay?: number }).newPerDay ?? 10
+      adj.newLimits.set(el.id, (adj.newLimits.get(el.id) ?? own) + EXTRA_NEW_CARDS)
+    }
+  }
+  const pool = await studyPool(elements, now0, adj)
   const titles = new Map(elements.map((e) => [e.id, e.title]))
 
   let leaving = false
@@ -257,6 +268,7 @@ export async function renderStudyScreen(opts: StudyOptions): Promise<HTMLElement
     footer,
   )
   if (pool.items.length === 0) void finish()
+  else if (opts.autoStart) begin(savedLength() == null ? null : savedLength()! * 60)
   else if (opts.chooseLength) startPanel()
   else begin(null)
   return screen

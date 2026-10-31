@@ -3,6 +3,7 @@
 // this interface; adding a type means writing one module and registering it in all.ts.
 // (This file imports no element type itself, so element modules can use it freely.)
 
+import type { Ranked } from '../now/priority'
 import type { Level, LocusElement } from '../types'
 
 // Task model v2 (SPEC-v2.md, "Task model v2"): what an element asks of you.
@@ -22,6 +23,7 @@ export interface Task {
   open(): void // tap
   complete?(): Promise<void> // tick, where it makes sense
   secondary?: { label: string; run(): Promise<void> } // e.g. "It happened" on a waiting to-do
+  rank?: Ranked // what the priority score made of it (src/now/candidates.ts), for active tasks
   study?: { cards: number; problems: number; notes?: number; seconds: number } // a Study task: what's due, and about how long
 }
 

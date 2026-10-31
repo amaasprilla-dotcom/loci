@@ -63,11 +63,13 @@ h2 {
 .home {
   position: fixed;
   inset: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .topbar {
-  position: absolute;
-  inset: 0 0 auto 0;
+  position: relative;
+  flex: none;
   z-index: 2;
   display: flex;
   flex-direction: column;
@@ -129,6 +131,13 @@ h2 {
 .tasks-btn svg {
   width: 18px;
   height: 18px;
+}
+
+.badge.badge-dot {
+  min-width: 0;
+  width: 9px;
+  height: 9px;
+  padding: 0;
 }
 
 .badge {
@@ -243,8 +252,9 @@ h2 {
 }
 
 .field {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
   touch-action: none; /* dragging a bubble must not scroll the page */
 }
@@ -275,12 +285,22 @@ h2 {
   cursor: grabbing;
 }
 
-/* A locus with work due sends out waves (SPEC.md, "Active pulse"). The wave is
-   a ring growing outward from the bubble's edge, two of them half a cycle apart.
-   (A full copy of the bubble growing from its center, as first specced, washed
-   out the bubble's own shading on every wave.) */
-.bubble.active::before,
-.bubble.active::after {
+/* A locus with work due wears a still, thin ring; only the one behind the Now card
+   sends out waves (SPEC-v5-now.md, "Signals"). The wave is a ring growing outward
+   from the bubble's edge, two of them half a cycle apart. (A full copy of the bubble
+   growing from its center, as first specced, washed out the bubble's own shading
+   on every wave.) */
+.bubble.active {
+  outline: 2px solid color-mix(in srgb, var(--c) 55%, transparent);
+  outline-offset: 3px;
+}
+
+.bubble.dimmed.active {
+  outline: 0;
+}
+
+.bubble.pulse::before,
+.bubble.pulse::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -290,7 +310,7 @@ h2 {
   animation: wave 2.2s ease-out infinite;
 }
 
-.bubble.active::before {
+.bubble.pulse::before {
   animation-delay: 1.1s;
 }
 
@@ -306,8 +326,8 @@ h2 {
 }
 
 /* A filtered-out locus doesn't call for attention. */
-.bubble.dimmed.active::before,
-.bubble.dimmed.active::after {
+.bubble.dimmed.pulse::before,
+.bubble.dimmed.pulse::after {
   display: none;
 }
 
@@ -1113,12 +1133,12 @@ textarea.input {
     animation: none;
   }
 
-  /* No waves: a still ring marks a locus with work due. */
-  .bubble.active::before {
+  /* No waves: a still ring marks the locus behind the Now card. */
+  .bubble.pulse::before {
     display: none;
   }
 
-  .bubble.active::after {
+  .bubble.pulse::after {
     animation: none;
     opacity: 0.6;
     box-shadow: 0 0 0 5px var(--c);
@@ -1129,6 +1149,110 @@ textarea.input {
   .bubble.appearing {
     animation: none;
   }
+}
+
+/* ---------- Now card (SPEC-v5-now.md) ---------- */
+
+.now-card {
+  position: relative;
+  z-index: 2;
+  flex: none;
+  margin: 0 20px 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--c, var(--border-strong));
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.now-card[hidden] {
+  display: none;
+}
+
+.now-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 650;
+}
+
+.now-why {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.now-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.now-more {
+  margin-top: 10px;
+}
+
+.now-alternatives {
+  display: flex;
+  flex-direction: column;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.now-alt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  padding: 8px 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.now-alt-title {
+  font-weight: 600;
+}
+
+.now-alt-why {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* ---------- Focus timer ---------- */
+
+.focus {
+  margin: auto 0;
+  text-align: center;
+}
+
+.focus-task {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.focus-clock {
+  margin: 16px 0 0;
+  font-size: 3.4rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.focus-note {
+  min-height: 1.4em;
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.focus-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 /* ---------- Review session ---------- */
@@ -1418,22 +1542,6 @@ details.task-section > summary {
 
 .task-row:last-child {
   border-bottom: 0;
-}
-
-/* Overdue: a red marker on the left, and a tag. */
-.task-row.overdue {
-  box-shadow: inset 3px 0 0 var(--bad);
-}
-
-.overdue-tag {
-  margin-left: 8px;
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: var(--bad-soft);
-  color: var(--bad);
-  font-size: 0.75rem;
-  font-weight: 650;
-  vertical-align: 1px;
 }
 
 .task-main {

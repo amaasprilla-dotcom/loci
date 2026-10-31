@@ -45,5 +45,9 @@ describe('opening a v1 database with v2', () => {
     const due = await db.cards.where('[elementId+srs.due]').between(['deck', 0], ['deck', at(21, 0)], true, true).primaryKeys()
     expect(due.sort()).toEqual(['new', 'no-history', 'studied'])
     expect(await db.reviews.count()).toBe(2) // history kept
+
+    // Version 12 adds the event log (SPEC-v5-now.md), empty and on this device only.
+    expect(db.verno).toBeGreaterThanOrEqual(12)
+    expect(await db.events.count()).toBe(0)
   })
 })

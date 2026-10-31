@@ -334,3 +334,21 @@ export interface Exam {
   createdAt: number;
   updatedAt: number;
 }
+
+// ---------- Event log (SPEC-v5-now.md, "Event log") ----------
+
+// One thing the Now card did or was asked to do. Kept on this device only (never
+// synced or backed up) so the card can be tuned later from real use.
+export interface AppEvent {
+  id?: number;
+  ts: number;
+  type: 'card_shown' | 'alt_shown' | 'pass' | 'start' | 'timer_end' | 'session_end' | 'done' | 'skip';
+  key: string; // the candidate: "todo:<id>", "study:<locusId>", ...
+  itemId?: string;
+  bubbleId?: string;
+  candidateType: 'study' | 'todo' | 'repeat' | 'checkin';
+  rank: number; // 1 = the top card
+  score: number;
+  terms: { I: number; U: number; B: number; N: number; S: number };
+  meta?: Record<string, unknown>;
+}

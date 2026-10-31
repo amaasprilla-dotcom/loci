@@ -6,6 +6,7 @@ import { migrateCard } from '../elements/flashcards/srs'
 import { defaultCheckin } from '../elements/goals/defaults'
 import { type OutboxRow, recordChanges, type SyncStateRow } from '../sync/record'
 import type {
+  AppEvent,
   Attachment,
   AttachmentOwner,
   Card,
@@ -52,6 +53,7 @@ export const db = new Dexie('loci') as Dexie & {
   recallAttempts: EntityTable<RecallAttempt, 'id'>
   syncOutbox: Table<OutboxRow, [string, string]>
   syncState: EntityTable<SyncStateRow, 'key'>
+  events: EntityTable<AppEvent, 'id'>
 }
 
 db.version(1).stores({
@@ -120,6 +122,11 @@ db.version(10).stores({
 db.version(11).stores({
   syncOutbox: '[table+id], changedAt',
   syncState: 'key',
+})
+
+// Now card (SPEC-v5-now.md): the event log. Stays on this device: neither synced nor backed up.
+db.version(12).stores({
+  events: '++id, ts, type, key',
 })
 
 // Every write to a synced table is recorded for sync (src/sync/record.ts).

@@ -1,4 +1,4 @@
-// The Settings screen (⋯ on home): number format, study tasks, sync, storage, backup.
+// The Settings screen (⋯ on home): number format, study tasks, sync, storage, stats, backup.
 // Study settings (priority, desired retention) live with each locus, in its sheet.
 
 import { h } from '../dom'
@@ -8,6 +8,7 @@ import { back } from '../router'
 import { blobBytes } from '../store/attachments'
 import { setSplitStudyTasks, splitStudyTasks } from '../study/tasks'
 import { backupSection } from './backup'
+import { statsSection } from './stats'
 import { syncSection } from './sync'
 
 // `onImported` runs after a backup was imported or this device joined sync: the
@@ -17,7 +18,7 @@ export async function renderSettingsScreen(onImported: () => void): Promise<HTML
     'div',
     { class: 'settings-screen' },
     h('header', { class: 'tasks-header' }, h('button', { class: 'icon-btn', 'aria-label': 'Back', onclick: () => back() }, backIcon()), h('div', { class: 'locus-title' }, h('h1', {}, 'Settings'))),
-    h('main', { class: 'locus-body settings-body' }, numbersSection(), await studySection(), syncSection(onImported), await storageSection(), backupSection(onImported)),
+    h('main', { class: 'locus-body settings-body' }, numbersSection(), await studySection(), syncSection(onImported), await storageSection(), await statsSection(), backupSection(onImported)),
   )
 }
 

@@ -58,7 +58,6 @@ export const todosType: ElementType<Record<string, never>> = {
     const open = await db.todos.where('elementId').equals(el.id).filter((t) => t.status === 'open').toArray()
     const states = open.map((t) => todoState(t, now))
     const active = states.filter((s) => s === 'due' || s === 'overdue').length
-    const overdue = states.filter((s) => s === 'overdue').length
     const planned = states.filter((s) => s === 'upcoming' || s === 'waiting').length
     return h(
       'div',
@@ -69,8 +68,7 @@ export const todosType: ElementType<Record<string, never>> = {
       h(
         'div',
         { class: 'tile-status' },
-        overdue > 0 && h('span', { class: 'pill pill-overdue' }, `${formatNumber(overdue)} overdue`),
-        active - overdue > 0 && h('span', { class: 'pill pill-due' }, `${formatNumber(active - overdue)} now`),
+        active > 0 && h('span', { class: 'pill pill-due' }, `${formatNumber(active)} due`),
         planned > 0 && h('span', { class: 'pill' }, `${formatNumber(planned)} planned`),
       ),
     )

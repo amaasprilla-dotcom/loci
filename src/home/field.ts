@@ -42,6 +42,8 @@ export interface Field {
   setDimmed(ids: Set<string>): void
   // Bubbles whose locus has work due pulse.
   setActive(ids: Set<string>): void
+  // The one locus that sends out waves: the one behind the Now card (null: none).
+  setPulse(id: string | null): void
   // Freeze the bubbles in place, e.g. while another screen covers the field.
   pause(): void
   resume(): void
@@ -278,6 +280,9 @@ export function createField(options: FieldOptions): Field {
     },
     setActive(ids) {
       for (const [id, node] of nodes) node.classList.toggle('active', ids.has(id))
+    },
+    setPulse(id) {
+      for (const [nodeId, node] of nodes) node.classList.toggle('pulse', nodeId === id)
     },
     pause() {
       paused = true

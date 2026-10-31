@@ -29,7 +29,7 @@ function rememberExport(at: number) {
   }
 }
 
-function download(file: Blob, name: string) {
+export function download(file: Blob, name: string) {
   const url = URL.createObjectURL(file)
   const a = h('a', { href: url, download: name })
   document.body.append(a)

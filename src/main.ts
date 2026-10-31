@@ -11,6 +11,8 @@ import { loadLocaleSettings } from './locale'
 import { renderSettingsScreen } from './settings/view'
 import { renderLocusView } from './locus/view'
 import { back, currentRoute, go, parentOf, type Route } from './router'
+import { bubbleWithNewCards, nowCandidates } from './now/candidates'
+import { pruneEvents } from './now/events'
 import { onChange } from './changes'
 import { tellEditors, isEditing } from './sync/editing'
 import { loadSync, onRemoteChanges, startAutoSync } from './sync/engine'
@@ -41,8 +43,10 @@ let shown: Route | null = null
 // and shared: the same list drives the pulsing bubbles, the badge and the Tasks screen.
 let tasks: Task[] = []
 async function refreshTasks(): Promise<void> {
-  tasks = await allTasks(Date.now())
-  home.setTasks(tasks)
+  const now = Date.now()
+  tasks = await allTasks(now)
+  const candidates = await nowCandidates(tasks, now)
+  home.setTasks(tasks, candidates, candidates.length === 0 ? await bubbleWithNewCards() : null)
   if (shown?.name === 'tasks') await tasksScreen.update(tasks)
 }
 
@@ -140,7 +144,32 @@ async function show(route: Route, quiet = false): Promise<void> {
     }
     shown = route
     const { renderStudyScreen } = await import('./study/screen')
-    const view = await renderStudyScreen({ locusId: locus.id, backHash: `#/locus/${encodeURIComponent(locus.id)}`, title: locus.name, chooseLength: true })
+    // From the Now card (start / anyway) the way back is home, and the picker is skipped.
+    const view = await renderStudyScreen({
+      locusId: locus.id,
+      backHash: route.start ? '#/' : `#/locus/${encodeURIComponent(locus.id)}`,
+      title: locus.name,
+      chooseLength: true,
+      autoStart: route.start,
+      extraNew: route.anyway,
+    })
+    setHomeVisible(false)
+    setThemeColor(locus.color)
+    screenLayer.replaceChildren(view)
+    if (motionAllowed()) await fadeIn(view)
+    return
+  }
+
+  if (route.name === 'focus') {
+    const todo = await db.todos.get(route.todoId)
+    const locus = todo && (await getElement(todo.elementId).then((el) => el && db.loci.get(el.locusId)))
+    if (!todo || todo.status !== 'open' || !locus) {
+      location.replace('#/')
+      return
+    }
+    shown = route
+    const { renderFocusScreen } = await import('./now/focus')
+    const view = renderFocusScreen(todo, locus, tasks.find((t) => t.itemId === todo.id))
     setHomeVisible(false)
     setThemeColor(locus.color)
     screenLayer.replaceChildren(view)
@@ -276,6 +305,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && shown && shown.name !== 'home' && shown.name !== 'review' && shown.name !== 'study' && !document.querySelector('.sheet')) back(parentOf(shown))
 })
 
+void pruneEvents()
 requestPersistentStorage().catch(() => {})
 // The number format must be known before anything with numbers is drawn.
 // Sync must know whether it's on before anything is written, so every change is recorded.
