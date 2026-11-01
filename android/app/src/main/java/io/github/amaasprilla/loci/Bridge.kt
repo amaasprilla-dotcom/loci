@@ -1,19 +1,21 @@
 package io.github.amaasprilla.loci
 
 import android.Manifest
-import android.app.AppOpsManager
 import android.content.ActivityNotFoundException
+import android.content.ComponentName
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
-import android.os.Process
 import android.provider.MediaStore
 import android.provider.Settings
 import android.util.Base64
@@ -23,7 +25,9 @@ import androidx.core.content.FileProvider
 import androidx.webkit.JavaScriptReplyProxy
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
+import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.concurrent.Executors
 
@@ -33,7 +37,7 @@ import java.util.concurrent.Executors
 class Bridge(private val activity: MainActivity, web: WebView, origin: String) {
     private val io = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
-    private val prefs = activity.getSharedPreferences("bridge", Context.MODE_PRIVATE)
+    private val prefs = activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     init {
         if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
@@ -49,7 +53,7 @@ class Bridge(private val activity: MainActivity, web: WebView, origin: String) {
             reply.postMessage(JSONObject().put("id", id).put("result", result ?: JSONObject.NULL).toString())
         }
         when (msg.optString("type")) {
-            "info" -> answer(JSONObject().put("version", BuildConfig.VERSION_NAME).put("build", BuildConfig.VERSION_CODE))
+            "info" -> answer(JSONObject().put("version", BuildConfig.VERSION_NAME).put("build", BuildConfig.VERSION_CODE).put("sdk", Build.VERSION.SDK_INT))
             "permissions" -> answer(permissions())
             "allow" -> allow(msg.optString("which")) { answer(permissions()) }
             "schedule" -> {
@@ -57,13 +61,16 @@ class Bridge(private val activity: MainActivity, web: WebView, origin: String) {
                 answer(true)
             }
             "takeActions" -> answer(Reminders.takeActions(activity))
-            // The phone settings the native side needs while Loci is closed (reminders today;
-            // the timer and sleep mode later), kept as one JSON object.
+            // The phone settings the native side needs while Loci is closed (reminders, the
+            // timer; sleep mode later), kept as one JSON object. WatchService hears changes.
             "getPrefs" -> answer(JSONObject(prefs.getString("phone", "{}")!!))
             "setPrefs" -> {
                 prefs.edit().putString("phone", msg.getJSONObject("prefs").toString()).apply()
+                Watchdog.check(activity, quiet = true)
                 answer(true)
             }
+            "apps" -> io.execute { answer(apps()) }
+            "timerToday" -> answer(SocialTimer.todayMs(activity))
             "save" -> io.execute { answer(save(msg.getString("name"), msg.optString("mime"), msg.getString("data"))) }
             "open" -> io.execute { answer(open(msg.getString("name"), msg.optString("mime"), msg.getString("data"))) }
             else -> answer(null)
@@ -75,24 +82,12 @@ class Bridge(private val activity: MainActivity, web: WebView, origin: String) {
         val power = activity.getSystemService(PowerManager::class.java)
         return JSONObject()
             .put("notifications", NotificationManagerCompat.from(activity).areNotificationsEnabled())
-            .put("usageAccess", hasUsageAccess())
-            .put("overlay", Settings.canDrawOverlays(activity))
+            .put("accessibility", Watchdog.serviceRunning(activity))
             .put("writeSettings", Settings.System.canWrite(activity))
             .put("battery", power.isIgnoringBatteryOptimizations(activity.packageName))
             .put("exactAlarms", Reminders.exactAlarmsAllowed(activity))
             // Samsung adds its own sleeping-apps list on top, which no app can see or change.
             .put("samsung", Build.MANUFACTURER.equals("samsung", ignoreCase = true))
-    }
-
-    private fun hasUsageAccess(): Boolean {
-        val ops = activity.getSystemService(AppOpsManager::class.java)
-        val mode = if (Build.VERSION.SDK_INT >= 29) {
-            ops.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), activity.packageName)
-        } else {
-            @Suppress("DEPRECATION")
-            ops.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), activity.packageName)
-        }
-        return mode == AppOpsManager.MODE_ALLOWED
     }
 
     // Opens the system screen (or pop-up) that allows `which`. `done` runs right away for
@@ -112,8 +107,12 @@ class Bridge(private val activity: MainActivity, web: WebView, origin: String) {
                 }
                 Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, activity.packageName)
             }
-            "usageAccess" -> Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
-            "overlay" -> Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, pkg)
+            // Some phones (Samsung among them) open straight on Loci's line with the extras.
+            "accessibility" -> Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                val service = ComponentName(activity, WatchService::class.java).flattenToString()
+                putExtra(":settings:fragment_args_key", service)
+                putExtra(":settings:show_fragment_args", Bundle().apply { putString(":settings:fragment_args_key", service) })
+            }
             "writeSettings" -> Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, pkg)
             "battery" -> @Suppress("BatteryLife") Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, pkg)
             "exactAlarms" -> if (Build.VERSION.SDK_INT >= 31) Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, pkg) else null
@@ -126,6 +125,30 @@ class Bridge(private val activity: MainActivity, web: WebView, origin: String) {
             activity.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg))
         }
         done()
+    }
+
+    // Every app with a launcher icon, for the timer's app list: social ones first.
+    private fun apps(): JSONArray {
+        val pm = activity.packageManager
+        val launcher = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        val list = pm.queryIntentActivities(launcher, 0)
+            .map { it.activityInfo.applicationInfo }
+            .distinctBy { it.packageName }
+            .filter { it.packageName != activity.packageName }
+            .map { info -> Triple(info, pm.getApplicationLabel(info).toString(), SocialTimer.socialByDefault(activity, info.packageName)) }
+            .sortedWith(compareBy({ !it.third }, { it.second.lowercase() }))
+        return JSONArray(list.map { (info, name, social) ->
+            JSONObject().put("pkg", info.packageName).put("name", name).put("social", social).put("icon", icon(pm.getApplicationIcon(info)))
+        })
+    }
+
+    private fun icon(drawable: android.graphics.drawable.Drawable): String {
+        val size = (32 * activity.resources.displayMetrics.density).toInt()
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        drawable.setBounds(0, 0, size, size)
+        drawable.draw(Canvas(bitmap))
+        val png = ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        return "data:image/png;base64," + Base64.encodeToString(png.toByteArray(), Base64.NO_WRAP)
     }
 
     // A file the page made (a backup, an attachment), saved to Downloads.
@@ -161,5 +184,9 @@ class Bridge(private val activity: MainActivity, web: WebView, origin: String) {
         true
     } catch (_: Exception) {
         false
+    }
+
+    companion object {
+        const val PREFS = "bridge"
     }
 }

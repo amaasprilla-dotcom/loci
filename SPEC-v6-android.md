@@ -43,6 +43,19 @@ Constraints carry over: no AI, no paid APIs, no account. The app is installed fr
 - **Tapping a reminder** opens its to-do; tapping the summary opens home. A reminder still showing for a to-do that's been done goes away the next time the list is sent.
 - Goal check-in reminders (the goals' "Remind me of check-ins" box) and v5's `notif_sent` / `notif_opened` events are not in D2.
 
+### Made while building D3
+
+- **The clock counts time in social apps only.** It pauses while you're elsewhere and picks up where it was if you come back within the reset time, so "12:34" is time spent, not time since you first opened one.
+- **What counts as leaving.** Only apps you can open from the launcher, and the home screen, count as being in front. The keyboard, the notification shade, system pop-ups and Loci's own pill open over an app without leaving it.
+- **The pill** is white glass with dark text, below the status bar until it's moved. Tapping switches between `Instagram · 12:34` and `12:34`; it remembers which. Pill size is normal or small.
+- **The notification** has the clock counting on its own while a social app is open (Android's chronometer), and reads "Social · 12:34 this session", "Paused. Starts again at 0:00 after 5 min away." while you're away. It goes when the session resets. Tapping opens Loci.
+- **Today's total** splits a stretch over midnight: only the part after midnight counts for the new day.
+- **The app list** loads when opened (it carries each app's icon). Only changes from the default are saved, so an app that later says it's social still counts.
+- **No `QUERY_ALL_PACKAGES`.** Two `<queries>` entries (apps with a launcher icon, and the home screen) are enough to list apps and see them come to the front.
+- **An app from before 1.2** has no Accessibility line: Settings → Phone shows "Install the new Loci app (1.2 or later)" in the timer's place.
+- The watchdog doesn't warn the moment the timer is switched on in Settings (the Accessibility line is right there); it warns from the next open of Loci or the daily check.
+- The watchdog's daily check is inexact (Android picks the moment within the day), and it's set again whenever Loci opens and after a restart.
+
 ## What the user sees
 
 ### First open
@@ -121,7 +134,7 @@ The Cloudflare address is a Gradle property (`lociUrl` in `android/gradle.proper
 | `BIND_ACCESSIBILITY_SERVICE` (held by the service) | Seeing which app is open; the timer pill, sleep filter and reminder pill | System screen Accessibility → Installed apps → Loci. Android 13+: App info → ⋮ → **Allow restricted settings** first |
 | `WRITE_SETTINGS` | Real brightness in sleep mode (optional) | System screen "Modify system settings" |
 | `RECEIVE_BOOT_COMPLETED` | Restoring alarms | Automatic |
-| `QUERY_ALL_PACKAGES` | Listing installed apps for the timer | Automatic (sideloaded) |
+| `<queries>` for launcher apps and the home screen (not `QUERY_ALL_PACKAGES`) | Listing installed apps for the timer, seeing them come to the front | Automatic |
 
 D1's "Usage access" and "Display over other apps" lines (and their manifest permissions) are replaced in D3 by one **Accessibility** line.
 

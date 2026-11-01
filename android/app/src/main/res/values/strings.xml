@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shown in Accessibility settings under Loci. -->
+    <string name="watch_description">Loci notes which app is in front, to show the social media timer over social apps. It can\'t read what\'s on the screen, and never acts on other apps.</string>
+</resources>

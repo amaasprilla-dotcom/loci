@@ -122,6 +122,7 @@ class MainActivity : ComponentActivity() {
 
         if (savedInstanceState == null || web.restoreState(savedInstanceState) == null) web.loadUrl(BuildConfig.LOCI_URL)
         if (savedInstanceState == null) openFrom(intent)
+        Watchdog.arm(this)
     }
 
     override fun onNewIntent(intent: Intent) {

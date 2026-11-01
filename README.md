@@ -157,6 +157,14 @@ notification), and a daily summary at 09:00 shows the Now card and the cards due
 set in Settings → Phone. On a Samsung, also add Loci to Settings → Battery and device care →
 Battery → Background usage limits → **Never sleeping apps**, or reminders can be held back.
 
+**Social media timer.** Switch it on in Settings → Phone, then allow **Accessibility** there:
+Android shows Loci under Installed apps (Installed services on a Samsung) and warns that it
+gets "full control". Loci only notes which app is in front. A pill over social apps then
+counts your time, one clock across all of them, until you've been away 5 minutes (adjustable).
+Tap the pill to shrink it, drag it to move it. Settings → Phone also picks which apps count and
+shows today's total. On Android 13 and later, first open App info for Loci → ⋮ → **Allow
+restricted settings**, or Android won't let the service be switched on.
+
 The address it opens is `lociUrl` in `android/gradle.properties`.
 
 ## Where things are
@@ -173,7 +181,8 @@ The address it opens is `lociUrl` in `android/gradle.properties`.
   (`index.ts`). `src/sync/rules.ts` holds what the app and the server share: which tables sync,
   which of two versions wins, and the sync key format
 - `android/`: the Android app (SPEC-v6-android.md). `MainActivity.kt` is the WebView,
-  `Bridge.kt` answers the web app's messages, `Reminders.kt` shows reminders at their time; `src/android.ts` is the web app's side of that,
+  `Bridge.kt` answers the web app's messages, `Reminders.kt` shows reminders at their time, `WatchService.kt` (the
+  accessibility service) drives `SocialTimer.kt` and its `TimerPill.kt`, and `Watchdog.kt` says when the service is off; `src/android.ts` is the web app's side of that,
   `src/notifications.ts` works out the reminders, and `src/settings/phone.ts` is the Phone section of Settings. `scripts/build-android.mjs` builds it
 - `src/main.ts`: app start, and switching between screens
 - `src/router.ts`: the screen addresses (`#/`, `#/locus/…`) and the back button

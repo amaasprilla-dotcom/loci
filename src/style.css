@@ -2325,6 +2325,65 @@ details.task-section > summary {
   font-weight: 500;
 }
 
+.phone-timer-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.phone-timer-options[hidden] {
+  display: none;
+}
+
+/* The timer's app list: icon, name, a box to count it. */
+.phone-apps-box > summary {
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.phone-apps-count {
+  margin-left: 8px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.phone-apps {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.phone-app {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  cursor: pointer;
+}
+
+.phone-app img {
+  flex: none;
+  border-radius: 8px;
+}
+
+.phone-app-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.phone-app-check {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--text);
+}
+
 .phone-perm-allowed {
   color: var(--muted);
   font-family: var(--mono);

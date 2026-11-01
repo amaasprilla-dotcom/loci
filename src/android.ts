@@ -17,8 +17,9 @@ declare global {
 
 export interface PhonePermissions {
   notifications: boolean
-  usageAccess: boolean
-  overlay: boolean
+  // Loci's accessibility service is running: the timer sees which app is open. Missing in
+  // an app from before the timer (1.1 and earlier).
+  accessibility?: boolean
   writeSettings: boolean
   battery: boolean // excluded from battery optimisation
   exactAlarms: boolean // reminders on the minute
@@ -62,15 +63,27 @@ function ask<T>(type: string, args: Record<string, unknown> = {}): Promise<T> {
   })
 }
 
-export const appInfo = () => ask<{ version: string; build: number }>('info')
+export const appInfo = () => ask<{ version: string; build: number; sdk?: number }>('info')
 export const phonePermissions = () => ask<PhonePermissions>('permissions')
 // Opens the system screen (or pop-up) for it; the answer is the state right after.
 export const allowOnPhone = (which: PhonePermission) => ask<PhonePermissions>('allow', { which })
 
-// The phone's own settings (reminders now; the timer and sleep mode later): kept on the
+// The phone's own settings (reminders, the timer; sleep mode later): kept on the
 // phone, where they work with Loci closed, and never synced.
 export const phonePrefs = () => ask<Record<string, unknown>>('getPrefs')
 export const setPhonePrefs = (prefs: Record<string, unknown>) => ask<boolean>('setPrefs', { prefs })
+
+// An app installed on the phone, for the timer's app list (icon as a data: address).
+export interface PhoneApp {
+  pkg: string
+  name: string
+  icon: string
+  social: boolean // counted unless switched off: it says it's social, or it's a well-known one
+}
+
+export const phoneApps = () => ask<PhoneApp[]>('apps')
+// Milliseconds in social apps today.
+export const timerToday = () => ask<number>('timerToday')
 
 // Replaces every reminder the phone has with these; `pending` is each timed to-do's
 // current occurrence, so a reminder put off for an hour is dropped once that's done.

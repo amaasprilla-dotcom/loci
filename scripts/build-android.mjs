@@ -15,7 +15,8 @@ if (!env.JAVA_HOME && existsSync(studioJava)) env.JAVA_HOME = studioJava
 
 const sdk = env.ANDROID_HOME ?? join(env.LOCALAPPDATA ?? '', 'Android', 'Sdk')
 if (!existsSync(join(android, 'local.properties'))) {
-  writeFileSync(join(android, 'local.properties'), `sdk.dir=${sdk.replaceAll('\\', '/')}\n`)
+  // A properties file needs the drive's colon escaped (C\:/Users/…).
+  writeFileSync(join(android, 'local.properties'), `sdk.dir=${sdk.replaceAll('\\', '/').replaceAll(':', '\\:')}\n`)
 }
 
 if (!existsSync(join(android, 'keystore.properties'))) {

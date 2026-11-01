@@ -5,11 +5,13 @@ import android.content.Context
 import android.content.Intent
 
 // Alarms don't survive a restart and drift when the clock or time zone changes: set the
-// reminder alarm again (and show any missed in the last 2 hours). Only the system can send
+// reminder alarm again (and show any missed in the last 2 hours), and the watchdog's. Only the system can send
 // these, which is why this receiver is open to outside broadcasts and ReminderReceiver isn't.
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action in SYSTEM_EVENTS) Reminders.fire(context)
+        if (intent.action !in SYSTEM_EVENTS) return
+        Reminders.fire(context)
+        Watchdog.arm(context)
     }
 
     private companion object {
