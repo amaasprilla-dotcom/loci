@@ -32,7 +32,7 @@ export interface ReminderPrefs {
 export const DEFAULT_REMINDER_PREFS: ReminderPrefs = { todoReminders: true, summaryAt: '09:00' }
 
 export async function reminderPrefs(): Promise<ReminderPrefs> {
-  const p = await phonePrefs()
+  const p = (await phonePrefs()) ?? {} // nothing from an app before D2
   return { ...DEFAULT_REMINDER_PREFS, ...(p.reminders as Partial<ReminderPrefs> | undefined) }
 }
 
@@ -142,7 +142,8 @@ export async function applyQueuedDone(id: string, occurrenceAt: number, at: numb
 export async function applyPhoneActions(): Promise<void> {
   if (!inAndroidApp) return
   let changed = false
-  for (const action of await takePhoneActions()) {
+  // An app from before D2 (1.0.x) answers with nothing.
+  for (const action of (await takePhoneActions()) ?? []) {
     if (action.type === 'done') changed = (await applyQueuedDone(action.id, action.occurrenceAt, action.at)) || changed
     else if (action.type === 'open') await openFromNotification(action.id)
   }
