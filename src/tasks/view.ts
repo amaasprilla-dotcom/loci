@@ -117,9 +117,6 @@ export function createTasksScreen(onChanged: () => void): TasksScreen {
   async function resetAddForm() {
     const { createAddForm } = await import('../elements/todos/screens')
     const fresh = createAddForm('', async () => onChanged())
-    // Quick capture: one line until it's used, then the rest of the form.
-    fresh.classList.add('tasks-add')
-    fresh.addEventListener('focusin', () => fresh.classList.add('open'))
     addForm.replaceWith(fresh)
     addForm = fresh
   }

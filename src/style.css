@@ -2778,12 +2778,12 @@ details.task-section > summary {
   box-shadow: var(--glass-shadow);
 }
 
-/* On the Tasks screen: "I will … Add" first, and alone until the form is used. */
-.tasks-add .todo-add-action {
+/* "I will … Add" first, and alone until the form is used. */
+.todo-add .todo-add-action {
   order: -1;
 }
 
-.tasks-add:not(.open) > :not(.todo-add-action) {
+.todo-add:not(.open) > :not(.todo-add-action) {
   display: none;
 }
 
@@ -3850,18 +3850,39 @@ details.editor-section > summary {
   gap: 6px 12px;
 }
 
+.spacing-track {
+  display: flex;
+  flex: 1 1 220px;
+  flex-direction: column;
+  gap: 3px;
+  max-width: 360px;
+}
+
 .spacing-strip {
   display: grid;
   grid-template-columns: repeat(28, 1fr);
   gap: 3px;
-  flex: 1 1 220px;
-  max-width: 360px;
+}
+
+/* Under the last dot, so the strip reads left to right, ending today. */
+.spacing-today {
+  align-self: flex-end;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 .spacing-dot {
   aspect-ratio: 1;
   border-radius: 50%;
   background: rgba(11, 15, 20, 0.1);
+}
+
+.spacing-dot.before {
+  background: rgba(11, 15, 20, 0.035);
 }
 
 .spacing-dot.on {

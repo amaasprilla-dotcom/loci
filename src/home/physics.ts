@@ -30,10 +30,10 @@ const PUSH_MOMENTUM = 0.25
 // bubbles by about 1px, which read as noise rather than floating.)
 const WANDER = 5
 const GAP = 6 // px of breathing room between bubbles
-// A thrown bubble coasts in thinner liquid than the drift: it loses this much of its
-// speed per step (half in ~0.2s, so it coasts ~15× its last step), bounces softly off the
-// edges, and stops below GLIDE_STOP.
-const GLIDE_DAMP = 0.94
+// A thrown bubble coasts in thinner liquid than the drift: it keeps this much of its
+// speed per step (half gone in ~0.1s, so it coasts ~9× its last step), bounces softly off
+// the edges, and stops below GLIDE_STOP. (0.94 coasted ~16× and felt too slippery.)
+const GLIDE_DAMP = 0.9
 const GLIDE_STOP = 0.15 // px per step
 const BOUNCE = 0.45 // speed kept bouncing off an edge
 // Separation passes per step. One pass leaves crowded bubbles overlapping

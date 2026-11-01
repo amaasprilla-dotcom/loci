@@ -64,7 +64,7 @@ export async function renderLocusView(locus: Locus, options: { onBack(): void })
       ...[
         h('p', { class: 'locus-study-text' }, what),
         pool.items.length > 0 && h('button', { type: 'button', class: 'btn btn-primary', onclick: () => go(studyHash(locus.id)) }, 'Study'),
-        spacingStrip(days, now),
+        spacingStrip(days, now, locus.createdAt),
       ].filter((x): x is HTMLElement => x !== false),
     )
   }
@@ -270,19 +270,34 @@ function openTileMenu(el: LocusElement): Promise<boolean | null> {
   })
 }
 
-// Four weeks of dots, today last; filled where something here was studied.
-function spacingStrip(days: boolean[], now: number): HTMLElement {
+// Four weeks of dots, oldest on the left and today (ringed, labelled) on the right; filled
+// where something here was studied. Days before the locus existed are drawn faint and
+// don't count: they couldn't have been studied.
+function spacingStrip(days: boolean[], now: number, createdAt: number): HTMLElement {
   const starts = dayStarts(now, days.length)
+  const first = Math.max(0, starts.findLastIndex((start) => start <= createdAt))
+  const counted = days.length - first
   const studied = days.filter(Boolean).length
+  const text = `${studied} of ${counted === days.length ? 'the last ' : ''}${count(counted, 'day', 'days')}`
   const label = (i: number) => new Date(starts[i]).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
   return h(
     'div',
     { class: 'spacing' },
     h(
       'div',
-      { class: 'spacing-strip', role: 'img', 'aria-label': `Studied on ${studied} of the last ${days.length} days` },
-      days.map((on, i) => h('span', { class: `spacing-dot${on ? ' on' : ''}${i === days.length - 1 ? ' today' : ''}`, title: `${label(i)}${on ? ' · studied' : ''}` })),
+      { class: 'spacing-track' },
+      h(
+        'div',
+        { class: 'spacing-strip', role: 'img', 'aria-label': `Studied on ${text}, up to today` },
+        days.map((on, i) =>
+          h('span', {
+            class: `spacing-dot${on ? ' on' : ''}${i < first ? ' before' : ''}${i === days.length - 1 ? ' today' : ''}`,
+            title: i < first ? `${label(i)} · before this locus` : `${label(i)}${on ? ' · studied' : ''}`,
+          }),
+        ),
+      ),
+      h('span', { class: 'spacing-today', 'aria-hidden': 'true' }, 'Today'),
     ),
-    h('span', { class: 'spacing-text' }, `${studied} of the last ${days.length} days`),
+    h('span', { class: 'spacing-text' }, text),
   )
 }

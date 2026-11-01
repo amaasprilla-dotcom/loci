@@ -323,7 +323,7 @@ export function createAddForm(elementId: string, onAdded: () => Promise<void>): 
   )
 
   void sync()
-  return h(
+  const form = h(
     'section',
     { class: 'todo-add' },
     h('div', { class: 'todo-sentence' }, h('span', { class: 'todo-word' }, 'When'), whenChip, cue),
@@ -354,6 +354,28 @@ export function createAddForm(elementId: string, onAdded: () => Promise<void>): 
     ),
     more,
   )
+
+  // Folded to the "I will … Add" line until it's used: it opens while you're in it, and
+  // folds again when you leave it with nothing written. A sheet opened from it (When,
+  // attachments) doesn't count as leaving.
+  const used = () => !!(action.value.trim() || cue.value.trim() || why.value.trim() || chosen || !backup.el.hidden)
+  const fold = () => form.classList.toggle('open', form.contains(document.activeElement) || used())
+  function onOutside(e: PointerEvent) {
+    if (!form.isConnected) return document.removeEventListener('pointerdown', onOutside, true)
+    const target = e.target as Element
+    if (form.contains(target) || target.closest?.('.backdrop')) return
+    if (!used()) form.classList.remove('open')
+  }
+  form.addEventListener('focusin', () => {
+    form.classList.add('open')
+    document.addEventListener('pointerdown', onOutside, true)
+  })
+  // Tabbing out. (A click inside can blur to nothing in some browsers, so clicks are judged above.)
+  form.addEventListener('focusout', (e) => {
+    const next = e.relatedTarget as Element | null
+    if (next && !form.contains(next) && !next.closest('.backdrop')) fold()
+  })
+  return form
 }
 
 // ---------- The When picker ----------
