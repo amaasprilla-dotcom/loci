@@ -6,11 +6,13 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
@@ -52,9 +54,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         web = WebView(this)
-        setContentView(web)
-        // The page stays clear of the status bar, the navigation bar and the keyboard.
-        ViewCompat.setOnApplyWindowInsetsListener(web) { view, insets ->
+        // A WebView lays its page out over its whole size and ignores its own padding, so the
+        // padding goes on a frame around it; the window's grey shows through in the bars.
+        val frame = FrameLayout(this).apply { addView(web, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT)) }
+        setContentView(frame)
+        // The page stays clear of the status bar, the camera, the navigation bar and the keyboard.
+        ViewCompat.setOnApplyWindowInsetsListener(frame) { view, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
             view.updatePadding(bars.left, bars.top, bars.right, maxOf(bars.bottom, ime.bottom))
