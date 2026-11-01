@@ -1,28 +1,28 @@
 // The Phone section of Settings, only in the Android app (SPEC-v6-android.md, "Settings →
-// Phone"): reminder and timer options, and what each phone feature needs allowed, with a
-// way to the screen that allows it.
+// Phone"): reminder, timer and sleep mode options, and what each phone feature needs
+// allowed, with a way to the screen that allows it.
 
-import { allowOnPhone, appInfo, inAndroidApp, onAppResume, type PhoneApp, phoneApps, type PhonePermission, type PhonePermissions, phonePermissions, phonePrefs, setPhonePrefs, timerToday } from '../android'
+import { allowOnPhone, appInfo, inAndroidApp, onAppResume, type PhoneApp, phoneApps, type PhonePermission, type PhonePermissions, phonePermissions, phonePrefs, setPhonePrefs, type SleepState, sleepNow, sleepState, timerToday } from '../android'
 import { h } from '../dom'
-import { parseClock } from '../elements/todos/when'
+import { formatTime, parseClock } from '../elements/todos/when'
 import { type ReminderPrefs, reminderPrefs, scheduleReminders } from '../notifications'
 
 const LINES: { which: PhonePermission; name: string; why: string }[] = [
   { which: 'notifications', name: 'Notifications', why: 'Reminders for to-dos, and the daily summary.' },
   { which: 'exactAlarms', name: 'Alarms and reminders', why: 'Reminders on the minute, not a few minutes late.' },
   { which: 'battery', name: 'Unrestricted battery', why: 'Keeps reminders coming while Loci is closed.' },
-  { which: 'accessibility', name: 'Accessibility', why: 'Seeing which app is open, for the timer. Android warns this means "full control"; Loci only notes which app is in front.' },
-  { which: 'writeSettings', name: 'Modify system settings', why: 'Turning the brightness down in sleep mode (next updates). Optional.' },
+  { which: 'accessibility', name: 'Accessibility', why: 'Seeing which app is open, for the timer, and drawing the sleep filter. Android warns this means "full control"; Loci only notes which app is in front.' },
+  { which: 'writeSettings', name: 'Modify system settings', why: 'Turning the real brightness down in sleep mode. Optional: without it the filter dims the screen.' },
 ]
 
-function segments(label: string, options: { label: string; on: boolean }[], value: boolean, onpick: (on: boolean) => void): HTMLElement {
+function segments<T>(label: string, options: { label: string; on: T }[], value: T, onpick: (on: T) => void): HTMLElement {
   const buttons = options.map((o) =>
     h('button', { type: 'button', class: 'segment', role: 'radio', 'aria-checked': String(o.on === value), onclick: () => {
       buttons.forEach((b, i) => b.setAttribute('aria-checked', String(options[i].on === o.on)))
       onpick(o.on)
     } }, o.label),
   )
-  return h('div', { class: 'segments segments-2', role: 'radiogroup', 'aria-label': label }, buttons)
+  return h('div', { class: options.length === 2 ? 'segments segments-2' : 'segments', role: 'radiogroup', 'aria-label': label }, buttons)
 }
 
 async function remindersPart(): Promise<HTMLElement[]> {
@@ -161,11 +161,110 @@ function appList(prefs: TimerPrefs, onchange: (apps: Record<string, boolean>) =>
   return details
 }
 
+// Sleep mode's settings, kept on the phone where WatchService reads them.
+export interface SleepPrefs {
+  on: boolean
+  bed: string // "23:30"
+  wake: string // "07:00"
+  nights: number[] // the days bedtime falls on, 0 = Sunday
+  strength: number // the filter, 0–100
+  every: number // minutes between reminders while the screen is on
+}
+
+const DEFAULT_SLEEP: SleepPrefs = { on: false, bed: '23:30', wake: '07:00', nights: [0, 1, 2, 3, 4, 5, 6], strength: 60, every: 10 }
+
+const clockLabel = (clock: string) => {
+  const [hh, mm] = clock.split(':').map(Number)
+  return formatTime(new Date().setHours(hh, mm, 0, 0))
+}
+
+async function sleepPart(supported: boolean): Promise<{ els: HTMLElement[]; refresh(): Promise<void> }> {
+  const kicker = h('span', { class: 'phone-kicker' }, 'Sleep mode')
+  if (!supported) {
+    const update = h('p', { class: 'settings-note' }, 'Install the new Loci app (1.3 or later) over this one for sleep mode.')
+    return { els: [kicker, update], refresh: async () => {} }
+  }
+  const prefs: SleepPrefs = { ...DEFAULT_SLEEP, ...((await phonePrefs()).sleep as Partial<SleepPrefs> | undefined) }
+  async function save(change: Partial<SleepPrefs>) {
+    Object.assign(prefs, change)
+    await setPhonePrefs({ ...(await phonePrefs()), sleep: prefs })
+    await refresh()
+  }
+
+  // Where it's at now, with Sleep now or I'm up.
+  const status = h('span', { class: 'phone-sleep-status' })
+  const button = h('button', { type: 'button', class: 'btn btn-small' })
+  function showState(state: SleepState) {
+    const asleep = state.phase === 'asleep'
+    status.textContent =
+      asleep ? `Sleep mode until ${formatTime(state.end)}.`
+      : state.phase === 'wind_down' ? `Winding down: bedtime at ${formatTime(state.start)}.`
+      : `Bedtime at ${clockLabel(prefs.bed)}.`
+    button.textContent = asleep ? 'I’m up' : 'Sleep now'
+    button.onclick = async () => showState(await sleepNow(!asleep))
+  }
+  const refresh = async () => showState(await sleepState())
+  await refresh()
+
+  const time = (label: string, key: 'bed' | 'wake') => {
+    const input = h('input', { class: 'input phone-time', type: 'time', value: prefs[key], 'aria-label': label, onchange: () => {
+      const t = parseClock(input.value)
+      if (t) void save({ [key]: t })
+    } })
+    return h('label', { class: 'field-label' }, h('span', {}, label), input)
+  }
+
+  // Monday first; each a toggle.
+  const dayName = (d: number) => new Intl.DateTimeFormat(undefined, { weekday: 'short' }).format(new Date(2026, 10, 1 + d)) // 1 Nov 2026 was a Sunday
+  const nights = [1, 2, 3, 4, 5, 6, 0].map((d) => {
+    const b = h('button', { type: 'button', class: 'segment', 'aria-pressed': String(prefs.nights.includes(d)), onclick: () => {
+      const on = !prefs.nights.includes(d)
+      b.setAttribute('aria-pressed', String(on))
+      void save({ nights: on ? [...prefs.nights, d].sort((x, y) => x - y) : prefs.nights.filter((n) => n !== d) })
+    } }, dayName(d))
+    return b
+  })
+
+  const strength = h('input', { type: 'range', min: 0, max: 100, step: 10, class: 'range', 'aria-label': 'Filter strength' })
+  strength.value = String(prefs.strength)
+  const strengthShown = h('span', { class: 'range-value' })
+  const showStrength = () => (strengthShown.textContent = `${strength.value}%`)
+  strength.addEventListener('input', showStrength)
+  strength.addEventListener('change', () => void save({ strength: Number(strength.value) }))
+  showStrength()
+
+  const options = h(
+    'div',
+    { class: 'phone-timer-options' },
+    h('div', { class: 'phone-sleep-now' }, status, button),
+    h('div', { class: 'phone-sleep-times' }, time('Bedtime', 'bed'), time('Wake time', 'wake')),
+    h('div', { class: 'field-label' }, h('span', {}, 'Nights'), h('div', { class: 'segments phone-nights', role: 'group', 'aria-label': 'Nights' }, nights)),
+    h('div', { class: 'field-label' }, h('span', { class: 'range-head' }, 'Filter strength', strengthShown), strength),
+    h('p', { class: 'settings-note' }, 'While the screen is on, a reminder every:'),
+    segments('Reminder every', [5, 10, 15, 30].map((m) => ({ label: `${m} min`, on: m })), prefs.every, (every) => void save({ every })),
+  )
+  options.hidden = !prefs.on
+
+  return {
+    els: [
+      kicker,
+      h('p', { class: 'settings-note' }, 'From bedtime to wake time, a warm, dim filter over the screen and a reminder to sleep while it’s on. The filter fades in over the 30 minutes before.'),
+      segments('Sleep mode', [{ label: 'On', on: true }, { label: 'Off', on: false }], prefs.on, (on) => {
+        options.hidden = !on
+        void save({ on })
+      }),
+      options,
+    ],
+    refresh,
+  }
+}
+
 export async function phoneSection(): Promise<HTMLElement | null> {
   if (!inAndroidApp) return null
   const [info, initial, reminders] = await Promise.all([appInfo(), phonePermissions(), remindersPart()])
   // An app from before the timer doesn't report Accessibility.
   const timer = await timerPart(initial.accessibility !== undefined)
+  const sleep = await sleepPart(info.build >= 5) // 1.3
   const list = h('ul', { class: 'phone-perms' })
   const accessibility = h('p', { class: 'settings-note' })
   const samsung = h('p', { class: 'settings-note' })
@@ -200,6 +299,7 @@ export async function phoneSection(): Promise<HTMLElement | null> {
     h('h2', {}, 'Phone'),
     ...reminders,
     ...timer.els,
+    ...sleep.els,
     h('span', { class: 'phone-kicker' }, 'Allowed on this phone'),
     list,
     accessibility,
@@ -211,6 +311,7 @@ export async function phoneSection(): Promise<HTMLElement | null> {
     if (!section.isConnected) return stop()
     show(await phonePermissions())
     await timer.refresh()
+    await sleep.refresh()
   })
   return section
 }

@@ -165,6 +165,14 @@ Tap the pill to shrink it, drag it to move it. Settings → Phone also picks whi
 shows today's total. On Android 13 and later, first open App info for Loci → ⋮ → **Allow
 restricted settings**, or Android won't let the service be switched on.
 
+**Sleep mode.** Also in Settings → Phone, and it needs the same Accessibility switch. Set a
+bedtime, a wake time and the nights it applies to (all by default, 23:30–07:00). From 30
+minutes before bedtime a warm amber filter fades in over the whole screen; from bedtime to wake
+time it stays, and while the screen is on a reminder comes every 10 minutes (adjustable): a
+notification with **I'm up** and **10 more minutes**, and the same line over whatever is open.
+**Sleep now** starts it straight away until the next wake time. Allow **Modify system
+settings** too and it also turns the real brightness down, and back up when it ends.
+
 The address it opens is `lociUrl` in `android/gradle.properties`.
 
 ## Where things are
@@ -182,7 +190,7 @@ The address it opens is `lociUrl` in `android/gradle.properties`.
   which of two versions wins, and the sync key format
 - `android/`: the Android app (SPEC-v6-android.md). `MainActivity.kt` is the WebView,
   `Bridge.kt` answers the web app's messages, `Reminders.kt` shows reminders at their time, `WatchService.kt` (the
-  accessibility service) drives `SocialTimer.kt` and its `TimerPill.kt`, and `Watchdog.kt` says when the service is off; `src/android.ts` is the web app's side of that,
+  accessibility service) drives `SocialTimer.kt` with its `TimerPill.kt` and `SleepMode.kt`, and `Watchdog.kt` says when the service is off; `src/android.ts` is the web app's side of that,
   `src/notifications.ts` works out the reminders, and `src/settings/phone.ts` is the Phone section of Settings. `scripts/build-android.mjs` builds it
 - `src/main.ts`: app start, and switching between screens
 - `src/router.ts`: the screen addresses (`#/`, `#/locus/…`) and the back button

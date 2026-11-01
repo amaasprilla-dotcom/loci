@@ -67,6 +67,9 @@
         <receiver
             android:name=".WatchdogReceiver"
             android:exported="false" />
+        <receiver
+            android:name=".SleepReceiver"
+            android:exported="false" />
 
         <!-- Files Loci opens in other apps (attachments) are shared from its cache through this. -->
         <provider

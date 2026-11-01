@@ -17,9 +17,10 @@ import org.json.JSONObject
 // The accessibility service (SPEC-v6-android.md, "Native side"). Android keeps it running
 // while it's switched on in Accessibility settings. It only hears which app comes to the
 // front (it can't read what's on screen, res/xml/watch_service.xml) and whether the screen
-// is on, and passes that to the social media timer (and sleep mode, D4).
+// is on, and passes that to the social media timer and sleep mode.
 class WatchService : AccessibilityService() {
     private lateinit var timer: SocialTimer
+    private lateinit var sleep: SleepMode
     private lateinit var prefs: SharedPreferences
     private var foreground: String? = null
     private var screenOn = true
@@ -44,6 +45,8 @@ class WatchService : AccessibilityService() {
 
     override fun onServiceConnected() {
         timer = SocialTimer(this)
+        sleep = SleepMode(this)
+        instance = this
         prefs = getSharedPreferences(Bridge.PREFS, MODE_PRIVATE)
         prefs.registerOnSharedPreferenceChangeListener(prefsChanged)
         val filter = IntentFilter().apply {
@@ -78,13 +81,16 @@ class WatchService : AccessibilityService() {
     private fun update() {
         val phone = phonePrefs(this)
         timer.update(if (screenOn) foreground else null, phone.optJSONObject("timer"))
+        sleep.update(screenOn, phone.optJSONObject("sleep"))
     }
 
     override fun onInterrupt() {}
 
     override fun onDestroy() {
+        if (instance === this) instance = null
         if (::timer.isInitialized) {
             timer.close()
+            sleep.close()
             prefs.unregisterOnSharedPreferenceChangeListener(prefsChanged)
             unregisterReceiver(screen)
         }
@@ -92,6 +98,11 @@ class WatchService : AccessibilityService() {
     }
 
     companion object {
+        // The running service, for Sleep now and the reminder's buttons to take effect at once.
+        private var instance: WatchService? = null
+
+        fun refresh() = android.os.Handler(android.os.Looper.getMainLooper()).post { instance?.update() }
+
         fun phonePrefs(context: Context): JSONObject =
             JSONObject(context.getSharedPreferences(Bridge.PREFS, Context.MODE_PRIVATE).getString("phone", "{}")!!)
     }

@@ -71,6 +71,13 @@ class Bridge(private val activity: MainActivity, web: WebView, origin: String) {
             }
             "apps" -> io.execute { answer(apps()) }
             "timerToday" -> answer(SocialTimer.todayMs(activity))
+            "sleepState" -> answer(sleepState())
+            // Sleep now (until the next wake time), or I'm up (until tomorrow night).
+            "sleepNow" -> {
+                if (msg.optBoolean("on")) SleepMode.sleepNow(activity) else SleepMode.imUp(activity)
+                WatchService.refresh()
+                answer(sleepState())
+            }
             "save" -> io.execute { answer(save(msg.getString("name"), msg.optString("mime"), msg.getString("data"))) }
             "open" -> io.execute { answer(open(msg.getString("name"), msg.optString("mime"), msg.getString("data"))) }
             else -> answer(null)
@@ -125,6 +132,11 @@ class Bridge(private val activity: MainActivity, web: WebView, origin: String) {
             activity.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg))
         }
         done()
+    }
+
+    private fun sleepState(): JSONObject {
+        val phase = SleepMode.phase(activity)
+        return JSONObject().put("phase", phase.kind.name.lowercase()).put("start", phase.start).put("end", phase.end)
     }
 
     // Every app with a launcher icon, for the timer's app list: social ones first.

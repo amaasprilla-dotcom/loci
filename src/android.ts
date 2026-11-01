@@ -68,8 +68,8 @@ export const phonePermissions = () => ask<PhonePermissions>('permissions')
 // Opens the system screen (or pop-up) for it; the answer is the state right after.
 export const allowOnPhone = (which: PhonePermission) => ask<PhonePermissions>('allow', { which })
 
-// The phone's own settings (reminders, the timer; sleep mode later): kept on the
-// phone, where they work with Loci closed, and never synced.
+// The phone's own settings (reminders, the timer, sleep mode): kept on the phone, where
+// they work with Loci closed, and never synced.
 export const phonePrefs = () => ask<Record<string, unknown>>('getPrefs')
 export const setPhonePrefs = (prefs: Record<string, unknown>) => ask<boolean>('setPrefs', { prefs })
 
@@ -84,6 +84,17 @@ export interface PhoneApp {
 export const phoneApps = () => ask<PhoneApp[]>('apps')
 // Milliseconds in social apps today.
 export const timerToday = () => ask<number>('timerToday')
+
+// Where sleep mode is now: tonight's sleep (or Sleep now's) runs from `start` to `end`.
+export interface SleepState {
+  phase: 'off' | 'wind_down' | 'asleep'
+  start: number
+  end: number
+}
+
+export const sleepState = () => ask<SleepState>('sleepState')
+// true: sleep now, until the next wake time; false: I'm up, until tomorrow night.
+export const sleepNow = (on: boolean) => ask<SleepState>('sleepNow', { on })
 
 // Replaces every reminder the phone has with these; `pending` is each timed to-do's
 // current occurrence, so a reminder put off for an hour is dropped once that's done.

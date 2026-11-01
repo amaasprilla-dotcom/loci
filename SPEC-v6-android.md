@@ -56,6 +56,18 @@ Constraints carry over: no AI, no paid APIs, no account. The app is installed fr
 - The watchdog doesn't warn the moment the timer is switched on in Settings (the Accessibility line is right there); it warns from the next open of Loci or the daily check.
 - The watchdog's daily check is inexact (Android picks the moment within the day), and it's set again whenever Loci opens and after a restart.
 
+### Made while building D4
+
+- **No alarms for sleep mode.** WatchService already hears the screen go on and off, and nothing shows with the screen off, so it works out where sleep mode is when the screen comes on and every 30 seconds while it stays on: the fade, bedtime, wake time and reminders. Brightness goes back at the first screen-on after wake time.
+- **A night counts by the day its bedtime falls on.** With bedtime 23:30 and Friday ticked, Friday night has sleep mode; a bedtime after midnight (00:30) belongs to the day it falls on.
+- **The layer** is one deep-amber layer (warmer and darker together) at up to 80% of the strength slider, so 60% means a layer about half opaque. It covers the whole display, bars and camera cut-out included, and lets every touch through.
+- **Real brightness**, if allowed, goes to manual at 10 of 255 at bedtime (not during wind-down). The setting from before is kept and put back when sleep mode ends: wake time, I'm up, or switching it off.
+- **Reminders** are a silent notification (the pill does the nudging, and a sound at night could wake others) and a pill under the timer's spot, fading after 5 seconds. Turning the screen on reminds at once; then every 5, 10, 15 or 30 minutes while it stays on.
+- **I'm up** ends sleep mode until that night's wake time, wind-down included, so it's back the next night. It's also the button Settings → Phone shows while sleep mode is on, in place of Sleep now. **10 more minutes** stops reminders for 10 minutes and keeps the filter.
+- **Sleep now** shows only with sleep mode on, and lasts until the next wake time.
+- **An app from before 1.3** gets "Install the new Loci app (1.3 or later)" in sleep mode's place.
+- The watchdog warns when the timer *or* sleep mode is on and the service is off.
+
 ## What the user sees
 
 ### First open

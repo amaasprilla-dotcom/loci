@@ -52,17 +52,7 @@ class TimerPill(private val context: Context, private val state: SharedPreferenc
 
     @SuppressLint("ClickableViewAccessibility")
     private fun create(): TextView {
-        val pill = TextView(context).apply {
-            setTextColor(Color.parseColor("#1D1D1F"))
-            fontFeatureSettings = "tnum" // the digits don't jiggle as they change
-            maxLines = 1
-            background = GradientDrawable().apply {
-                cornerRadius = dp(999f)
-                setColor(Color.argb(235, 255, 255, 255))
-                setStroke(dp(1f).toInt(), Color.argb(40, 0, 0, 0))
-            }
-            importantForAccessibility = android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO
-        }
+        val pill = styled(context)
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -73,7 +63,7 @@ class TimerPill(private val context: Context, private val state: SharedPreferenc
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
             x = state.getInt("x", 0)
             // Below the status bar and the camera, until it's moved.
-            y = state.getInt("y", statusBarHeight() + dp(8f).toInt())
+            y = state.getInt("y", statusBarHeight(context) + dp(8f).toInt())
         }
 
         // A tap shrinks it to the time (or back); a drag moves it.
@@ -114,9 +104,28 @@ class TimerPill(private val context: Context, private val state: SharedPreferenc
         return pill
     }
 
-    @SuppressLint("DiscouragedApi", "InternalInsetResource")
-    private fun statusBarHeight(): Int {
-        val id = context.resources.getIdentifier("status_bar_height", "dimen", "android")
-        return if (id > 0) context.resources.getDimensionPixelSize(id) else dp(24f).toInt()
+    companion object {
+        private fun dp(context: Context, v: Float) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, context.resources.displayMetrics)
+
+        // White glass with dark text, as Loci's cards; sleep mode's reminder pill looks the same.
+        fun styled(context: Context) = TextView(context).apply {
+            setTextColor(Color.parseColor("#1D1D1F"))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+            setPadding(dp(context, 14f).toInt(), dp(context, 7f).toInt(), dp(context, 14f).toInt(), dp(context, 7f).toInt())
+            fontFeatureSettings = "tnum" // the digits don't jiggle as they change
+            maxLines = 1
+            background = GradientDrawable().apply {
+                cornerRadius = dp(context, 999f)
+                setColor(Color.argb(235, 255, 255, 255))
+                setStroke(dp(context, 1f).toInt(), Color.argb(40, 0, 0, 0))
+            }
+            importantForAccessibility = android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        }
+
+        @SuppressLint("DiscouragedApi", "InternalInsetResource")
+        fun statusBarHeight(context: Context): Int {
+            val id = context.resources.getIdentifier("status_bar_height", "dimen", "android")
+            return if (id > 0) context.resources.getDimensionPixelSize(id) else dp(context, 24f).toInt()
+        }
     }
 }

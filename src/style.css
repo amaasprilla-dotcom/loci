@@ -2384,6 +2384,46 @@ details.task-section > summary {
   accent-color: var(--text);
 }
 
+/* Sleep mode: where it's at with Sleep now / I'm up, bedtime and wake time side by side,
+   one toggle per night. */
+.phone-sleep-now {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.phone-sleep-status {
+  flex: 1;
+  font-weight: 500;
+}
+
+.phone-sleep-times {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.phone-sleep-times > *,
+.phone-sleep-times .phone-time {
+  min-width: 0;
+  max-width: none;
+}
+
+.phone-nights {
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.phone-nights .segment {
+  padding: 7px 0;
+  font-size: 0.78rem;
+}
+
+.phone-nights .segment[aria-pressed="true"] {
+  background: var(--text);
+  color: #fff;
+  font-weight: 650;
+}
+
 .phone-perm-allowed {
   color: var(--muted);
   font-family: var(--mono);
