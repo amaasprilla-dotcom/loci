@@ -52,6 +52,18 @@ class Bridge(private val activity: MainActivity, web: WebView, origin: String) {
             "info" -> answer(JSONObject().put("version", BuildConfig.VERSION_NAME).put("build", BuildConfig.VERSION_CODE))
             "permissions" -> answer(permissions())
             "allow" -> allow(msg.optString("which")) { answer(permissions()) }
+            "schedule" -> {
+                Reminders.replace(activity, msg.getJSONObject("schedule"))
+                answer(true)
+            }
+            "takeActions" -> answer(Reminders.takeActions(activity))
+            // The phone settings the native side needs while Loci is closed (reminders today;
+            // the timer and sleep mode later), kept as one JSON object.
+            "getPrefs" -> answer(JSONObject(prefs.getString("phone", "{}")!!))
+            "setPrefs" -> {
+                prefs.edit().putString("phone", msg.getJSONObject("prefs").toString()).apply()
+                answer(true)
+            }
             "save" -> io.execute { answer(save(msg.getString("name"), msg.optString("mime"), msg.getString("data"))) }
             "open" -> io.execute { answer(open(msg.getString("name"), msg.optString("mime"), msg.getString("data"))) }
             else -> answer(null)
@@ -67,6 +79,9 @@ class Bridge(private val activity: MainActivity, web: WebView, origin: String) {
             .put("overlay", Settings.canDrawOverlays(activity))
             .put("writeSettings", Settings.System.canWrite(activity))
             .put("battery", power.isIgnoringBatteryOptimizations(activity.packageName))
+            .put("exactAlarms", Reminders.exactAlarmsAllowed(activity))
+            // Samsung adds its own sleeping-apps list on top, which no app can see or change.
+            .put("samsung", Build.MANUFACTURER.equals("samsung", ignoreCase = true))
     }
 
     private fun hasUsageAccess(): Boolean {
@@ -101,6 +116,7 @@ class Bridge(private val activity: MainActivity, web: WebView, origin: String) {
             "overlay" -> Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, pkg)
             "writeSettings" -> Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, pkg)
             "battery" -> @Suppress("BatteryLife") Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, pkg)
+            "exactAlarms" -> if (Build.VERSION.SDK_INT >= 31) Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, pkg) else null
             else -> null
         }
         try {

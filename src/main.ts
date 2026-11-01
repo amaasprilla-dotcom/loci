@@ -25,6 +25,7 @@ import { isStaleCodeError, reloadForStaleCode, watchForStaleCode } from './stale
 import { coverFor, fadeIn, fadeOut, growFrom, motionAllowed, shrinkInto } from './transition'
 import { playIntro } from './intro'
 import { keepUpToDate } from './update'
+import { watchReminders } from './notifications'
 
 const CANVAS_THEME_COLOR = '#f1f1f0' // the top of the grey canvas (--canvas-top) every screen sits on
 const REFRESH_MS = 60_000 // cards fall due as time passes
@@ -353,4 +354,6 @@ const firstScreen = Promise.all([loadLocaleSettings(), loadSync()])
 // The opening word covers the app while its first screen is drawn.
 void playIntro(firstScreen)
 void firstScreen.then(startAutoSync)
+// The Android app: reminders kept up to date, Done taps from notifications applied.
+void firstScreen.then(watchReminders)
 keepUpToDate()

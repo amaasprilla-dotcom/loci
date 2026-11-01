@@ -21,11 +21,28 @@ export interface PhonePermissions {
   overlay: boolean
   writeSettings: boolean
   battery: boolean // excluded from battery optimisation
+  exactAlarms: boolean // reminders on the minute
+  samsung: boolean // a Samsung phone: its sleeping-apps list needs Loci added by hand
 }
 
-export type PhonePermission = keyof PhonePermissions
+export type PhonePermission = Exclude<keyof PhonePermissions, 'samsung'>
 
-const port = window.LociAndroid
+// One notification for the phone to show at `at` (src/notifications.ts).
+export interface Reminder {
+  key: string
+  at: number
+  kind: 'todo' | 'summary'
+  title: string
+  body: string
+  todoId?: string
+  occurrenceAt?: number
+}
+
+// What happened on the phone while Loci wasn't looking.
+export type PhoneAction = { type: 'done'; id: string; occurrenceAt: number; at: number } | { type: 'open'; id?: string }
+
+// (No window at all in the unit tests.)
+const port = typeof window === 'undefined' ? undefined : window.LociAndroid
 export const inAndroidApp = port != null
 
 let nextId = 1
@@ -49,6 +66,16 @@ export const appInfo = () => ask<{ version: string; build: number }>('info')
 export const phonePermissions = () => ask<PhonePermissions>('permissions')
 // Opens the system screen (or pop-up) for it; the answer is the state right after.
 export const allowOnPhone = (which: PhonePermission) => ask<PhonePermissions>('allow', { which })
+
+// The phone's own settings (reminders now; the timer and sleep mode later): kept on the
+// phone, where they work with Loci closed, and never synced.
+export const phonePrefs = () => ask<Record<string, unknown>>('getPrefs')
+export const setPhonePrefs = (prefs: Record<string, unknown>) => ask<boolean>('setPrefs', { prefs })
+
+// Replaces every reminder the phone has with these; `pending` is each timed to-do's
+// current occurrence, so a reminder put off for an hour is dropped once that's done.
+export const sendSchedule = (schedule: { reminders: Reminder[]; pending: Record<string, number> }) => ask<boolean>('schedule', { schedule })
+export const takePhoneActions = () => ask<PhoneAction[]>('takeActions')
 
 // The app came back to the front (e.g. from a system settings screen).
 export function onAppResume(listener: () => void): () => void {

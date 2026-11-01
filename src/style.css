@@ -2275,7 +2275,26 @@ details.task-section > summary {
   color: var(--bad);
 }
 
-/* Settings → Phone (Android app only): one line per permission, Allow or Allowed on the right. */
+/* Settings → Phone (Android app only): reminder options, then one line per permission,
+   Allow or Allowed on the right. */
+.phone-kicker {
+  margin-top: 6px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.phone-time {
+  max-width: 10rem;
+}
+
+.phone-time[hidden] {
+  display: none;
+}
+
 .phone-perms {
   margin: 0;
   padding: 0;

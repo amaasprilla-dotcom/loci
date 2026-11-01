@@ -20,6 +20,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
+import org.json.JSONObject
 
 // Loci's one screen: a WebView on the Cloudflare address (SPEC-v6-android.md, "Native side").
 // Everything Loci shows is the web app; this only fills in what a WebView lacks.
@@ -120,6 +121,19 @@ class MainActivity : ComponentActivity() {
         })
 
         if (savedInstanceState == null || web.restoreState(savedInstanceState) == null) web.loadUrl(BuildConfig.LOCI_URL)
+        if (savedInstanceState == null) openFrom(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        openFrom(intent) // onResume follows, and tells the page to look
+    }
+
+    // A tapped notification: the page opens that to-do (or home) when it next takes its actions.
+    private fun openFrom(intent: Intent) {
+        val todoId = intent.getStringExtra(Reminders.EXTRA_OPEN_TODO)
+        if (todoId == null && !intent.getBooleanExtra(Reminders.EXTRA_OPEN_HOME, false)) return
+        Reminders.queue(this, JSONObject().put("type", "open").apply { todoId?.let { put("id", it) } })
     }
 
     override fun onSaveInstanceState(outState: Bundle) {

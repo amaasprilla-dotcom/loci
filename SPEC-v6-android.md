@@ -35,6 +35,14 @@ Constraints carry over: no AI, no paid APIs, no account. The app is installed fr
 - **Attachments in the app** open in another app (a PDF viewer, Photos) through Android's "open with". Backups and the activity log save to Downloads.
 - **Settings → Phone in D1** shows the permission lines before their features exist, with a line saying so, so the phone can be set up in one go.
 
+### Made while building D2
+
+- **One alarm at a time.** The phone keeps the week's list and sets a single exact alarm for the earliest; when it goes off it shows what's due and sets the next. A reminder missed by more than 2 hours (phone off) isn't shown late.
+- **Done from a notification** counts for the occurrence it was about, as of the moment it was tapped, so a repeat's later occurrences stay as they were even if Loci opens days later. If that occurrence was dealt with meanwhile (here or on another device), the tap is dropped.
+- **The summary** is worked out ahead for each of the next 7 days, as the Now card will be at that time. A day with nothing due and no cards gets none. Changing anything, opening Loci, or leaving it works them out again.
+- **Tapping a reminder** opens its to-do; tapping the summary opens home. A reminder still showing for a to-do that's been done goes away the next time the list is sent.
+- Goal check-in reminders (the goals' "Remind me of check-ins" box) and v5's `notif_sent` / `notif_opened` events are not in D2.
+
 ## What the user sees
 
 ### First open

@@ -152,6 +152,11 @@ install -r android/Loci.apk` does the same.
 → Sync → **Join with a key** brings your Loci in (or import a backup). Settings → Phone lists
 what the phone features need allowed.
 
+**Reminders.** A to-do with a time reminds you at that time (Done and In 1 hour work from the
+notification), and a daily summary at 09:00 shows the Now card and the cards due. Both are
+set in Settings → Phone. On a Samsung, also add Loci to Settings → Battery and device care →
+Battery → Background usage limits → **Never sleeping apps**, or reminders can be held back.
+
 The address it opens is `lociUrl` in `android/gradle.properties`.
 
 ## Where things are
@@ -168,8 +173,8 @@ The address it opens is `lociUrl` in `android/gradle.properties`.
   (`index.ts`). `src/sync/rules.ts` holds what the app and the server share: which tables sync,
   which of two versions wins, and the sync key format
 - `android/`: the Android app (SPEC-v6-android.md). `MainActivity.kt` is the WebView,
-  `Bridge.kt` answers the web app's messages; `src/android.ts` is the web app's side of that,
-  and `src/settings/phone.ts` the Phone section of Settings. `scripts/build-android.mjs` builds it
+  `Bridge.kt` answers the web app's messages, `Reminders.kt` shows reminders at their time; `src/android.ts` is the web app's side of that,
+  `src/notifications.ts` works out the reminders, and `src/settings/phone.ts` is the Phone section of Settings. `scripts/build-android.mjs` builds it
 - `src/main.ts`: app start, and switching between screens
 - `src/router.ts`: the screen addresses (`#/`, `#/locus/…`) and the back button
 - `src/transition.ts`: the bubble growing into its locus screen, and back
