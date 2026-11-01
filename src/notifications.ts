@@ -62,7 +62,7 @@ export async function todoReminders(now: number, until: number): Promise<{ remin
       if (at > now && at <= until) reminders.push({ key: `todo:${t.id}:${at}`, at, kind: 'todo', title: t.title, body, todoId: t.id, occurrenceAt: at })
     }
   }
-  return { reminders, pending }
+  return { reminders: reminders.sort((a, b) => a.at - b.at), pending }
 }
 
 // The daily summary at `at`: the Now card as it will be then, and the cards due. Nothing
