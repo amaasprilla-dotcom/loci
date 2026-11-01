@@ -5,7 +5,8 @@ starting with flashcard decks that use spaced repetition. [SPEC.md](SPEC.md) is 
 [SPEC-v2.md](SPEC-v2.md) is v2 (more element types, FSRS, study sessions, exams).
 [SPEC-v3-coach.md](SPEC-v3-coach.md) is Coach (if-then plans, habits, WOOP, weekly reviews and
 other evidence-based practices), being built now. [SPEC-v4-sync.md](SPEC-v4-sync.md) is sync
-between your devices.
+between your devices. [SPEC-v6-android.md](SPEC-v6-android.md) is the Android app (social media
+timer, notifications, sleep mode), being built now.
 
 Everything runs in the browser and is saved on the device (IndexedDB), and works offline. There
 is no account. Sync, when you turn it on, copies changes between your devices through your own
