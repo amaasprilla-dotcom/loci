@@ -12,17 +12,17 @@ Loci gets an Android app so the phone no longer runs it in a browser tab, and so
 
 The app is a **thin native shell** around the Loci that already exists: a full-screen WebView that opens Loci's Cloudflare address, plus native Kotlin code for the three features. The web app stays the one place where screens are built; the Android part adds a few things it can't do in a browser.
 
-Constraints carry over: no AI, no paid APIs, no account. The app is installed from an APK (sideloaded), not the Play Store. Play's rules on overlays, usage access and background services don't apply, and Loci doesn't pay Google's fee or wait for review. The v5 spec left out "OS-level blocking until the Android app exists". Blocking stays out: the timer only shows the time, it never closes an app.
+Constraints carry over: no AI, no paid APIs, no account. The app is installed from an APK (sideloaded), not the Play Store. Play's rules on accessibility services, overlays and background work don't apply, and Loci doesn't pay Google's fee or wait for review. The v5 spec left out "OS-level blocking until the Android app exists". Blocking stays out: the timer only shows the time, it never closes an app.
 
 ## Decisions
 
 - **The shell loads the live Cloudflare address, not a copy built into the APK.** Sync works only on that address (`/api/sync/…` and the live socket are same-origin), and web updates keep arriving through `src/update.ts` without a new APK. The service worker keeps working inside the WebView, so after the first open Loci works offline as it does now. A new APK is needed only when the native part changes.
 - **Hand-written Kotlin, not Capacitor.** All three features need custom native code (services, overlays, alarms), which Capacitor doesn't provide, and its bridge is meant for files bundled into the app, not a live address. The shell is a few hundred lines with no npm changes. Native code uses plain Android Views, not Compose, since its only screens are small overlays.
-- **The timer is a floating pill over the app, not just a notification.** A notification sits in the shade where you don't see it while scrolling, and the point is to see the time pass. The pill needs "Display over other apps". The foreground service needs a notification anyway, so that notification also shows the running time, and without the overlay permission it is all you get.
-- **Usage access, not an accessibility service, to see which app is open.** An accessibility service reacts instantly, but Android shows a frightening warning for it, and on Android 13+ a sideloaded app needs "Allow restricted settings" before one can be switched on. Usage access is checked once a second, only while the screen is on, which is cheap and close enough to instant.
+- **The timer is a floating pill over the app, not just a notification.** A notification sits in the shade where you don't see it while scrolling, and the point is to see the time pass.
+- **An accessibility service sees which app is open** (changed from usage access on Nov 1, after the user's phone turned out to be a Samsung). Android keeps an enabled accessibility service running itself, so phone makers' battery savers (Samsung's "sleeping apps" included) almost never stop it, where a usage-access check in a foreground service can be stopped. It hears each app switch as it happens instead of checking once a second, and its overlays (`TYPE_ACCESSIBILITY_OVERLAY`) cover the whole screen, status and navigation bars included, with no "Display over other apps" permission. The cost: Android's warning when it's switched on ("full control of your device"), and on Android 13+ a sideloaded app needs **Allow restricted settings** in its App info menu first. Settings → Phone explains both. The service only listens for which app comes to the front (`typeWindowStateChanged`); it never reads what's on screen (`canRetrieveWindowContent="false"`) and never acts on other apps.
 - **One social session across all social apps.** Going from Instagram to TikTok continues the same clock. Otherwise hopping between apps would reset it. The clock resets after **5 minutes away** (adjustable, 1–30). Screen off counts as away.
 - **Which apps count as social:** apps whose developer declares them as social (Android's `CATEGORY_SOCIAL`), plus a built-in list of well-known ones (Instagram, TikTok, X, Facebook, Snapchat, Reddit, YouTube, Threads, Pinterest, Tumblr, Bluesky, Discord). In Settings you turn any app on or off, so the list is a starting point.
-- **Brightness and filter by overlay, with real brightness when allowed.** Android has no public way to switch on its own Night Light, so the warm filter is a full-screen, see-through amber layer that lets touches pass through. The same layer can dim below the lowest brightness setting. If you also grant "Modify system settings", sleep mode turns the real brightness down too (better for battery on OLED screens) and puts it back in the morning. Android 12+ blocks touches through overlays that are more than 80% opaque, so the layer never goes above that.
+- **Brightness and filter by overlay, with real brightness when allowed.** Android has no public way to switch on its own Night Light, so the warm filter is a see-through amber layer over the whole screen, bars included (an accessibility overlay), that lets touches pass through. The same layer can dim below the lowest brightness setting. If you also grant "Modify system settings", sleep mode turns the real brightness down too (better for battery on OLED screens) and puts it back in the morning. The layer stays at most 80% opaque so the screen underneath is always readable.
 - **Settings live in the web app, saved on the phone.** A new **Phone** section in Settings appears only inside the app. Its values are sent to the native side, which keeps them (SharedPreferences), because the services run while Loci is closed. They're specific to the device and aren't synced or put in backups, like the v5 event log.
 - **The bridge is limited to Loci's address.** The native side uses `WebViewCompat.addWebMessageListener` with only the Cloudflare origin allowed, so no other page loaded in the WebView can reach it. Links to other sites open in the phone's browser, not in the shell.
 - **Notifications:** a to-do with a **time** reminds you at that time, and a repeat at every occurrence. You set those times, so the v5 budget doesn't cut them. Dated to-dos without a time, and study, are covered by one **daily summary** (default 09:00, adjustable or off) that shows the current Now card and how many cards are due. That is v5 P1's budget at its default of 1. "When" and "after" to-dos fire only when the app sees them happen, so they never get a timed reminder.
@@ -45,13 +45,13 @@ The Android back button goes back a screen (closes a sheet, then leaves a locus,
 
 ### Settings → Phone
 
-Shown only in the app. Each feature has an on/off switch, its options, and a line for each permission it needs: "Allowed" or a button that opens the right system screen ("Allow usage access →"). The line updates when you come back.
+Shown only in the app. Each feature has an on/off switch, its options, and a line for each permission it needs: "Allowed" or a button that opens the right system screen ("Switch on Loci in Accessibility →"). The line updates when you come back.
 
 ### Social media timer
 
 - **The pill.** Opening a social app shows a small glass pill near the top of the screen: `Instagram · 12:34`. It counts up every second, can be dragged to another spot (it remembers where), and tapped to shrink to just the time. It hides while you're in a non-social app or the screen is off, and comes back with the same clock if you return within the reset time.
 - **Reset.** Away for the reset time (default 5 min) and the next social app starts again at 0:00.
-- **Notification.** The service's ongoing notification reads "Social · 12:34 this session". It is silent and can't be swiped away while the service runs (Android's rule for foreground services).
+- **Notification.** While a session runs, a silent notification reads "Social · 12:34 this session" (so the time is there with the pill shrunk). It goes when the session resets.
 - **Settings:** on/off, reset time (1–30 min), the app list (each installed app with its icon and a switch; social apps on by default), pill size (normal/small).
 - **Today's total**, shown under the switch: "Today: 1 h 12 min in social apps". It's kept on the phone, never synced, and for now there's no history beyond today.
 
@@ -88,10 +88,11 @@ The Cloudflare address is a Gradle property (`lociUrl` in `android/gradle.proper
 | --- | --- |
 | `MainActivity` | The WebView: opens `lociUrl`, back button, file chooser, downloads, links to other sites go to the browser, the bridge. |
 | `Bridge` | Receives messages from the web app (settings, reminder schedule, "open this system screen") and answers (permission states, today's total, installed apps). |
-| `WatchService` | Foreground service (type `specialUse`). Runs while the timer or sleep mode is on. Listens for screen on/off. While the screen is on, checks the open app once a second (`UsageStatsManager.queryEvents`), drives the timer pill and the sleep layer. |
-| `Overlays` | The timer pill, the sleep layer and the reminder pill (`TYPE_APPLICATION_OVERLAY`). The sleep layer has `FLAG_NOT_TOUCHABLE`, so touches pass through. |
+| `WatchService` | The accessibility service. Android keeps it running while it's switched on in Accessibility settings. Hears each app coming to the front (`typeWindowStateChanged`) and the screen going on and off; drives the timer pill and the sleep layer. Does nothing while neither feature is on. |
+| `Overlays` | The timer pill, the sleep layer and the reminder pill (`TYPE_ACCESSIBILITY_OVERLAY`, drawn by `WatchService`). The sleep layer has `FLAG_NOT_TOUCHABLE`, so touches pass through. |
 | `Reminders` | Keeps the schedule sent by the web app, sets one exact alarm per reminder (`AlarmManager.setExactAndAllowWhileIdle`), shows the notification, handles Done / In 1 hour. |
-| `BootReceiver` | After a restart: sets the alarms again and restarts `WatchService` if a feature is on. |
+| `BootReceiver` | After a restart: sets the alarms again. (Android restarts `WatchService` itself.) |
+| Watchdog | Phones sometimes switch an accessibility service off (after a crash, an update, or a Samsung cleanup). Loci checks when it opens and once a day (an alarm): if the timer or sleep mode is on but `WatchService` isn't running, a notification says "Loci's timer was switched off" and opens the Accessibility screen. |
 
 **Done from a notification while Loci is closed.** The native side can't write to Loci's IndexedDB. It stores the action and opens nothing; the next time Loci opens, the web app reads the queued actions through the bridge and completes the to-dos (then sync carries it to other devices).
 
@@ -109,14 +110,14 @@ The Cloudflare address is a Gradle property (`lociUrl` in `android/gradle.proper
 | `INTERNET` | Loading Loci, sync | Automatic |
 | `POST_NOTIFICATIONS` | All notifications (Android 13+) | Pop-up, asked when you switch a feature on |
 | `SCHEDULE_EXACT_ALARM` / `USE_EXACT_ALARM` | Reminders on the minute | Automatic for a sideloaded app; without it, reminders may be a few minutes late |
-| `PACKAGE_USAGE_STATS` | Seeing which app is open | System screen "Usage access" |
-| `SYSTEM_ALERT_WINDOW` | Timer pill, sleep filter, reminder pill | System screen "Display over other apps" |
+| `BIND_ACCESSIBILITY_SERVICE` (held by the service) | Seeing which app is open; the timer pill, sleep filter and reminder pill | System screen Accessibility → Installed apps → Loci. Android 13+: App info → ⋮ → **Allow restricted settings** first |
 | `WRITE_SETTINGS` | Real brightness in sleep mode (optional) | System screen "Modify system settings" |
-| `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SPECIAL_USE` | `WatchService` | Automatic |
-| `RECEIVE_BOOT_COMPLETED` | Restoring alarms and the service | Automatic |
+| `RECEIVE_BOOT_COMPLETED` | Restoring alarms | Automatic |
 | `QUERY_ALL_PACKAGES` | Listing installed apps for the timer | Automatic (sideloaded) |
 
-Some phones (Xiaomi, Samsung, Huawei) kill background services to save battery. Settings → Phone shows a line to exclude Loci from battery optimisation if the system reports it isn't.
+D1's "Usage access" and "Display over other apps" lines (and their manifest permissions) are replaced in D3 by one **Accessibility** line.
+
+Some phones (Samsung, Xiaomi, Huawei) pause or kill background apps to save battery, which can delay reminders. Settings → Phone shows a line to set Loci's battery to Unrestricted if the system reports it isn't. On a Samsung it also shows the second step, which no app can do or check: Settings → Battery and device care → Battery → Background usage limits → **Never sleeping apps** → add Loci.
 
 ### Installing and updating
 
@@ -134,7 +135,7 @@ Each milestone is committed and reviewed before the next starts.
 | **D0 — Spec** | This file. |
 | **D1 — Shell** | `android/` project, WebView on the Cloudflare address, back button, file picker, downloads, links out, icons from `public/`, the bridge with `src/android.ts`, Settings → Phone with the permission lines, signed APK, `npm run android`. Install on the phone. |
 | **D2 — Notifications** | Reminder schedule from the web app, exact alarms, to-do and daily summary notifications, Done / In 1 hour with the queued actions, restored after a restart. |
-| **D3 — Social media timer** | `WatchService`, usage access check, timer pill and notification, reset after time away, app list, today's total. |
+| **D3 — Social media timer** | `WatchService` (accessibility service) and the watchdog, the Accessibility line in Settings → Phone, timer pill and notification, reset after time away, app list, today's total. |
 | **D4 — Sleep mode** | Bedtime and Sleep now, wind-down, amber/dim layer, real brightness with "Modify system settings", reminders with I'm up / 10 more minutes. |
 
 ## Out of scope
@@ -149,4 +150,4 @@ Each milestone is committed and reviewed before the next starts.
 ## Open questions
 
 - ~~The Cloudflare address~~: `https://loci.echomathia.workers.dev/` (`lociUrl` in `android/gradle.properties`).
-- **Which phone and Android version**, to test the brand's battery rules (D3/D4 depend on them most).
+- ~~Which phone~~: a Samsung on Android 12 (One UI 4), so no restricted-settings step on it today.
