@@ -28,6 +28,13 @@ Constraints carry over: no AI, no paid APIs, no account. The app is installed fr
 - **Notifications:** a to-do with a **time** reminds you at that time, and a repeat at every occurrence. You set those times, so the v5 budget doesn't cut them. Dated to-dos without a time, and study, are covered by one **daily summary** (default 09:00, adjustable or off) that shows the current Now card and how many cards are due. That is v5 P1's budget at its default of 1. "When" and "after" to-dos fire only when the app sees them happen, so they never get a timed reminder.
 - **App id `io.github.amaasprilla.loci`**, minimum Android 8 (API 26: overlays and app categories start there), target Android 16 (API 36, installed on this PC).
 
+### Made while building D1
+
+- **Toolchain:** Android Gradle Plugin 9.3.3 (its built-in Kotlin, no separate Kotlin plugin) on Gradle 9.8.2, compiled against Android 16.1 (API 36.1), with AndroidX Activity, Core and WebKit. `npm run android` finds Android Studio's Java and the SDK on its own.
+- **Back button:** the app calls `window.lociBack()`, which sends the page an Escape: Escape already closes the top sheet, leaves a study session and goes back a screen. On home with nothing open it returns false and Android leaves the app.
+- **Attachments in the app** open in another app (a PDF viewer, Photos) through Android's "open with". Backups and the activity log save to Downloads.
+- **Settings → Phone in D1** shows the permission lines before their features exist, with a line saying so, so the phone can be set up in one go.
+
 ## What the user sees
 
 ### First open
@@ -139,7 +146,7 @@ Each milestone is committed and reviewed before the next starts.
 - Switching on Android's own Night Light or Bedtime mode (no public API).
 - Moving data from the Chrome copy automatically: sync or a backup does it.
 
-## Open questions for D1
+## Open questions
 
-- **The Cloudflare address** (`loci.<account>.workers.dev`): it isn't in the repo, and the shell needs it.
+- ~~The Cloudflare address~~: `https://loci.echomathia.workers.dev/` (`lociUrl` in `android/gradle.properties`).
 - **Which phone and Android version**, to test the brand's battery rules (D3/D4 depend on them most).

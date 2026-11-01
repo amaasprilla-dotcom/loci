@@ -1,0 +1,8 @@
+.gradle/
+build/
+local.properties
+# The release signing key and its password: kept on this PC only (and backed up).
+*.jks
+keystore.properties
+# The built app, copied here by `npm run android`.
+Loci.apk

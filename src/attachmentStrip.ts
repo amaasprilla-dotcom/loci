@@ -2,6 +2,7 @@
 // a note, to-do or goal. Tap opens one; long-press (or right-click) renames or
 // removes it. Files over 25 MB ask first, since they fill the device's storage.
 
+import { inAndroidApp, openOnPhone } from './android'
 import { h } from './dom'
 import { count, formatBytes } from './locale'
 import { onLongPress } from './press'
@@ -109,6 +110,11 @@ export function attachmentStrip(owner: Owner): AttachmentStrip {
     const blob = a.blobId ? await getBlob(a.blobId) : null
     if (!blob) {
       toast('Still downloading from another device')
+      return
+    }
+    // In the Android app, files open in another app (a PDF viewer, Photos).
+    if (inAndroidApp) {
+      if (!(await openOnPhone(blob, a.name))) toast('No app on this phone opens that file')
       return
     }
     const url = URL.createObjectURL(blob)

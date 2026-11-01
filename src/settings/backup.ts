@@ -2,6 +2,7 @@
 // one (or an older .json) by merging it in or replacing everything. With sync on,
 // an import is synced like any other change.
 
+import { inAndroidApp, saveOnPhone } from '../android'
 import { h } from '../dom'
 import { count } from '../locale'
 import { button, openSheet, sheetActions } from '../sheet'
@@ -9,6 +10,7 @@ import { type Backup, BackupError, backupFileName, backupToZip, describeBackup, 
 import { db } from '../store/db'
 import { syncStatus } from '../sync/engine'
 import { formatAgo } from '../time'
+import { toast } from '../toast'
 
 const LAST_EXPORT_KEY = 'loci.lastExport'
 
@@ -30,6 +32,11 @@ function rememberExport(at: number) {
 }
 
 export function download(file: Blob, name: string) {
+  // The Android app saves to Downloads itself: its WebView can't download blob: addresses.
+  if (inAndroidApp) {
+    void saveOnPhone(file, name).then((saved) => toast(saved ? `Saved ${name} to Downloads` : 'Couldn’t save the file'))
+    return
+  }
   const url = URL.createObjectURL(file)
   const a = h('a', { href: url, download: name })
   document.body.append(a)

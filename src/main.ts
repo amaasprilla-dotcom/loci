@@ -334,6 +334,14 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && shown && shown.name !== 'home' && shown.name !== 'review' && shown.name !== 'study' && !document.querySelector('.sheet')) back(parentOf(shown))
 })
 
+// Android's back button does what Escape does: close the top sheet, or go back a screen.
+// On home with nothing open it returns false, and the app leaves Loci.
+window.lociBack = () => {
+  if ((!shown || shown.name === 'home') && !document.querySelector('.sheet')) return false
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+  return true
+}
+
 void pruneEvents()
 requestPersistentStorage().catch(() => {})
 // The number format must be known before anything with numbers is drawn.

@@ -4,6 +4,7 @@
 // It stays in the page while other screens cover it, so the bubbles keep their
 // places (and motion) when you come back.
 
+import { inAndroidApp } from '../android'
 import { PALETTE } from '../colors'
 import { h } from '../dom'
 import { isActive, type Task } from '../elements/registry'
@@ -32,7 +33,8 @@ export function createHome(options: { onOpen(locus: Locus): void; onTasks(): voi
     onMove: (locus, x, y) => void moveLocus(locus.id, x, y),
     onLongPress: (locus) => void onEdit(locus),
   })
-  const empty = h('p', { class: 'home-empty' }, 'No loci yet. Tap + to create your first one.')
+  // The Android app starts with its own empty storage: point at the way to bring Loci in.
+  const empty = h('p', { class: 'home-empty' }, 'No loci yet. Tap + to create your first one.', inAndroidApp && ' Already use Loci elsewhere? Settings → Sync → Join with a key brings it here.')
   const filter = createTagFilter(() => applyFilter())
 
   const nowCard = createNowCard()

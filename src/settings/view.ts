@@ -8,6 +8,7 @@ import { back } from '../router'
 import { blobBytes } from '../store/attachments'
 import { setSplitStudyTasks, splitStudyTasks } from '../study/tasks'
 import { backupSection } from './backup'
+import { phoneSection } from './phone'
 import { statsSection } from './stats'
 import { syncSection } from './sync'
 
@@ -18,7 +19,7 @@ export async function renderSettingsScreen(onImported: () => void): Promise<HTML
     'div',
     { class: 'settings-screen' },
     h('header', { class: 'locus-header' }, h('button', { class: 'icon-btn', 'aria-label': 'Back', onclick: () => back() }, backIcon()), h('div', { class: 'locus-title' }, h('span', { class: 'header-kicker' }, 'Loci'), h('h1', {}, 'Settings'))),
-    h('main', { class: 'locus-body' }, numbersSection(), await studySection(), syncSection(onImported), await storageSection(), await statsSection(), backupSection(onImported)),
+    h('main', { class: 'locus-body' }, numbersSection(), await studySection(), syncSection(onImported), await phoneSection(), await storageSection(), await statsSection(), backupSection(onImported)),
   )
 }
 

@@ -2275,6 +2275,45 @@ details.task-section > summary {
   color: var(--bad);
 }
 
+/* Settings → Phone (Android app only): one line per permission, Allow or Allowed on the right. */
+.phone-perms {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.phone-perm {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.phone-perm:first-child {
+  border-top: none;
+}
+
+.phone-perm-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.phone-perm-name {
+  font-weight: 500;
+}
+
+.phone-perm-allowed {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 /* A sync key, shown to copy onto another device. */
 .sync-key {
   margin: 0;

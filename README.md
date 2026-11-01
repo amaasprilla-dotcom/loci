@@ -130,6 +130,30 @@ you publish a new version, it installs itself the next time the app is opened on
 The app icons come from `public/favicon.svg`. After changing it, run `npm run icons` to remake
 them.
 
+## The Android app
+
+`android/` is a native Android app around Loci ([SPEC-v6-android.md](SPEC-v6-android.md)): it
+opens the Cloudflare address full screen and adds what a browser can't do (the social media
+timer, notifications and sleep mode, arriving milestone by milestone). Changes to the web app
+reach it on their own, like the website. Only changes in `android/` need a new APK.
+
+**Build it.** `npm run android` makes `android/Loci.apk`. It needs Android Studio installed
+(it uses its Java and SDK). The first build makes the signing key `android/loci-release.jks`
+and its password file `android/keystore.properties`. Both stay out of git. **Back them up**
+(e.g. to your Drive): Android only installs an update signed with the same key. Lose them and
+the app has to be uninstalled before a new one goes on, which wipes its data unless sync is on.
+
+**Install it.** Copy `Loci.apk` to the phone (cable, Drive, email to yourself) and open it.
+Android asks once to allow installs from that app (Files, Drive…). To update, install the new
+APK over the old one: the data stays. With the phone plugged in and USB debugging on, `adb
+install -r android/Loci.apk` does the same.
+
+**First open.** The app keeps its own storage, apart from Chrome's, so it starts empty: Settings
+→ Sync → **Join with a key** brings your Loci in (or import a backup). Settings → Phone lists
+what the phone features need allowed.
+
+The address it opens is `lociUrl` in `android/gradle.properties`.
+
 ## Where things are
 
 - `src/sync/`: sync between devices (SPEC-v4-sync.md). Recording every change in an outbox
@@ -143,6 +167,9 @@ them.
   (`api.ts`), the synced records in SQLite (`store.ts`), and the Worker with its Durable Object
   (`index.ts`). `src/sync/rules.ts` holds what the app and the server share: which tables sync,
   which of two versions wins, and the sync key format
+- `android/`: the Android app (SPEC-v6-android.md). `MainActivity.kt` is the WebView,
+  `Bridge.kt` answers the web app's messages; `src/android.ts` is the web app's side of that,
+  and `src/settings/phone.ts` the Phone section of Settings. `scripts/build-android.mjs` builds it
 - `src/main.ts`: app start, and switching between screens
 - `src/router.ts`: the screen addresses (`#/`, `#/locus/…`) and the back button
 - `src/transition.ts`: the bubble growing into its locus screen, and back
