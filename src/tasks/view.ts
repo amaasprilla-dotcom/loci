@@ -4,6 +4,7 @@
 // Follows the home tag filter. At the top, a to-do can be added straight here: a loose
 // one, in no locus (it shows under any filter, since it has no tags).
 
+import { afterMotion, buzz } from '../feedback'
 import { h } from '../dom'
 import type { Task } from '../elements/registry'
 import { getTagFilter, setTagFilter } from '../home/filter'
@@ -161,13 +162,22 @@ export function taskRow(
   const details = [showLocus && locus.name, t.sublabel, late, priority].filter(Boolean).join(' · ')
   return h(
     'div',
-    { class: `task-row ${t.state === 'overdue' ? 'overdue' : ''}`, style: { '--c': locus.color } },
+    { class: `task-row ${t.state === 'overdue' ? 'overdue' : ''}`, style: { '--c': locus.color }, 'data-item': t.itemId ?? '' },
     t.complete &&
       h('button', {
         type: 'button',
         class: 'task-check',
         'aria-label': `Done: ${t.label}`,
-        onclick: () => void onComplete(),
+        // The circle fills with a tick and the row slips away, then the list catches up.
+        onclick: async (e: Event) => {
+          const check = e.currentTarget as HTMLElement
+          if (check.classList.contains('ticked')) return // already on its way
+          check.classList.add('ticked')
+          check.closest('.task-row')?.classList.add('leaving')
+          buzz()
+          await afterMotion(420)
+          await onComplete()
+        },
       }),
     h(
       'button',

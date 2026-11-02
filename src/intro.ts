@@ -12,6 +12,7 @@ const FIRST_SETTLE_MS = 520 // the first letter settles after this...
 const SETTLE_GAP_MS = 260 // ...and each next one this much later
 const HOLD_MS = 380 // the finished word stays this long
 const FADE_MS = 520
+const SLOW_MS = 8_000 // still not ready after this: offer a reload
 
 const randomGlyph = () => GLYPHS[Math.floor(Math.random() * GLYPHS.length)]
 
@@ -50,8 +51,26 @@ export function playIntro(ready: Promise<unknown>): Promise<void> {
     }, TICK_MS)
   })
 
+  // Taking far too long (seen in the Android app): say so, and offer a way out, rather than
+  // leave a word on a white screen with nothing to do.
+  let isReady = false
+  void ready.finally(() => (isReady = true)).catch(() => {})
+  const slow = setTimeout(() => {
+    if (isReady) return
+    console.error(`Opening took over ${SLOW_MS / 1000} s`)
+    el.append(
+      h(
+        'div',
+        { class: 'intro-slow' },
+        h('p', {}, 'Still opening…'),
+        h('button', { type: 'button', class: 'btn btn-small', onclick: () => location.reload() }, 'Reload'),
+      ),
+    )
+  }, SLOW_MS)
+
   // A failed start still lets the app (and its error) show.
   return Promise.all([word, ready.catch(() => {})]).then(async () => {
+    clearTimeout(slow)
     const fade = el.animate(
       [
         { opacity: 1, filter: 'blur(0)' },

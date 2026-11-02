@@ -42,7 +42,8 @@ class TimerPill(private val context: Context, private val state: SharedPreferenc
     }
 
     fun hide() {
-        view?.let { windows.removeView(it) }
+        // Gone already if Android took the window away.
+        view?.let { runCatching { windows.removeView(it) } }
         view = null
     }
 

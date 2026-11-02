@@ -6,7 +6,7 @@ Nov 1, 2026 · @ANDREW
 
 Loci gets an Android app so the phone no longer runs it in a browser tab, and so it can do what a web page can't: watch which app is open, show things over other apps, schedule notifications that fire with Loci closed, and change the screen at night. Three features come with it:
 
-1. **Social media timer.** Open a social app and a small timer floats over it, counting the time spent. It resets only after you've stayed away for a while.
+1. **Social media timer.** Open a social app and a small timer floats over it, showing your time in social apps today. It starts again at 0:00 at midnight.
 2. **Notifications** for to-dos and study, which fire even when Loci is closed.
 3. **Sleep mode.** A bedtime (or a manual switch) that reminds you to sleep, lowers the brightness and puts on a warm, blue-light filter.
 
@@ -20,7 +20,7 @@ Constraints carry over: no AI, no paid APIs, no account. The app is installed fr
 - **Hand-written Kotlin, not Capacitor.** All three features need custom native code (services, overlays, alarms), which Capacitor doesn't provide, and its bridge is meant for files bundled into the app, not a live address. The shell is a few hundred lines with no npm changes. Native code uses plain Android Views, not Compose, since its only screens are small overlays.
 - **The timer is a floating pill over the app, not just a notification.** A notification sits in the shade where you don't see it while scrolling, and the point is to see the time pass.
 - **An accessibility service sees which app is open** (changed from usage access on Nov 1, after the user's phone turned out to be a Samsung). Android keeps an enabled accessibility service running itself, so phone makers' battery savers (Samsung's "sleeping apps" included) almost never stop it, where a usage-access check in a foreground service can be stopped. It hears each app switch as it happens instead of checking once a second, and its overlays (`TYPE_ACCESSIBILITY_OVERLAY`) cover the whole screen, status and navigation bars included, with no "Display over other apps" permission. The cost: Android's warning when it's switched on ("full control of your device"), and on Android 13+ a sideloaded app needs **Allow restricted settings** in its App info menu first. Settings → Phone explains both. The service only listens for which app comes to the front (`typeWindowStateChanged`); it never reads what's on screen (`canRetrieveWindowContent="false"`) and never acts on other apps.
-- **One social session across all social apps.** Going from Instagram to TikTok continues the same clock. Otherwise hopping between apps would reset it. The clock resets after **5 minutes away** (adjustable, 1–30). Screen off counts as away.
+- **One clock for the day across all social apps** (changed Nov 2, after first use: it used to reset after 5 minutes away, which hid how much time a day adds up to). Going from Instagram to TikTok continues the same clock, and it starts again at 0:00 at midnight. Screen off pauses it.
 - **Which apps count as social:** apps whose developer declares them as social (Android's `CATEGORY_SOCIAL`), plus a built-in list of well-known ones (Instagram, TikTok, X, Facebook, Snapchat, Reddit, YouTube, Threads, Pinterest, Tumblr, Bluesky, Discord). In Settings you turn any app on or off, so the list is a starting point.
 - **Brightness and filter by overlay, with real brightness when allowed.** Android has no public way to switch on its own Night Light, so the warm filter is a see-through amber layer over the whole screen, bars included (an accessibility overlay), that lets touches pass through. The same layer can dim below the lowest brightness setting. If you also grant "Modify system settings", sleep mode turns the real brightness down too (better for battery on OLED screens) and puts it back in the morning. The layer stays at most 80% opaque so the screen underneath is always readable.
 - **Settings live in the web app, saved on the phone.** A new **Phone** section in Settings appears only inside the app. Its values are sent to the native side, which keeps them (SharedPreferences), because the services run while Loci is closed. They're specific to the device and aren't synced or put in backups, like the v5 event log.
@@ -45,10 +45,10 @@ Constraints carry over: no AI, no paid APIs, no account. The app is installed fr
 
 ### Made while building D3
 
-- **The clock counts time in social apps only.** It pauses while you're elsewhere and picks up where it was if you come back within the reset time, so "12:34" is time spent, not time since you first opened one.
+- **The clock counts time in social apps only.** It pauses while you're elsewhere and picks up where it was, so "12:34" is time spent today, not time since you first opened one.
 - **What counts as leaving.** Only apps you can open from the launcher, and the home screen, count as being in front. The keyboard, the notification shade, system pop-ups and Loci's own pill open over an app without leaving it.
 - **The pill** is white glass with dark text, below the status bar until it's moved. Tapping switches between `Instagram · 12:34` and `12:34`; it remembers which. Pill size is normal or small.
-- **The notification** has the clock counting on its own while a social app is open (Android's chronometer), and reads "Social · 12:34 this session", "Paused. Starts again at 0:00 after 5 min away." while you're away. It goes when the session resets. Tapping opens Loci.
+- **The notification** has the clock counting on its own while a social app is open (Android's chronometer), titled "Social · today". It goes while you're elsewhere. Tapping opens Loci.
 - **Today's total** splits a stretch over midnight: only the part after midnight counts for the new day.
 - **The app list** loads when opened (it carries each app's icon). Only changes from the default are saved, so an app that later says it's social still counts.
 - **No `QUERY_ALL_PACKAGES`.** Two `<queries>` entries (apps with a launcher icon, and the home screen) are enough to list apps and see them come to the front.
@@ -68,6 +68,18 @@ Constraints carry over: no AI, no paid APIs, no account. The app is installed fr
 - **An app from before 1.3** gets "Install the new Loci app (1.3 or later)" in sleep mode's place.
 - The watchdog warns when the timer *or* sleep mode is on and the service is off.
 
+### Changed after first use on the phone (Nov 2, app 1.4)
+
+The first night of use found the timer and sleep filter stopping, freezes (back doing nothing, the opening word staying up), and too little feedback.
+
+- **The timer is today's total**, reset at midnight, not a session reset after time away.
+- **The page's process ending no longer crashes the app.** Android closes the WebView's page process to free memory, often with Loci in the background. Unhandled, that crashed the whole app, and the timer and sleep mode with it (Android may then not start the accessibility service again). The screen now starts again instead. The service's own work is guarded the same way: a problem is recorded instead of crashing.
+- **Problems are recorded on the phone** and shown in Settings → Phone → Problems with Copy: crashes, the page process ending, the page not answering for 5 seconds (and how long until it did), back getting no answer, and errors in the page (forwarded from `console.error` and uncaught errors). The causes of the freezes weren't found from the code; this is how the next ones will be.
+- **A stuck step can't freeze navigation.** Changes of screen run one at a time; a step that hasn't finished after 10 seconds no longer holds the rest (it's recorded). The opening word offers **Reload** if the app isn't ready after 8 seconds.
+- **Switching sleep mode on again** clears tonight's I'm up, so it takes effect at once.
+- **Feedback:** buttons and chips press in slightly; ticking a task fills its circle with a tick that pops and the row slips away; a new to-do's row glows once in its locus color (or a toast says it was added, if its section is closed); Done from a to-do's sheet or the focus screen says so in a toast; main actions give a short buzz.
+- WebView debugging is on, so `chrome://inspect` works with the phone plugged in.
+
 ## What the user sees
 
 ### First open
@@ -82,10 +94,10 @@ Shown only in the app. Each feature has an on/off switch, its options, and a lin
 
 ### Social media timer
 
-- **The pill.** Opening a social app shows a small glass pill near the top of the screen: `Instagram · 12:34`. It counts up every second, can be dragged to another spot (it remembers where), and tapped to shrink to just the time. It hides while you're in a non-social app or the screen is off, and comes back with the same clock if you return within the reset time.
-- **Reset.** Away for the reset time (default 5 min) and the next social app starts again at 0:00.
-- **Notification.** While a session runs, a silent notification reads "Social · 12:34 this session" (so the time is there with the pill shrunk). It goes when the session resets.
-- **Settings:** on/off, reset time (1–30 min), the app list (each installed app with its icon and a switch; social apps on by default), pill size (normal/small).
+- **The pill.** Opening a social app shows a small glass pill near the top of the screen: `Instagram · 12:34`. It counts up every second, can be dragged to another spot (it remembers where), and tapped to shrink to just the time. It hides while you're in a non-social app or the screen is off, and comes back with the same clock.
+- **Reset** at midnight: the clock is today's total.
+- **Notification.** While a social app is open, a silent notification shows the same clock (so the time is there with the pill shrunk).
+- **Settings:** on/off, the app list (each installed app with its icon and a switch; social apps on by default), pill size (normal/small).
 - **Today's total**, shown under the switch: "Today: 1 h 12 min in social apps". It's kept on the phone, never synced, and for now there's no history beyond today.
 
 ### Notifications
@@ -168,7 +180,7 @@ Each milestone is committed and reviewed before the next starts.
 | **D0 — Spec** | This file. |
 | **D1 — Shell** | `android/` project, WebView on the Cloudflare address, back button, file picker, downloads, links out, icons from `public/`, the bridge with `src/android.ts`, Settings → Phone with the permission lines, signed APK, `npm run android`. Install on the phone. |
 | **D2 — Notifications** | Reminder schedule from the web app, exact alarms, to-do and daily summary notifications, Done / In 1 hour with the queued actions, restored after a restart. |
-| **D3 — Social media timer** | `WatchService` (accessibility service) and the watchdog, the Accessibility line in Settings → Phone, timer pill and notification, reset after time away, app list, today's total. |
+| **D3 — Social media timer** | `WatchService` (accessibility service) and the watchdog, the Accessibility line in Settings → Phone, timer pill and notification, app list, today's total. |
 | **D4 — Sleep mode** | Bedtime and Sleep now, wind-down, amber/dim layer, real brightness with "Modify system settings", reminders with I'm up / 10 more minutes. |
 
 ## Out of scope

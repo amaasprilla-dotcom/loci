@@ -16,8 +16,11 @@
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- A short buzz when something is done (navigator.vibrate in the page). -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
+        android:name=".LociApp"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="Loci"

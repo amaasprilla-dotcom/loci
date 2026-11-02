@@ -87,6 +87,24 @@ h2 {
 }
 
 /* One fixed-width cell per character, so changing glyphs never shift the word. */
+/* Under the word, when opening takes far too long. */
+.intro-slow {
+  position: absolute;
+  bottom: max(48px, env(safe-area-inset-bottom));
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  animation: fade-in 300ms ease-out;
+}
+
+.intro-slow p {
+  margin: 0;
+}
+
 .intro-char {
   width: 0.72em;
   text-align: center;
@@ -2424,6 +2442,24 @@ details.task-section > summary {
   font-weight: 650;
 }
 
+/* Problems recorded on the phone: when, then what. */
+.phone-problems {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+}
+
+.phone-problems li {
+  padding: 4px 0;
+}
+
+.phone-problem-when {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+}
+
 .phone-perm-allowed {
   color: var(--muted);
   font-family: var(--mono);
@@ -4195,4 +4231,98 @@ details.editor-section > summary {
   transform: translateX(-50%);
   box-shadow: var(--shadow-md);
   animation: fade-in 0.2s ease-out;
+}
+
+/* ---------- Feedback: every tap shows it landed (src/feedback.ts) ---------- */
+
+.btn,
+.chip,
+.segment,
+.icon-btn,
+.when-chip,
+.task-check {
+  transition:
+    transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 120ms ease-out,
+    border-color 120ms ease-out;
+}
+
+.btn:active:not(:disabled),
+.chip:active,
+.segment:active,
+.icon-btn:active,
+.when-chip:active,
+.task-check:active {
+  transform: scale(0.94);
+}
+
+.task-main:active {
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+}
+
+/* Ticking a task: the circle fills with a tick and pops, then the row slips away. */
+.task-check.ticked {
+  border-color: var(--text);
+  background: var(--text) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 14px no-repeat;
+  animation: tick-pop 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes tick-pop {
+  0% {
+    transform: scale(0.8);
+  }
+  55% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.task-row.leaving {
+  animation: row-leave 280ms 140ms ease-in forwards;
+}
+
+@keyframes row-leave {
+  to {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+}
+
+/* A row just added slides in and glows once in its locus color. */
+.task-row.just-added {
+  animation: row-arrive 700ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes row-arrive {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  35% {
+    opacity: 1;
+    transform: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 40%, transparent);
+  }
+  100% {
+    box-shadow: var(--glass-shadow);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn:active:not(:disabled),
+  .chip:active,
+  .segment:active,
+  .icon-btn:active,
+  .when-chip:active,
+  .task-check:active {
+    transform: none;
+  }
+
+  .task-check.ticked,
+  .task-row.leaving,
+  .task-row.just-added {
+    animation: none;
+  }
 }

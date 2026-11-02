@@ -37,7 +37,7 @@ class WatchService : AccessibilityService() {
                 Intent.ACTION_SCREEN_OFF -> false
                 Intent.ACTION_USER_PRESENT -> true
                 // With no lock screen there's no USER_PRESENT to wait for.
-                else -> !getSystemService(KeyguardManager::class.java).isKeyguardLocked
+                else -> Problems.safely(context, "Screen on") { !getSystemService(KeyguardManager::class.java).isKeyguardLocked } ?: true
             }
             update()
         }
@@ -60,6 +60,10 @@ class WatchService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
+        Problems.safely(this, "Watching apps") { onEvent(event) }
+    }
+
+    private fun onEvent(event: AccessibilityEvent) {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val pkg = event.packageName?.toString() ?: return
         // The keyboard, the notification shade, pop-ups from the system and Loci's own pill
@@ -78,10 +82,11 @@ class WatchService : AccessibilityService() {
         packageManager.getLaunchIntentForPackage(pkg) != null || pkg in homes
     }
 
+    // The timer and sleep mode apart, so a problem in one doesn't stop the other.
     private fun update() {
-        val phone = phonePrefs(this)
-        timer.update(if (screenOn) foreground else null, phone.optJSONObject("timer"))
-        sleep.update(screenOn, phone.optJSONObject("sleep"))
+        val phone = Problems.safely(this, "Reading phone settings") { phonePrefs(this) } ?: return
+        Problems.safely(this, "Timer") { timer.update(if (screenOn) foreground else null, phone.optJSONObject("timer")) }
+        Problems.safely(this, "Sleep mode") { sleep.update(screenOn, phone.optJSONObject("sleep")) }
     }
 
     override fun onInterrupt() {}

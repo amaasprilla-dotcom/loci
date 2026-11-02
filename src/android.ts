@@ -92,6 +92,31 @@ export interface SleepState {
   end: number
 }
 
+// What went wrong on the phone (Settings → Phone → Problems), newest first.
+export interface PhoneProblem {
+  at: number
+  what: string
+  detail: string
+  version: string
+}
+
+export const phoneProblems = () => ask<PhoneProblem[]>('problems')
+export const clearPhoneProblems = () => ask<boolean>('clearProblems')
+const logProblem = (what: string, detail: string) => ask<boolean>('log', { what, detail })
+
+// In the app, errors in the page go into the phone's problem list too, where they can be
+// seen and copied: there's no console to look at on a phone.
+if (port) {
+  const text = (x: unknown) => (x instanceof Error ? `${x.message}\n${x.stack ?? ''}` : String(x))
+  const original = console.error.bind(console)
+  console.error = (...args: unknown[]) => {
+    original(...args)
+    void logProblem('Error in the page', args.map(text).join(' '))
+  }
+  window.addEventListener('error', (e) => void logProblem('Error in the page', text(e.error ?? e.message)))
+  window.addEventListener('unhandledrejection', (e) => void logProblem('Error in the page', text(e.reason)))
+}
+
 export const sleepState = () => ask<SleepState>('sleepState')
 // true: sleep now, until the next wake time; false: I'm up, until tomorrow night.
 export const sleepNow = (on: boolean) => ask<SleepState>('sleepNow', { on })

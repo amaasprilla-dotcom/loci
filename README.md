@@ -160,7 +160,7 @@ Battery → Background usage limits → **Never sleeping apps**, or reminders ca
 **Social media timer.** Switch it on in Settings → Phone, then allow **Accessibility** there:
 Android shows Loci under Installed apps (Installed services on a Samsung) and warns that it
 gets "full control". Loci only notes which app is in front. A pill over social apps then
-counts your time, one clock across all of them, until you've been away 5 minutes (adjustable).
+shows your time in social apps today, all of them together; it starts again at 0:00 at midnight.
 Tap the pill to shrink it, drag it to move it. Settings → Phone also picks which apps count and
 shows today's total. On Android 13 and later, first open App info for Loci → ⋮ → **Allow
 restricted settings**, or Android won't let the service be switched on.
@@ -172,6 +172,11 @@ time it stays, and while the screen is on a reminder comes every 10 minutes (adj
 notification with **I'm up** and **10 more minutes**, and the same line over whatever is open.
 **Sleep now** starts it straight away until the next wake time. Allow **Modify system
 settings** too and it also turns the real brightness down, and back up when it ends.
+
+**When something goes wrong.** Settings → Phone → **Problems** lists what went wrong on the
+phone (a crash, the page closed by Android to free memory, the page not answering, an error),
+newest first, with **Copy** to send it on. With the phone plugged in and USB debugging on,
+`chrome://inspect` on the PC also shows the page's console.
 
 The address it opens is `lociUrl` in `android/gradle.properties`.
 

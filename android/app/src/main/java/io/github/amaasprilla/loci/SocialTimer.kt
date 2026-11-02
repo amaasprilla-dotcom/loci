@@ -15,112 +15,69 @@ import androidx.core.app.NotificationManagerCompat
 import org.json.JSONObject
 import java.util.Calendar
 
-// The social media timer (SPEC-v6-android.md, "Social media timer"). One clock runs across
-// every social app while one is in front; it pauses while you're elsewhere or the screen
-// is off, and starts again at 0:00 once you've been away for the reset time. WatchService
-// tells it what's in front; the pill and a silent notification show the clock.
+// The social media timer (SPEC-v6-android.md, "Social media timer"). The pill shows your
+// time in social apps today, all of them together: it counts while one is in front, pauses
+// while you're elsewhere or the screen is off, and starts again at 0:00 at midnight.
+// WatchService tells it what's in front; the pill and a silent notification show the clock.
 class SocialTimer(private val context: Context) {
     private val state = context.getSharedPreferences(STATE, Context.MODE_PRIVATE)
     private val main = Handler(Looper.getMainLooper())
     private val pill = TimerPill(context, state)
 
-    private var sessionMs = state.getLong("sessionMs", 0) // before the stretch running now
     private var runningSince = 0L // 0 while paused
-    private var leftAt = state.getLong("leftAt", 0)
     private var app = ""
+    private var notifiedDay = 0L // the day the notification's clock was set for
 
     init {
-        // The service was stopped mid-stretch (crash, update): count up to the last sign of life.
-        val lastTick = state.getLong("lastTick", 0)
-        if (state.getLong("runningSince", 0) != 0L && lastTick != 0L) {
-            runningSince = state.getLong("runningSince", 0)
-            pause(lastTick)
+        // The service was stopped mid-stretch (a crash, an update): count up to the last sign of life.
+        val since = state.getLong("runningSince", 0)
+        if (since != 0L) {
+            addToToday(state, since, maxOf(since, state.getLong("lastTick", 0)))
+            state.edit().putLong("runningSince", 0).apply()
         }
-        resetIfAway(System.currentTimeMillis())
     }
 
     // Called on every change of what's in front: `pkg` is the app in front (null with the
     // screen off), counted only if it's social and the timer is on.
     fun update(pkg: String?, prefs: JSONObject?) {
         val now = System.currentTimeMillis()
-        val on = prefs?.optBoolean("on", false) == true
-        if (!on) return stop(now)
-        val social = pkg != null && isSocial(context, pkg, prefs)
-        if (social) {
-            resetIfAway(now, prefs)
-            app = label(context, pkg!!)
-            if (runningSince == 0L) {
-                runningSince = now
-                save()
-                main.post(tick)
-            }
-            pill.show(app, sessionAt(now), prefs!!.optString("size", "normal") == "small")
-            notifyRunning(now)
-        } else {
+        val social = prefs?.optBoolean("on", false) == true && pkg != null && isSocial(context, pkg, prefs)
+        if (!social) {
             pause(now)
             pill.hide()
-            main.removeCallbacks(resetCheck)
-            if (sessionMs > 0) main.postDelayed(resetCheck, resetMs(prefs) + 1_000)
+            return
         }
-    }
-
-    // The timer was switched off: nothing shows and nothing counts.
-    private fun stop(now: Long) {
-        if (runningSince == 0L && sessionMs == 0L && leftAt == 0L) return
-        pause(now)
-        pill.hide()
-        endSession()
+        app = label(context, pkg!!)
+        if (runningSince == 0L) {
+            runningSince = now
+            state.edit().putLong("runningSince", now).putLong("lastTick", now).apply()
+            main.post(tick)
+        }
+        pill.show(app, todayMs(context, now), prefs!!.optString("size", "normal") == "small")
+        notifyRunning(now)
     }
 
     private fun pause(now: Long) {
         if (runningSince == 0L) return
         addToToday(state, runningSince, now)
-        sessionMs += now - runningSince
         runningSince = 0
-        leftAt = now
+        state.edit().putLong("runningSince", 0).apply()
         main.removeCallbacks(tick)
-        save()
-        notifyPaused()
-    }
-
-    private fun resetIfAway(now: Long, prefs: JSONObject? = null) {
-        if (runningSince == 0L && leftAt != 0L && now - leftAt >= resetMs(prefs)) endSession()
-    }
-
-    private fun endSession() {
-        sessionMs = 0
-        leftAt = 0
-        main.removeCallbacks(resetCheck)
-        save()
         NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
     }
-
-    private val resetCheck = Runnable { resetIfAway(System.currentTimeMillis()) }
 
     private val tick = object : Runnable {
         override fun run() {
             if (runningSince == 0L) return
             val now = System.currentTimeMillis()
-            pill.setTime(sessionAt(now))
-            if (now / 1000 % 15 == 0L) state.edit().putLong("lastTick", now).apply()
+            Problems.safely(context, "Timer") {
+                pill.setTime(todayMs(context, now))
+                if (now / 1000 % 15 == 0L) state.edit().putLong("lastTick", now).apply()
+                // Past midnight the notification's clock starts again too.
+                if (dayStart(now) != notifiedDay) notifyRunning(now)
+            }
             main.postAtTime(this, SystemClock.uptimeMillis() + 1_000 - now % 1_000)
         }
-    }
-
-    private fun sessionAt(now: Long) = sessionMs + if (runningSince != 0L) now - runningSince else 0
-
-    private fun resetMs(prefs: JSONObject?): Long {
-        val p = prefs ?: WatchService.phonePrefs(context).optJSONObject("timer")
-        return (p?.optInt("resetMin", DEFAULT_RESET_MIN) ?: DEFAULT_RESET_MIN).coerceIn(1, 30) * 60_000L
-    }
-
-    private fun save() {
-        state.edit()
-            .putLong("sessionMs", sessionMs)
-            .putLong("runningSince", runningSince)
-            .putLong("leftAt", leftAt)
-            .putLong("lastTick", runningSince)
-            .apply()
     }
 
     private fun channel() {
@@ -128,40 +85,26 @@ class SocialTimer(private val context: Context) {
             .createNotificationChannel(NotificationChannel(CHANNEL, "Social media timer", NotificationManager.IMPORTANCE_LOW))
     }
 
-    private fun notification(): NotificationCompat.Builder {
+    // While a social app is open the notification's clock counts up on its own.
+    private fun notifyRunning(now: Long) {
         channel()
+        notifiedDay = dayStart(now)
         val open = PendingIntent.getActivity(
             context, NOTIFICATION_ID, Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        return NotificationCompat.Builder(context, CHANNEL)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setOnlyAlertOnce(true)
-            .setSilent(true)
-            .setContentIntent(open)
-    }
-
-    // While a social app is open the notification's clock counts up on its own.
-    private fun notifyRunning(now: Long) {
         post(
-            notification()
-                .setContentTitle("Social · this session")
+            NotificationCompat.Builder(context, CHANNEL)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setOnlyAlertOnce(true)
+                .setSilent(true)
+                .setContentIntent(open)
+                .setContentTitle("Social · today")
                 .setContentText("In $app")
-                .setWhen(now - sessionAt(now))
+                .setWhen(now - todayMs(context, now))
                 .setUsesChronometer(true)
                 .setShowWhen(true)
                 .setOngoing(true),
-        )
-    }
-
-    private fun notifyPaused() {
-        if (sessionMs <= 0) return
-        val min = resetMs(null) / 60_000
-        post(
-            notification()
-                .setContentTitle("Social · ${clock(sessionMs)} this session")
-                .setContentText("Paused. Starts again at 0:00 after $min min away.")
-                .setShowWhen(false),
         )
     }
 
@@ -184,7 +127,6 @@ class SocialTimer(private val context: Context) {
         const val STATE = "timer"
         private const val CHANNEL = "timer"
         private const val NOTIFICATION_ID = 2
-        const val DEFAULT_RESET_MIN = 5
 
         // The well-known ones, for apps that don't say they're social (SPEC-v6, "Which apps count").
         private val KNOWN = setOf(

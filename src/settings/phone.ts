@@ -2,10 +2,12 @@
 // Phone"): reminder, timer and sleep mode options, and what each phone feature needs
 // allowed, with a way to the screen that allows it.
 
-import { allowOnPhone, appInfo, inAndroidApp, onAppResume, type PhoneApp, phoneApps, type PhonePermission, type PhonePermissions, phonePermissions, phonePrefs, setPhonePrefs, type SleepState, sleepNow, sleepState, timerToday } from '../android'
+import { allowOnPhone, appInfo, clearPhoneProblems, inAndroidApp, onAppResume, type PhoneApp, phoneApps, type PhoneProblem, phoneProblems, type PhonePermission, type PhonePermissions, phonePermissions, phonePrefs, setPhonePrefs, type SleepState, sleepNow, sleepState, timerToday } from '../android'
 import { h } from '../dom'
-import { formatTime, parseClock } from '../elements/todos/when'
+import { formatDay, formatTime, parseClock } from '../elements/todos/when'
 import { type ReminderPrefs, reminderPrefs, scheduleReminders } from '../notifications'
+import { button } from '../sheet'
+import { toast } from '../toast'
 
 const LINES: { which: PhonePermission; name: string; why: string }[] = [
   { which: 'notifications', name: 'Notifications', why: 'Reminders for to-dos, and the daily summary.' },
@@ -58,12 +60,11 @@ async function remindersPart(): Promise<HTMLElement[]> {
 // The social media timer's settings, kept on the phone where WatchService reads them.
 export interface TimerPrefs {
   on: boolean
-  resetMin: number // away this long and the clock starts again at 0:00
   size: 'normal' | 'small'
   apps: Record<string, boolean> // apps switched on or off by hand; the rest go by default
 }
 
-const DEFAULT_TIMER: TimerPrefs = { on: false, resetMin: 5, size: 'normal', apps: {} }
+const DEFAULT_TIMER: TimerPrefs = { on: false, size: 'normal', apps: {} }
 
 // "1 h 12 min", "4 min".
 export function spent(ms: number): string {
@@ -83,31 +84,16 @@ async function timerPart(supported: boolean): Promise<{ els: HTMLElement[]; refr
     await setPhonePrefs({ ...(await phonePrefs()), timer: prefs })
   }
 
-  const about = h('p', { class: 'settings-note' })
-  const showAbout = () =>
-    (about.textContent = `A small timer over social apps counts your time in them, one clock across all of them. It starts again at 0:00 once you've been away ${prefs.resetMin} min.`)
-  showAbout()
+  const about = h('p', { class: 'settings-note' }, 'A small timer over social apps shows your time in them today, all of them together. It starts again at 0:00 at midnight.')
   const today = h('p', { class: 'settings-note' })
   const refresh = async () => {
     today.textContent = `Today: ${spent(await timerToday())} in social apps`
   }
   await refresh()
 
-  const reset = h('input', { type: 'range', min: 1, max: 30, step: 1, class: 'range', 'aria-label': 'Starts again after' })
-  reset.value = String(prefs.resetMin)
-  const resetShown = h('span', { class: 'range-value' })
-  const showReset = () => (resetShown.textContent = `${reset.value} min away`)
-  reset.addEventListener('input', showReset)
-  reset.addEventListener('change', () => {
-    void save({ resetMin: Number(reset.value) })
-    showAbout()
-  })
-  showReset()
-
   const options = h(
     'div',
     { class: 'phone-timer-options' },
-    h('div', { class: 'field-label' }, h('span', { class: 'range-head' }, 'Starts again after', resetShown), reset),
     h('p', { class: 'settings-note' }, 'The timer’s size. Tap it to shrink it to just the time; drag it to move it.'),
     segments('Timer size', [{ label: 'Normal', on: true }, { label: 'Small', on: false }], prefs.size === 'normal', (normal) => void save({ size: normal ? 'normal' : 'small' })),
     appList(prefs, (apps) => void save({ apps })),
@@ -259,12 +245,58 @@ async function sleepPart(supported: boolean): Promise<{ els: HTMLElement[]; refr
   }
 }
 
+// What went wrong on this phone (crashes, freezes, errors), to copy and send when something
+// misbehaves. Only from the 1.4 app on.
+async function problemsPart(): Promise<HTMLElement[]> {
+  const list = h('ul', { class: 'phone-problems' })
+  const note = h('p', { class: 'settings-note' })
+  const actions = h('div', { class: 'settings-actions' })
+  let problems: PhoneProblem[] = []
+  const when = (at: number) => `${formatDay(at, Date.now())} ${formatTime(at)}`
+  const asText = () => problems.map((p) => `${new Date(p.at).toISOString()} · ${p.what} · ${p.version}${p.detail ? `\n${p.detail}` : ''}`).join('\n\n')
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(asText())
+    } catch {
+      // Without clipboard access: the old way, through a selected text box.
+      const box = h('textarea', { style: { position: 'fixed', opacity: '0' } })
+      box.value = asText()
+      document.body.append(box)
+      box.select()
+      document.execCommand('copy')
+      box.remove()
+    }
+    toast('Copied')
+  }
+
+  async function show() {
+    problems = (await phoneProblems()) ?? []
+    note.textContent = problems.length === 0 ? 'Nothing has gone wrong on this phone.' : 'What went wrong on this phone, newest first. Copy it and send it on to get it looked at.'
+    list.replaceChildren(...problems.slice(0, 10).map((p) => h('li', {}, h('span', { class: 'phone-problem-when' }, when(p.at)), ' ', p.what)))
+    actions.replaceChildren(
+      ...(problems.length === 0
+        ? []
+        : [
+            button('Copy', () => void copy()),
+            button('Clear', async () => {
+              await clearPhoneProblems()
+              await show()
+            }),
+          ]),
+    )
+  }
+  await show()
+  return [h('span', { class: 'phone-kicker' }, 'Problems'), note, list, actions]
+}
+
 export async function phoneSection(): Promise<HTMLElement | null> {
   if (!inAndroidApp) return null
   const [info, initial, reminders] = await Promise.all([appInfo(), phonePermissions(), remindersPart()])
   // An app from before the timer doesn't report Accessibility.
   const timer = await timerPart(initial.accessibility !== undefined)
   const sleep = await sleepPart(info.build >= 5) // 1.3
+  const problems = info.build >= 6 ? await problemsPart() : [] // 1.4
   const list = h('ul', { class: 'phone-perms' })
   const accessibility = h('p', { class: 'settings-note' })
   const samsung = h('p', { class: 'settings-note' })
@@ -304,6 +336,7 @@ export async function phoneSection(): Promise<HTMLElement | null> {
     list,
     accessibility,
     samsung,
+    ...problems,
     h('p', { class: 'settings-note' }, `Loci for Android ${info.version}`),
   )
   // Back from a system screen: show what's allowed now. Stops once Settings is closed.

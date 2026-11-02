@@ -3,6 +3,8 @@
 // "If [obstacle], then I will [action]"; SPEC-v3-coach.md), the list in Now /
 // Planned / Someday / Done, and the sheets to pick a when and to edit a to-do.
 
+import { buzz, showAdded } from '../../feedback'
+import { toast } from '../../toast'
 import { type Options, RRule } from 'rrule'
 import { attachmentStrip } from '../../attachmentStrip'
 import { textColorOn } from '../../colors'
@@ -296,7 +298,7 @@ export function createAddForm(elementId: string, onAdded: () => Promise<void>): 
     }
     const title = c.fromText && parsedTitle ? parsedTitle : text
     const draft: TodoDraft = { title: title || text, why: why.value, importance: importance.value(), difficulty: difficulty.value(), when: c.when, plan: plan() }
-    await createTodo(elementId, draft, c.waitsFor, pendingId)
+    const added = await createTodo(elementId, draft, c.waitsFor, pendingId)
     // Reset for the next one.
     pendingId = crypto.randomUUID()
     const fresh = attachmentStrip({ type: 'todo', id: pendingId })
@@ -310,6 +312,7 @@ export function createAddForm(elementId: string, onAdded: () => Promise<void>): 
     check.reset()
     await sync()
     await onAdded()
+    showAdded(added.id, () => toast(`Added: ${added.title}`))
     action.focus()
   }
 
@@ -872,7 +875,7 @@ export async function openTodoSheet(todo: Todo): Promise<void> {
         isOpen && todo.when.kind === 'when' && !todo.when.firedAt && button('It happened', async () => { await save(); await itHappened(todo.id); api.close(true) }),
         isOpen && todo.when.kind === 'repeat' && button('Skip this time', async () => { await save(); await skipTodo(todo.id); api.close(true) }),
         isOpen && todo.when.kind !== 'repeat' && button('Archive', async () => { await save(); await archiveTodo(todo.id); api.close(true) }),
-        isOpen ? button('Done', async () => { await save(); await completeTodo(todo.id); api.close(true) }) : button('Reopen', async () => { await reopenTodo(todo.id); api.close(true) }),
+        isOpen ? button('Done', async () => { buzz(); await save(); await completeTodo(todo.id); api.close(true); toast(`Done: ${todo.title}`) }) : button('Reopen', async () => { await reopenTodo(todo.id); api.close(true) }),
       ),
       sheetActions(button('Delete', () => void askDelete(), 'danger-text'), button('Cancel', () => api.close(null)), saveButton),
     ]

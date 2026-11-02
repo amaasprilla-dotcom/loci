@@ -249,11 +249,28 @@ async function show(route: Route, quiet = false): Promise<void> {
 // Screens change one at a time, so a quick double back can't tangle two transitions.
 // Tasks are refreshed after every change of screen, which covers returning home
 // and finishing a review.
+// A step that never finishes would hold every later change of screen (back would seem
+// dead): after STUCK_MS the queue moves on without it, and says so.
+const STUCK_MS = 10_000
+function notForever(step: Promise<void>, what: string): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const late = new Promise<void>((resolve) => {
+    timer = setTimeout(() => {
+      console.error(`${what} took over ${STUCK_MS / 1000} s; carrying on`)
+      resolve()
+    }, STUCK_MS)
+  })
+  return Promise.race([step.finally(() => clearTimeout(timer)), late])
+}
+
 let queue = Promise.resolve()
 function showCurrent(): Promise<void> {
   queue = queue
-    .then(() => show(currentRoute()))
-    .then(refreshTasks)
+    .then(() => {
+      const route = currentRoute()
+      return notForever(show(route), `Opening ${route.name}`)
+    })
+    .then(() => notForever(refreshTasks(), 'Updating tasks'))
     .catch((err) => {
       if (isStaleCodeError(err) && reloadForStaleCode()) return
       console.error(err)

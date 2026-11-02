@@ -1,6 +1,8 @@
 // The focus timer: Start on a to-do from the Now card. One task, a countdown, and
 // two ways out. (P1 adds the short 2- and 5-minute starters and the resume breadcrumb.)
 
+import { buzz } from '../feedback'
+import { toast } from '../toast'
 import { announceChange } from '../changes'
 import { textColorOn } from '../colors'
 import { h } from '../dom'
@@ -44,8 +46,10 @@ export function renderFocusScreen(todo: Todo, locus: Pick<Locus, 'name' | 'color
       if (done) await logEvent('done', task)
     }
     if (done) {
+      buzz()
       await completeTodo(todo.id)
       announceChange()
+      toast(`Done: ${todo.title}`)
     }
     if (leave) back('#/')
   }

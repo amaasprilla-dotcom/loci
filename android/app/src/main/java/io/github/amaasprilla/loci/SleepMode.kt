@@ -37,13 +37,17 @@ class SleepMode(private val context: Context) {
     fun update(screenOn: Boolean, prefs: JSONObject?) {
         // Turning the screen on again reminds straight away.
         if (!screenOn) state.edit().putLong("lastReminder", 0).apply()
+        // Switched on again in Settings: tonight's I'm up no longer holds it back.
+        if (this.prefs?.optBoolean("on") == false && prefs?.optBoolean("on") == true) {
+            state.edit().putLong("upUntil", 0).putLong("sleepNowUntil", 0).apply()
+        }
         this.screenOn = screenOn
         this.prefs = prefs
         apply()
     }
 
     // Every 30 seconds while the screen is on: the fade, bedtime and wake time, reminders.
-    private val tick = Runnable { apply() }
+    private val tick = Runnable { Problems.safely(context, "Sleep mode") { apply() } }
 
     private fun apply() {
         main.removeCallbacks(tick)
@@ -66,7 +70,7 @@ class SleepMode(private val context: Context) {
     }
 
     private fun end() {
-        layer?.let { windows.removeView(it) }
+        layer?.let { runCatching { windows.removeView(it) } }
         layer = null
         restoreBrightness()
         NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
@@ -74,7 +78,7 @@ class SleepMode(private val context: Context) {
 
     fun close() {
         main.removeCallbacksAndMessages(null)
-        layer?.let { windows.removeView(it) }
+        layer?.let { runCatching { windows.removeView(it) } }
         layer = null
     }
 
@@ -160,7 +164,7 @@ class SleepMode(private val context: Context) {
         }
         windows.addView(pill, params)
         pill.animate().alpha(0f).setStartDelay(5_000).setDuration(600).withEndAction {
-            if (pill.isAttachedToWindow) windows.removeView(pill)
+            if (pill.isAttachedToWindow) runCatching { windows.removeView(pill) }
         }
     }
 

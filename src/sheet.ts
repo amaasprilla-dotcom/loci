@@ -2,6 +2,7 @@
 // openSheet handles the backdrop, Escape, closing and focus; the caller builds
 // what goes inside and decides what the sheet resolves with.
 
+import { buzz } from './feedback'
 import { h } from './dom'
 
 export interface SheetApi<T> {
@@ -86,12 +87,14 @@ export function sheetActions(start: Node | false | null, ...end: (Node | false |
   return h('div', { class: 'sheet-actions' }, start, h('span', { class: 'spacer' }), ...end)
 }
 
+// The main action (Save, Add, Create) gives a short buzz on phones, so it's felt to land.
 export function button(label: string, onclick: () => void, variant: '' | 'primary' | 'danger' | 'danger-text' = ''): HTMLButtonElement {
-  return h('button', { type: 'button', class: variant ? `btn btn-${variant}` : 'btn', onclick }, label)
+  const run = variant === 'primary' ? () => { buzz(); onclick() } : onclick
+  return h('button', { type: 'button', class: variant ? `btn btn-${variant}` : 'btn', onclick: run }, label)
 }
 
 export function submitButton(label: string): HTMLButtonElement {
-  return h('button', { type: 'submit', class: 'btn btn-primary' }, label)
+  return h('button', { type: 'submit', class: 'btn btn-primary', onclick: () => buzz() }, label)
 }
 
 // "Delete X?" with what else goes and a red Delete. Resolves true to delete.

@@ -52,6 +52,16 @@ class Bridge(private val activity: MainActivity, web: WebView, origin: String) {
         fun answer(result: Any?) = main.post {
             reply.postMessage(JSONObject().put("id", id).put("result", result ?: JSONObject.NULL).toString())
         }
+        // Whatever goes wrong, the page gets an answer (null), so it never waits forever.
+        try {
+            answerTo(msg, ::answer)
+        } catch (e: Exception) {
+            Problems.record(activity, "Phone link: ${msg.optString("type")}", e)
+            answer(null)
+        }
+    }
+
+    private fun answerTo(msg: JSONObject, answer: (Any?) -> Unit) {
         when (msg.optString("type")) {
             "info" -> answer(JSONObject().put("version", BuildConfig.VERSION_NAME).put("build", BuildConfig.VERSION_CODE).put("sdk", Build.VERSION.SDK_INT))
             "permissions" -> answer(permissions())
@@ -69,9 +79,19 @@ class Bridge(private val activity: MainActivity, web: WebView, origin: String) {
                 Watchdog.check(activity, quiet = true)
                 answer(true)
             }
-            "apps" -> io.execute { answer(apps()) }
+            "apps" -> io.execute { answer(Problems.safely(activity, "Listing apps") { apps() }) }
             "timerToday" -> answer(SocialTimer.todayMs(activity))
             "sleepState" -> answer(sleepState())
+            "problems" -> answer(Problems.list(activity))
+            "clearProblems" -> {
+                Problems.clear(activity)
+                answer(true)
+            }
+            // An error in the page, recorded with the phone's own.
+            "log" -> {
+                Problems.record(activity, msg.optString("what", "Error in the page"), detail = msg.optString("detail"))
+                answer(true)
+            }
             // Sleep now (until the next wake time), or I'm up (until tomorrow night).
             "sleepNow" -> {
                 if (msg.optBoolean("on")) SleepMode.sleepNow(activity) else SleepMode.imUp(activity)
