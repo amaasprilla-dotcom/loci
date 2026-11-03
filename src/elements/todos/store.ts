@@ -7,7 +7,7 @@ import { dueOf, resolveRepeat } from './when'
 
 export interface TodoDraft {
   title: string
-  why?: string
+  why?: string // shown as Details: notes, links, why it matters (named for what it first held)
   importance: Level
   difficulty: Level
   when: When

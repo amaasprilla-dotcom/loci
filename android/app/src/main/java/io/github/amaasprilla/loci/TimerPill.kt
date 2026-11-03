@@ -29,6 +29,8 @@ class TimerPill(private val context: Context, private val state: SharedPreferenc
     fun show(app: String, ms: Long, small: Boolean) {
         this.app = app
         this.ms = ms
+        // Android can take the window away (the service restarting): then it's made again.
+        if (view?.isAttachedToWindow == false) hide()
         val shown = view ?: create().also { view = it }
         shown.setTextSize(TypedValue.COMPLEX_UNIT_SP, if (small) 12f else 14f)
         val (h, v) = if (small) dp(10f) to dp(4f) else dp(14f) to dp(7f)

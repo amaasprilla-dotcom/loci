@@ -231,9 +231,9 @@ export function createAddForm(elementId: string, onAdded: () => Promise<void>): 
     'Add a backup plan',
   )
   const plan = (): TodoPlan => ({ cue: cue.value, ...(!backup.el.hidden && { obstacle: backup.obstacle.value, obstacleAction: backup.action.value }) })
-  const why = h('textarea', { class: 'input', rows: 2, placeholder: 'Why it matters (optional)', 'aria-label': 'Why it matters' })
+  const why = h('textarea', { class: 'input', rows: 2, placeholder: 'Notes, links, why it matters… (optional)', 'aria-label': 'Details' })
   let strip = attachmentStrip({ type: 'todo', id: pendingId })
-  const more = h('div', { class: 'todo-more', hidden: true }, h('label', { class: 'field-label' }, 'Why', why), h('div', { class: 'field-label' }, 'Attachments', strip.el))
+  const more = h('div', { class: 'todo-more', hidden: true }, h('label', { class: 'field-label' }, 'Details', why), h('div', { class: 'field-label' }, 'Attachments', strip.el))
   const nudge = h('div', { class: 'someday-nudge', hidden: true })
 
   // The when the form would use: picked, else read from the text.
@@ -758,7 +758,7 @@ export async function openTodoSheet(todo: Todo): Promise<void> {
       },
     })
     title.value = todo.title
-    const why = h('textarea', { class: 'input', rows: 2, placeholder: 'Why it matters (optional)', 'aria-label': 'Why it matters' })
+    const why = h('textarea', { class: 'input', rows: 2, placeholder: 'Notes, links, why it matters… (optional)', 'aria-label': 'Details' })
     why.value = todo.why ?? ''
     const importance = levelPicker('importance', todo.importance)
     const difficulty = levelPicker('difficulty', todo.difficulty, () => sync())
@@ -858,7 +858,7 @@ export async function openTodoSheet(todo: Todo): Promise<void> {
       firstStepRow,
       h('div', { class: 'todo-sentence' }, h('span', { class: 'todo-word' }, 'In'), placeChip),
       h('div', { class: 'field-label' }, 'Backup plan', backup.el),
-      h('label', { class: 'field-label' }, 'Why', why),
+      h('label', { class: 'field-label' }, 'Details', why),
       h(
         'div',
         { class: 'field-label' },

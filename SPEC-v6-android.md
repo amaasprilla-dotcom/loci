@@ -133,7 +133,7 @@ The Cloudflare address is a Gradle property (`lociUrl` in `android/gradle.proper
 | --- | --- |
 | `MainActivity` | The WebView: opens `lociUrl`, back button, file chooser, downloads, links to other sites go to the browser, the bridge. |
 | `Bridge` | Receives messages from the web app (settings, reminder schedule, "open this system screen") and answers (permission states, today's total, installed apps). |
-| `WatchService` | The accessibility service. Android keeps it running while it's switched on in Accessibility settings. Hears each app coming to the front (`typeWindowStateChanged`) and the screen going on and off; drives the timer pill and the sleep layer. Does nothing while neither feature is on. |
+| `WatchService` | The accessibility service. Android keeps it running while it's switched on in Accessibility settings. Hears each app coming to the front (`typeWindowStateChanged`; an app changing on screen or scrolling counts too while the home screen looks to be in front, since Android sometimes reports the home screen after the app it opened) and the screen going on and off; drives the timer pill and the sleep layer. Does nothing while neither feature is on. |
 | `Overlays` | The timer pill, the sleep layer and the reminder pill (`TYPE_ACCESSIBILITY_OVERLAY`, drawn by `WatchService`). The sleep layer has `FLAG_NOT_TOUCHABLE`, so touches pass through. |
 | `Reminders` | Keeps the schedule sent by the web app, sets one exact alarm per reminder (`AlarmManager.setExactAndAllowWhileIdle`), shows the notification, handles Done / In 1 hour. |
 | `BootReceiver` | After a restart: sets the alarms again. (Android restarts `WatchService` itself.) |
@@ -186,7 +186,7 @@ Each milestone is committed and reviewed before the next starts.
 ## Out of scope
 
 - The Play Store, and iOS.
-- Blocking or closing apps, limits that stop you.
+- Blocking or closing apps, limits that stop you (taken up by SPEC-v7-wellbeing.md).
 - Background sync while Loci is closed (and so reminders for changes made elsewhere until the phone opens Loci).
 - Social media history beyond today, and charts of it.
 - Switching on Android's own Night Light or Bedtime mode (no public API).

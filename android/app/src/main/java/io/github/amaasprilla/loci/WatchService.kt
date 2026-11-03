@@ -64,21 +64,32 @@ class WatchService : AccessibilityService() {
     }
 
     private fun onEvent(event: AccessibilityEvent) {
-        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val pkg = event.packageName?.toString() ?: return
         // The keyboard, the notification shade, pop-ups from the system and Loci's own pill
         // open over an app without leaving it.
         if (pkg == packageName && event.className != MainActivity::class.java.name) return
-        if (!isApp(pkg)) return
+        val opened = if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            isApp(pkg)
+        } else {
+            // Opening an app doesn't always say so: the home screen can report itself last,
+            // after the app is open, and a service started mid-app has heard nothing. So
+            // while it looks like the home screen (or nothing), an app changing on screen is
+            // the app in front.
+            (foreground == null || foreground in homes) && pkg !in homes && isApp(pkg)
+        }
+        if (!opened) return
         foreground = pkg
         update()
+    }
+
+    private val homes: Set<String> by lazy {
+        val home = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+        packageManager.queryIntentActivities(home, PackageManager.MATCH_DEFAULT_ONLY).map { it.activityInfo.packageName }.toSet()
     }
 
     private fun isApp(pkg: String): Boolean = apps.getOrPut(pkg) {
         val keyboards = getSystemService(InputMethodManager::class.java).enabledInputMethodList.map { it.packageName }
         if (pkg in keyboards) return@getOrPut false
-        val home = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
-        val homes = packageManager.queryIntentActivities(home, PackageManager.MATCH_DEFAULT_ONLY).map { it.activityInfo.packageName }
         packageManager.getLaunchIntentForPackage(pkg) != null || pkg in homes
     }
 
