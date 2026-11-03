@@ -8,7 +8,7 @@ import { inAndroidApp } from '../android'
 import { PALETTE } from '../colors'
 import { h } from '../dom'
 import { isActive, type Task } from '../elements/registry'
-import { arrowUpRightIcon, settingsIcon } from '../icons'
+import { arrowUpRightIcon, settingsIcon, wellbeingIcon } from '../icons'
 import { createNowCard } from '../now/card'
 import { describeSync } from '../settings/sync'
 import { createLocus, deleteLocus, findOrCreateTag, listLoci, listTags, moveLocus, updateLocus } from '../store/db'
@@ -27,7 +27,7 @@ export interface Home {
   setTasks(tasks: Task[], candidates?: Task[], studyAnywayLocusId?: string | null): void
 }
 
-export function createHome(options: { onOpen(locus: Locus): void; onTasks(): void; onNotes(): void; onSettings(): void }): Home {
+export function createHome(options: { onOpen(locus: Locus): void; onTasks(): void; onNotes(): void; onSettings(): void; onWellbeing(): void }): Home {
   const field = createField({
     onTap: options.onOpen,
     onMove: (locus, x, y) => void moveLocus(locus.id, x, y),
@@ -54,6 +54,11 @@ export function createHome(options: { onOpen(locus: Locus): void; onTasks(): voi
     },
     settingsIcon(),
   )
+
+  // Wellbeing is the phone's: only in the Android app.
+  const wellbeingButton = inAndroidApp
+    ? h('button', { type: 'button', class: 'round-btn', 'aria-label': 'Wellbeing', title: 'Wellbeing', onclick: options.onWellbeing }, wellbeingIcon())
+    : null
 
   // Shows only when sync wants attention, or a round is slow. Opens Settings.
   const syncDot = h('button', { type: 'button', class: 'round-btn sync-dot', hidden: true, onclick: options.onSettings }, h('span', { class: 'sync-dot-mark' }))
@@ -165,7 +170,7 @@ export function createHome(options: { onOpen(locus: Locus): void; onTasks(): voi
     h(
       'header',
       { class: 'topbar' },
-      h('div', { class: 'topbar-row' }, h('div', { class: 'brand-block' }, h('h1', { class: 'brand' }, 'Loci'), today), h('div', { class: 'topbar-actions' }, syncDot, moreButton, notesButton, tasksButton)),
+      h('div', { class: 'topbar-row' }, h('div', { class: 'brand-block' }, h('h1', { class: 'brand' }, 'Loci'), today), h('div', { class: wellbeingButton ? 'topbar-actions topbar-actions-more' : 'topbar-actions' }, syncDot, wellbeingButton, moreButton, notesButton, tasksButton)),
       filter.el,
     ),
     field.el,

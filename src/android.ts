@@ -73,6 +73,15 @@ export const allowOnPhone = (which: PhonePermission) => ask<PhonePermissions>('a
 export const phonePrefs = () => ask<Record<string, unknown>>('getPrefs')
 export const setPhonePrefs = (prefs: Record<string, unknown>) => ask<boolean>('setPrefs', { prefs })
 
+// Replaces one part (reminders, timer, sleep) and keeps the rest. One at a time, so two
+// quick changes to different parts can't each write back the other's old copy.
+let saving: Promise<unknown> = Promise.resolve()
+export function savePhonePrefs(key: string, value: unknown): Promise<boolean> {
+  const next = saving.then(async () => setPhonePrefs({ ...(await phonePrefs()), [key]: value }))
+  saving = next.catch(() => {})
+  return next
+}
+
 // An app installed on the phone, for the timer's app list (icon as a data: address).
 export interface PhoneApp {
   pkg: string

@@ -90,6 +90,8 @@ The Android back button goes back a screen (closes a sheet, then leaves a locus,
 
 ### Settings → Phone
 
+(Since W1 of SPEC-v7-wellbeing.md, the timer and sleep mode are on their own Wellbeing screen; Settings → Phone keeps reminders, permissions and Problems.)
+
 Shown only in the app. Each feature has an on/off switch, its options, and a line for each permission it needs: "Allowed" or a button that opens the right system screen ("Switch on Loci in Accessibility →"). The line updates when you come back.
 
 ### Social media timer

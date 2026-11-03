@@ -12,6 +12,7 @@ export type Route =
   | { name: 'tasks' }
   | { name: 'notes'; noteId?: string } // every note; with noteId, a loose note's editor
   | { name: 'settings' }
+  | { name: 'wellbeing' } // the timer, sleep mode and distracting apps (Android app only)
 
 export function parseRoute(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean).map(decodeURIComponent)
@@ -23,6 +24,7 @@ export function parseRoute(hash: string): Route {
   if (parts[0] === 'tasks') return { name: 'tasks' }
   if (parts[0] === 'notes') return { name: 'notes', ...(parts[1] && { noteId: parts[1] }) }
   if (parts[0] === 'settings') return { name: 'settings' }
+  if (parts[0] === 'wellbeing') return { name: 'wellbeing' }
   return { name: 'home' }
 }
 

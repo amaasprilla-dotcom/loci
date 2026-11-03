@@ -31,7 +31,7 @@ Asked for on Nov 3, after the first days of use: the wellbeing parts were hard t
 
 ### Wellbeing
 
-A screen of its own, only in the Android app. Home shows a **Wellbeing** pill beside Tasks and Notes. Settings → Phone keeps permissions, reminders and Problems, with a line pointing to Wellbeing.
+A screen of its own, only in the Android app. Home shows a round **Wellbeing** button (an hourglass) beside Settings: a third pill didn't fit beside Tasks and Notes on a phone, so on a phone the pills drop their arrows instead. Settings → Phone keeps permissions, reminders and Problems, with a line pointing to Wellbeing.
 
 From the top:
 
@@ -50,6 +50,14 @@ A full-screen card over the app, in Loci's look: the app's icon and name, "is bl
 ### To-dos
 
 The to-do sheet gets **Block distractions until done**. The Focus screen gets a switch, **Block distractions**, remembered between sessions. Both show only in the app with the blocker on.
+
+### Made while building W1
+
+- **Switches, not On/Off segments**, in each card's title: the card's options fold away while it's off.
+- **Permission lines in the cards** show only what's still missing (Allowed lines would only add noise there); Settings → Phone still lists them all.
+- **Distracting apps** lists the ones in first, then **Other apps** folded away. A ticked or unticked app stays where it is until the screen is opened again, so it doesn't jump from under your finger.
+- **Saving the phone settings one change at a time.** Each part (reminders, timer, sleep) was saved by reading all of them and writing them back, so two quick switches could each write back the other's old copy, losing one. Found while building this screen; Settings → Phone had the same race.
+- The list still lives in the timer's prefs (`timer.apps`), where the 1.5 app reads it, and the timer's notification still says "Social · today" until the next app (W2).
 
 ## How it works
 

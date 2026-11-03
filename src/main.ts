@@ -9,6 +9,7 @@ import { registry, type Task } from './elements/registry'
 import { createHome } from './home/view'
 import { loadLocaleSettings } from './locale'
 import { renderSettingsScreen } from './settings/view'
+import { renderWellbeingScreen } from './wellbeing/view'
 import { renderLocusView } from './locus/view'
 import { back, currentRoute, go, parentOf, type Route } from './router'
 import { bubbleWithNewCards, nowCandidates } from './now/candidates'
@@ -36,6 +37,7 @@ const home = createHome({
   onTasks: () => go('#/tasks'),
   onNotes: () => go('#/notes'),
   onSettings: () => go('#/settings'),
+  onWellbeing: () => go('#/wellbeing'),
 })
 // Ticking a task off changes what's due: refresh everything that shows tasks.
 const tasksScreen = createTasksScreen(() => void refreshTasks())
@@ -108,6 +110,16 @@ async function show(route: Route, quiet = false): Promise<void> {
       location.replace('#/')
       location.reload()
     })
+    setHomeVisible(false)
+    setThemeColor(CANVAS_THEME_COLOR)
+    screenLayer.replaceChildren(view)
+    if (motionAllowed()) await fadeIn(view)
+    return
+  }
+
+  if (route.name === 'wellbeing') {
+    shown = route
+    const view = await renderWellbeingScreen()
     setHomeVisible(false)
     setThemeColor(CANVAS_THEME_COLOR)
     screenLayer.replaceChildren(view)

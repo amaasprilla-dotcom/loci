@@ -157,15 +157,18 @@ notification), and a daily summary at 09:00 shows the Now card and the cards due
 set in Settings → Phone. On a Samsung, also add Loci to Settings → Battery and device care →
 Battery → Background usage limits → **Never sleeping apps**, or reminders can be held back.
 
-**Social media timer.** Switch it on in Settings → Phone, then allow **Accessibility** there:
+**Wellbeing.** The hourglass on home (only in the app) opens the timer, sleep mode and your
+list of distracting apps, each in its own card with a switch.
+
+**Timer.** Switch it on in Wellbeing, then allow **Accessibility** in its card:
 Android shows Loci under Installed apps (Installed services on a Samsung) and warns that it
-gets "full control". Loci only notes which app is in front. A pill over social apps then
-shows your time in social apps today, all of them together; it starts again at 0:00 at midnight.
-Tap the pill to shrink it, drag it to move it. Settings → Phone also picks which apps count and
-shows today's total. On Android 13 and later, first open App info for Loci → ⋮ → **Allow
+gets "full control". Loci only notes which app is in front. A pill over distracting apps then
+shows your time in them today, all of them together; it starts again at 0:00 at midnight.
+Tap the pill to shrink it, drag it to move it. Wellbeing shows today's total at the top, and
+its Distracting apps card picks which apps count (social apps to start with). On Android 13 and later, first open App info for Loci → ⋮ → **Allow
 restricted settings**, or Android won't let the service be switched on.
 
-**Sleep mode.** Also in Settings → Phone, and it needs the same Accessibility switch. Set a
+**Sleep mode.** Also in Wellbeing, and it needs the same Accessibility switch. Set a
 bedtime, a wake time and the nights it applies to (all by default, 23:30–07:00). From 30
 minutes before bedtime a warm amber filter fades in over the whole screen; from bedtime to wake
 time it stays, and while the screen is on a reminder comes every 10 minutes (adjustable): a
