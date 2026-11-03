@@ -157,15 +157,25 @@ notification), and a daily summary at 09:00 shows the Now card and the cards due
 set in Settings → Phone. On a Samsung, also add Loci to Settings → Battery and device care →
 Battery → Background usage limits → **Never sleeping apps**, or reminders can be held back.
 
-**Wellbeing.** The hourglass on home (only in the app) opens the timer, sleep mode and your
-list of distracting apps, each in its own card with a switch.
+**Wellbeing.** The hourglass on home (only in the app) opens the blocker, the timer, sleep mode
+and your list of distracting apps, each in its own card with a switch.
+
+**Blocker.** While a block is on, your distracting apps can't be used: a screen covers them with
+why and until when, and **Close app**. Blocks: **Block now** (15 min to 2 h, or until a time),
+**Set hours** (e.g. weekdays 09:00–12:00, as many as you like), a **Daily limit** (after that
+long in distracting apps today, until midnight) and **Bedtime** (sleep mode's times and nights).
+**How firm**: Gentle lets you have 5 more minutes three times a day; Firm (the default) has no
+way past, and a block ends early only from Wellbeing after a 30-second wait; Strict can't be
+ended or changed until it's over. In the 5 minutes before a block the timer pill turns red and
+counts down. Loci, the phone and settings are never blocked. It needs the same Accessibility
+switch as the timer, and app 1.6.
 
 **Timer.** Switch it on in Wellbeing, then allow **Accessibility** in its card:
 Android shows Loci under Installed apps (Installed services on a Samsung) and warns that it
 gets "full control". Loci only notes which app is in front. A pill over distracting apps then
 shows your time in them today, all of them together; it starts again at 0:00 at midnight.
 Tap the pill to shrink it, drag it to move it. Wellbeing shows today's total at the top, and
-its Distracting apps card picks which apps count (social apps to start with). On Android 13 and later, first open App info for Loci → ⋮ → **Allow
+its Distracting apps card picks which apps count and get blocked (social apps to start with). On Android 13 and later, first open App info for Loci → ⋮ → **Allow
 restricted settings**, or Android won't let the service be switched on.
 
 **Sleep mode.** Also in Wellbeing, and it needs the same Accessibility switch. Set a
@@ -198,8 +208,8 @@ The address it opens is `lociUrl` in `android/gradle.properties`.
   which of two versions wins, and the sync key format
 - `android/`: the Android app (SPEC-v6-android.md). `MainActivity.kt` is the WebView,
   `Bridge.kt` answers the web app's messages, `Reminders.kt` shows reminders at their time, `WatchService.kt` (the
-  accessibility service) drives `SocialTimer.kt` with its `TimerPill.kt` and `SleepMode.kt`, and `Watchdog.kt` says when the service is off; `src/android.ts` is the web app's side of that,
-  `src/notifications.ts` works out the reminders, and `src/settings/phone.ts` is the Phone section of Settings. `scripts/build-android.mjs` builds it
+  accessibility service) drives `SocialTimer.kt` with its `TimerPill.kt`, `Blocker.kt` with its `BlockedScreen.kt`, and `SleepMode.kt`, and `Watchdog.kt` says when the service is off; `src/android.ts` is the web app's side of that,
+  `src/notifications.ts` works out the reminders, `src/settings/phone.ts` is the Phone section of Settings, and `src/wellbeing/` is the Wellbeing screen (`blocker.ts` its Blocker card). `scripts/build-android.mjs` builds it
 - `src/main.ts`: app start, and switching between screens
 - `src/router.ts`: the screen addresses (`#/`, `#/locus/…`) and the back button
 - `src/transition.ts`: the bubble growing into its locus screen, and back

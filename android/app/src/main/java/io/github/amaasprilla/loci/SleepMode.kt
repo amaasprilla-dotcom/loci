@@ -214,13 +214,13 @@ class SleepMode(private val context: Context) {
         private fun state(context: Context) = context.getSharedPreferences(STATE, Context.MODE_PRIVATE)
         private fun sleepPrefs(context: Context) = WatchService.phonePrefs(context).optJSONObject("sleep")
 
-        private fun minutes(clock: String, fallback: Int): Int {
+        fun minutes(clock: String, fallback: Int): Int {
             val parts = clock.split(":").mapNotNull { it.toIntOrNull() }
             return if (parts.size == 2) parts[0] * 60 + parts[1] else fallback
         }
 
         // `minute` past midnight on the day `days` from today's.
-        private fun at(now: Long, days: Int, minute: Int): Long = Calendar.getInstance().apply {
+        fun at(now: Long, days: Int, minute: Int): Long = Calendar.getInstance().apply {
             timeInMillis = now
             add(Calendar.DAY_OF_YEAR, days)
             set(Calendar.HOUR_OF_DAY, minute / 60)
@@ -230,7 +230,7 @@ class SleepMode(private val context: Context) {
         }.timeInMillis
 
         // 0 = Sunday, as in the web app (Date.getDay).
-        private fun weekday(at: Long) = Calendar.getInstance().apply { timeInMillis = at }.get(Calendar.DAY_OF_WEEK) - 1
+        fun weekday(at: Long) = Calendar.getInstance().apply { timeInMillis = at }.get(Calendar.DAY_OF_WEEK) - 1
 
         private fun nextWake(prefs: JSONObject?, now: Long): Long {
             val wake = minutes(prefs?.optString("wake").orEmpty(), 7 * 60)
@@ -266,11 +266,17 @@ class SleepMode(private val context: Context) {
             state(context).edit()
                 .putLong("sleepNowFrom", now)
                 .putLong("sleepNowUntil", nextWake(sleepPrefs(context), now))
+                // The blocker's bedtime block holds for it too, kept apart: I'm up ends the filter, not the block.
+                .putLong("blockFrom", now)
+                .putLong("blockUntil", nextWake(sleepPrefs(context), now))
                 .putLong("upUntil", 0)
                 .putLong("snoozeUntil", 0)
                 .putLong("lastReminder", 0)
                 .apply()
         }
+
+        // Sleep now's stretch, for the blocker's bedtime block.
+        fun sleepNowBlock(context: Context): Pair<Long, Long> = state(context).let { it.getLong("blockFrom", 0) to it.getLong("blockUntil", 0) }
 
         // I'm up: tonight's sleep mode ends (wind-down included), back tomorrow night.
         fun imUp(context: Context, now: Long = System.currentTimeMillis()) {

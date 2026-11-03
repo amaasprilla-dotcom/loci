@@ -15,10 +15,12 @@ import androidx.core.app.NotificationManagerCompat
 import org.json.JSONObject
 import java.util.Calendar
 
-// The social media timer (SPEC-v6-android.md, "Social media timer"). The pill shows your
-// time in social apps today, all of them together: it counts while one is in front, pauses
-// while you're elsewhere or the screen is off, and starts again at 0:00 at midnight.
-// WatchService tells it what's in front; the pill and a silent notification show the clock.
+// The timer (SPEC-v6-android.md, "Social media timer"; SPEC-v7-wellbeing.md). The pill shows
+// your time in distracting apps today, all of them together: it counts while one is in
+// front, pauses while you're elsewhere or the screen is off, and starts again at 0:00 at
+// midnight. WatchService tells it what's in front; the pill and a silent notification show
+// the clock. The blocker's daily limit needs the count too, so it counts with the timer off
+// while a limit is on (with no pill or notification).
 class SocialTimer(private val context: Context) {
     private val state = context.getSharedPreferences(STATE, Context.MODE_PRIVATE)
     private val main = Handler(Looper.getMainLooper())
@@ -26,6 +28,7 @@ class SocialTimer(private val context: Context) {
 
     private var runningSince = 0L // 0 while paused
     private var app = ""
+    private var notified = false
     private var notifiedDay = 0L // the day the notification's clock was set for
 
     init {
@@ -37,24 +40,37 @@ class SocialTimer(private val context: Context) {
         }
     }
 
-    // Called on every change of what's in front: `pkg` is the app in front (null with the
-    // screen off), counted only if it's social and the timer is on.
-    fun update(pkg: String?, prefs: JSONObject?) {
+    // Called on every change of what's in front: `pkg` is the distracting app in front, if
+    // any (not one that's blocked). `limit`: a daily limit needs counting; `cutoff`: when the
+    // next block starts, for the pill's countdown (0 if none).
+    fun update(pkg: String?, prefs: JSONObject?, limit: Boolean, cutoff: Long) {
         val now = System.currentTimeMillis()
-        val social = prefs?.optBoolean("on", false) == true && pkg != null && isSocial(context, pkg, prefs)
-        if (!social) {
+        val on = prefs?.optBoolean("on", false) == true
+        if (pkg == null || !(on || limit)) {
             pause(now)
             pill.hide()
             return
         }
-        app = label(context, pkg!!)
+        val name = label(context, pkg)
+        val changed = name != app
+        app = name
         if (runningSince == 0L) {
             runningSince = now
             state.edit().putLong("runningSince", now).putLong("lastTick", now).apply()
             main.post(tick)
         }
-        pill.show(app, todayMs(context, now), prefs!!.optString("size", "normal") == "small")
-        notifyRunning(now)
+        if (!on) {
+            pill.hide()
+            cancelNotice()
+            return
+        }
+        pill.show(app, todayMs(context, now), prefs!!.optString("size", "normal") == "small", cutoff)
+        if (!notified || changed) notifyRunning(now)
+    }
+
+    private fun cancelNotice() {
+        notified = false
+        NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
     }
 
     private fun pause(now: Long) {
@@ -63,7 +79,7 @@ class SocialTimer(private val context: Context) {
         runningSince = 0
         state.edit().putLong("runningSince", 0).apply()
         main.removeCallbacks(tick)
-        NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
+        cancelNotice()
     }
 
     private val tick = object : Runnable {
@@ -74,7 +90,7 @@ class SocialTimer(private val context: Context) {
                 pill.setTime(todayMs(context, now))
                 if (now / 1000 % 15 == 0L) state.edit().putLong("lastTick", now).apply()
                 // Past midnight the notification's clock starts again too.
-                if (dayStart(now) != notifiedDay) notifyRunning(now)
+                if (notified && dayStart(now) != notifiedDay) notifyRunning(now)
             }
             main.postAtTime(this, SystemClock.uptimeMillis() + 1_000 - now % 1_000)
         }
@@ -82,12 +98,13 @@ class SocialTimer(private val context: Context) {
 
     private fun channel() {
         context.getSystemService(NotificationManager::class.java)
-            .createNotificationChannel(NotificationChannel(CHANNEL, "Social media timer", NotificationManager.IMPORTANCE_LOW))
+            .createNotificationChannel(NotificationChannel(CHANNEL, "Timer", NotificationManager.IMPORTANCE_LOW))
     }
 
-    // While a social app is open the notification's clock counts up on its own.
+    // While a distracting app is open the notification's clock counts up on its own.
     private fun notifyRunning(now: Long) {
         channel()
+        notified = true
         notifiedDay = dayStart(now)
         val open = PendingIntent.getActivity(
             context, NOTIFICATION_ID, Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
@@ -99,7 +116,7 @@ class SocialTimer(private val context: Context) {
                 .setOnlyAlertOnce(true)
                 .setSilent(true)
                 .setContentIntent(open)
-                .setContentTitle("Social · today")
+                .setContentTitle("Distracting apps · today")
                 .setContentText("In $app")
                 .setWhen(now - todayMs(context, now))
                 .setUsesChronometer(true)

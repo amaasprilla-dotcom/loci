@@ -4426,6 +4426,174 @@ details.editor-section > summary {
   outline-offset: 2px;
 }
 
+.switch:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Under today's time: the block on now (in red) or the next one. */
+.wb-today-block {
+  margin: 0;
+  font-weight: 550;
+}
+
+.wb-today-block.on {
+  color: var(--bad);
+}
+
+.wb-today-block[hidden] {
+  display: none;
+}
+
+/* The blocker: what's on now with End early, Block now, the blocks. */
+.wb-block-now-status {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wb-block-status {
+  margin: 0;
+  font-weight: 550;
+}
+
+.wb-block-end:empty {
+  display: none;
+}
+
+.wb-block-end {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wb-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wb-wrap {
+  flex-wrap: wrap;
+}
+
+.wb-row .btn-small {
+  align-self: center;
+}
+
+.wb-row-label {
+  flex: none;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.wb-row .phone-time {
+  flex: 1;
+  min-width: 0;
+}
+
+.wb-grid4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.wb-grid4 .btn-small {
+  align-self: stretch;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.wb-locked {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--bad-soft);
+  color: var(--text);
+}
+
+.wb-locked[hidden] {
+  display: none;
+}
+
+.wb-fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.wb-fieldset:disabled {
+  opacity: 0.55;
+}
+
+.wb-rules {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wb-rules[hidden] {
+  display: none;
+}
+
+.wb-rule {
+  border-top: 1px solid var(--border);
+}
+
+.wb-rule:last-child {
+  border-bottom: 1px solid var(--border);
+}
+
+.wb-rule-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.wb-rule-head {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  padding: 10px 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wb-rule-head .settings-note {
+  margin: 0;
+}
+
+.wb-rule-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.wb-now {
+  color: var(--bad);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.wb-rule-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 2px 0 14px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .switch,
   .switch-knob {

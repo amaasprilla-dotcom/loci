@@ -54,6 +54,7 @@ port?.addEventListener('message', (e) => {
   waiting.delete(id)
 })
 
+// (`args` can't use `id` or `type`: they're the message's own.)
 function ask<T>(type: string, args: Record<string, unknown> = {}): Promise<T> {
   if (!port) return Promise.reject(new Error('Not in the Android app'))
   const id = nextId++
@@ -158,3 +159,29 @@ export async function saveOnPhone(blob: Blob, name: string): Promise<boolean> {
 export async function openOnPhone(blob: Blob, name: string): Promise<boolean> {
   return ask<boolean>('open', { name, mime: blob.type, data: await base64(blob) })
 }
+
+// The distraction blocker (SPEC-v7-wellbeing.md): a stretch of blocking, from a rule
+// (its id) or Block now ("now").
+export interface BlockWindow {
+  id: string
+  kind: 'now' | 'hours' | 'limit' | 'bedtime'
+  reason: string
+  start: number
+  end: number
+}
+
+export interface BlockerState {
+  on: boolean
+  firmness: 'gentle' | 'firm' | 'strict'
+  blocked: BlockWindow | null // on now (the longest, if several are)
+  next: BlockWindow | null // the next to start (or to come back, after Gentle's 5 more minutes)
+  moreUntil: number // Gentle's 5 more minutes run until then (0 if not)
+  moresLeft: number
+  locked: boolean // Firm or Strict with a block on: the blocks can't be changed now
+}
+
+export const blockerState = () => ask<BlockerState>('blockerState')
+// Block now, until `until`.
+export const blockNow = (until: number) => ask<BlockerState>('blockNow', { until })
+// End early the block on now from that rule ("now" for Block now). Not in Strict.
+export const endBlock = (block: string) => ask<BlockerState>('endBlock', { block })

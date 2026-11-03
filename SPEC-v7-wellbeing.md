@@ -59,6 +59,17 @@ The to-do sheet gets **Block distractions until done**. The Focus screen gets a 
 - **Saving the phone settings one change at a time.** Each part (reminders, timer, sleep) was saved by reading all of them and writing them back, so two quick switches could each write back the other's old copy, losing one. Found while building this screen; Settings → Phone had the same race.
 - The list still lives in the timer's prefs (`timer.apps`), where the 1.5 app reads it, and the timer's notification still says "Social · today" until the next app (W2).
 
+### Made while building W2
+
+- **The rules** are `blocker: { on, firmness, rules: [...] }` in the phone prefs. A rule is `{ id, kind, on }` plus, for Set hours, `name`, `start`, `end` and `days`; for the daily limit, `minutes`. There's at most one daily limit and one Bedtime; Set hours can be added any number of times.
+- **Firm and Strict lock the blocks while one is on**, not only Strict: in Firm, switching the blocker or a running block off would skip the 30-second wait. So while a block holds (Firm or Strict), the phone keeps the blocks, the list of distracting apps, and sleep mode's bedtime, wake time and nights as they were, whatever the page sends (`Blocker.guard`), and Wellbeing greys them out with a line saying why. Block now still works, and so does End early (Firm). Gentle never locks.
+- **End early** stops the block from that rule until its next time (a daily limit until tomorrow). With several blocks on at once, the one lasting longest shows; ending it shows the next.
+- **Bedtime follows sleep mode's times whether its filter is on or not.** Sleep now blocks too, until the wake time; **I'm up ends the filter, not the block** (it would otherwise be a way around Firm and Strict).
+- **The daily limit counts with the timer off**: the timer's clock runs while a limit is on, with no pill or notification. Time on the blocked screen doesn't count.
+- **No alarms, as planned**: while a distracting app is in front, the service works things out again at the next moment anything changes (a countdown starting, a block starting or ending, Gentle's minutes running out), and at least every 30 seconds.
+- **Never blocked**, and left out of the list: Loci, the home screen, the phone app and the system's settings (so the service can always be switched off there).
+- The timer's notification is now "Distracting apps · today", and its channel "Timer". The watchdog's notice covers the blocker too ("Loci's Wellbeing is switched off").
+
 ## How it works
 
 - `Blocker.kt`, driven by `WatchService` alongside the timer and sleep mode. It's asked whether an app is blocked, and when the next block starts or ends, and computes this from the rules each time (no alarms), as sleep mode does. The service rechecks on every app change, on the screen turning on, and once a second while a distracting app is in front (the timer's tick).

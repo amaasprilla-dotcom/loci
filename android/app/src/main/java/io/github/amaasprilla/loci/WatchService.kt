@@ -17,10 +17,12 @@ import org.json.JSONObject
 // The accessibility service (SPEC-v6-android.md, "Native side"). Android keeps it running
 // while it's switched on in Accessibility settings. It only hears which app comes to the
 // front (it can't read what's on screen, res/xml/watch_service.xml) and whether the screen
-// is on, and passes that to the social media timer and sleep mode.
+// is on, and passes that to the timer, the blocker and sleep mode.
 class WatchService : AccessibilityService() {
     private lateinit var timer: SocialTimer
     private lateinit var sleep: SleepMode
+    private lateinit var blocked: BlockedScreen
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
     private lateinit var prefs: SharedPreferences
     private var foreground: String? = null
     private var screenOn = true
@@ -46,6 +48,7 @@ class WatchService : AccessibilityService() {
     override fun onServiceConnected() {
         timer = SocialTimer(this)
         sleep = SleepMode(this)
+        blocked = BlockedScreen(this)
         instance = this
         prefs = getSharedPreferences(Bridge.PREFS, MODE_PRIVATE)
         prefs.registerOnSharedPreferenceChangeListener(prefsChanged)
@@ -82,10 +85,7 @@ class WatchService : AccessibilityService() {
         update()
     }
 
-    private val homes: Set<String> by lazy {
-        val home = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
-        packageManager.queryIntentActivities(home, PackageManager.MATCH_DEFAULT_ONLY).map { it.activityInfo.packageName }.toSet()
-    }
+    private val homes: Set<String> by lazy { homes(this) }
 
     private fun isApp(pkg: String): Boolean = apps.getOrPut(pkg) {
         val keyboards = getSystemService(InputMethodManager::class.java).enabledInputMethodList.map { it.packageName }
@@ -93,20 +93,41 @@ class WatchService : AccessibilityService() {
         packageManager.getLaunchIntentForPackage(pkg) != null || pkg in homes
     }
 
-    // The timer and sleep mode apart, so a problem in one doesn't stop the other.
+    // The timer, the blocker and sleep mode apart, so a problem in one doesn't stop the others.
     private fun update() {
+        main.removeCallbacks(recheck)
         val phone = Problems.safely(this, "Reading phone settings") { phonePrefs(this) } ?: return
-        Problems.safely(this, "Timer") { timer.update(if (screenOn) foreground else null, phone.optJSONObject("timer")) }
+        val now = System.currentTimeMillis()
+        val timerPrefs = phone.optJSONObject("timer")
+        // The distracting app in front, if any.
+        val app = foreground.takeIf { screenOn }?.takeIf { pkg ->
+            !Blocker.neverBlocked(this, pkg, homes) && SocialTimer.isSocial(this, pkg, timerPrefs ?: JSONObject())
+        }
+        val block = Problems.safely(this, "Blocker") { Blocker.state(this, phone, now, SocialTimer.todayMs(this, now), app != null) }
+        val blockedNow = block?.blocked.takeIf { app != null }
+        Problems.safely(this, "Blocked screen") {
+            if (block != null && blockedNow != null) blocked.show(app!!, blockedNow, block.moresLeft.takeIf { block.firmness == "gentle" }) else blocked.hide()
+        }
+        Problems.safely(this, "Timer") {
+            val limit = block?.on == true && Blocker.hasLimit(phone)
+            timer.update(app.takeIf { blockedNow == null }, timerPrefs, limit, block?.next?.start ?: 0)
+        }
         Problems.safely(this, "Sleep mode") { sleep.update(screenOn, phone.optJSONObject("sleep")) }
+        // A block starting (or its countdown) or ending while the app stays in front.
+        if (app != null && block != null && block.change > 0) main.postDelayed(recheck, (block.change - now).coerceIn(250, 30_000))
     }
+
+    private val recheck = Runnable { Problems.safely(this, "Watching apps") { update() } }
 
     override fun onInterrupt() {}
 
     override fun onDestroy() {
         if (instance === this) instance = null
         if (::timer.isInitialized) {
+            main.removeCallbacksAndMessages(null)
             timer.close()
             sleep.close()
+            blocked.hide()
             prefs.unregisterOnSharedPreferenceChangeListener(prefsChanged)
             unregisterReceiver(screen)
         }
@@ -118,6 +139,11 @@ class WatchService : AccessibilityService() {
         private var instance: WatchService? = null
 
         fun refresh() = android.os.Handler(android.os.Looper.getMainLooper()).post { instance?.update() }
+
+        fun homes(context: Context): Set<String> {
+            val home = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+            return context.packageManager.queryIntentActivities(home, PackageManager.MATCH_DEFAULT_ONLY).map { it.activityInfo.packageName }.toSet()
+        }
 
         fun phonePrefs(context: Context): JSONObject =
             JSONObject(context.getSharedPreferences(Bridge.PREFS, Context.MODE_PRIVATE).getString("phone", "{}")!!)

@@ -20,8 +20,8 @@ android {
         applicationId = "io.github.amaasprilla.loci"
         minSdk = 26
         targetSdk = 36
-        versionCode = 7
-        versionName = "1.5"
+        versionCode = 8
+        versionName = "1.6"
         buildConfigField("String", "LOCI_URL", "\"${providers.gradleProperty("lociUrl").get()}\"")
     }
 

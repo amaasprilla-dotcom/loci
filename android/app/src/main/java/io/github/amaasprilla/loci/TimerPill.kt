@@ -14,7 +14,8 @@ import android.view.WindowManager
 import android.widget.TextView
 import kotlin.math.abs
 
-// The floating pill over a social app: "Instagram · 12:34", or just the time once tapped.
+// The floating pill over a distracting app: "Instagram · 12:34", or just the time once tapped.
+// In the 5 minutes before a block it turns red and counts down: "Instagram · 4:59 left".
 // Drawn by WatchService as an accessibility overlay, so it needs no "Display over other
 // apps" and sits over the status bar too. Dragging moves it; the spot is remembered.
 class TimerPill(private val context: Context, private val state: SharedPreferences) {
@@ -22,13 +23,16 @@ class TimerPill(private val context: Context, private val state: SharedPreferenc
     private var view: TextView? = null
     private var app = ""
     private var ms = 0L
+    private var cutoff = 0L // when the next block starts, 0 if none is near
+    private var red = false
     private var compact = state.getBoolean("compact", false)
 
     private fun dp(v: Float) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, context.resources.displayMetrics)
 
-    fun show(app: String, ms: Long, small: Boolean) {
+    fun show(app: String, ms: Long, small: Boolean, cutoff: Long) {
         this.app = app
         this.ms = ms
+        this.cutoff = cutoff
         // Android can take the window away (the service restarting): then it's made again.
         if (view?.isAttachedToWindow == false) hide()
         val shown = view ?: create().also { view = it }
@@ -50,12 +54,23 @@ class TimerPill(private val context: Context, private val state: SharedPreferenc
     }
 
     private fun render() {
-        view?.text = if (compact) SocialTimer.clock(ms) else "$app · ${SocialTimer.clock(ms)}"
+        val shown = view ?: return
+        val left = cutoff - System.currentTimeMillis()
+        val warn = cutoff != 0L && left in 1..Blocker.WARN_MS
+        // Rounded up, so it reaches 0:00 as the block starts.
+        val clock = if (warn) "${SocialTimer.clock(left + 999)} left" else SocialTimer.clock(ms)
+        shown.text = if (compact) clock else "$app · $clock"
+        if (warn != red) {
+            red = warn
+            (shown.background as GradientDrawable).setColor(if (warn) Color.parseColor("#D4443B") else GLASS)
+            shown.setTextColor(if (warn) Color.WHITE else INK)
+        }
     }
 
     @SuppressLint("ClickableViewAccessibility")
     private fun create(): TextView {
         val pill = styled(context)
+        red = false
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -108,18 +123,21 @@ class TimerPill(private val context: Context, private val state: SharedPreferenc
     }
 
     companion object {
+        private val INK = Color.parseColor("#1D1D1F")
+        private val GLASS = Color.argb(235, 255, 255, 255)
+
         private fun dp(context: Context, v: Float) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, context.resources.displayMetrics)
 
         // White glass with dark text, as Loci's cards; sleep mode's reminder pill looks the same.
         fun styled(context: Context) = TextView(context).apply {
-            setTextColor(Color.parseColor("#1D1D1F"))
+            setTextColor(INK)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
             setPadding(dp(context, 14f).toInt(), dp(context, 7f).toInt(), dp(context, 14f).toInt(), dp(context, 7f).toInt())
             fontFeatureSettings = "tnum" // the digits don't jiggle as they change
             maxLines = 1
             background = GradientDrawable().apply {
                 cornerRadius = dp(context, 999f)
-                setColor(Color.argb(235, 255, 255, 255))
+                setColor(GLASS)
                 setStroke(dp(context, 1f).toInt(), Color.argb(40, 0, 0, 0))
             }
             importantForAccessibility = android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO

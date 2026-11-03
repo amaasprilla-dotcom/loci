@@ -75,13 +75,28 @@ class Bridge(private val activity: MainActivity, web: WebView, origin: String) {
             // timer; sleep mode later), kept as one JSON object. WatchService hears changes.
             "getPrefs" -> answer(JSONObject(prefs.getString("phone", "{}")!!))
             "setPrefs" -> {
-                prefs.edit().putString("phone", msg.getJSONObject("prefs").toString()).apply()
+                // While a Firm or Strict block is on, its parts stay as they were.
+                val next = Blocker.guard(activity, JSONObject(prefs.getString("phone", "{}")!!), msg.getJSONObject("prefs"))
+                prefs.edit().putString("phone", next.toString()).apply()
                 Watchdog.check(activity, quiet = true)
                 answer(true)
             }
             "apps" -> io.execute { answer(Problems.safely(activity, "Listing apps") { apps() }) }
             "timerToday" -> answer(SocialTimer.todayMs(activity))
             "sleepState" -> answer(sleepState())
+            "blockerState" -> answer(Blocker.json(Blocker.state(activity)))
+            // Block now: until `until` (a time), for the blocker's apps.
+            "blockNow" -> {
+                Blocker.blockNow(activity, msg.getLong("until"))
+                WatchService.refresh()
+                answer(Blocker.json(Blocker.state(activity)))
+            }
+            // End early (the page has made you wait, in Firm). Refused in Strict.
+            "endBlock" -> {
+                Blocker.end(activity, msg.optString("block"))
+                WatchService.refresh()
+                answer(Blocker.json(Blocker.state(activity)))
+            }
             "problems" -> answer(Problems.list(activity))
             "clearProblems" -> {
                 Problems.clear(activity)
@@ -159,14 +174,16 @@ class Bridge(private val activity: MainActivity, web: WebView, origin: String) {
         return JSONObject().put("phase", phase.kind.name.lowercase()).put("start", phase.start).put("end", phase.end)
     }
 
-    // Every app with a launcher icon, for the timer's app list: social ones first.
+    // Every app with a launcher icon, for the list of distracting apps: social ones first.
+    // Not the ones that are never blocked (the phone, settings).
     private fun apps(): JSONArray {
         val pm = activity.packageManager
+        val homes = WatchService.homes(activity)
         val launcher = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
         val list = pm.queryIntentActivities(launcher, 0)
             .map { it.activityInfo.applicationInfo }
             .distinctBy { it.packageName }
-            .filter { it.packageName != activity.packageName }
+            .filter { !Blocker.neverBlocked(activity, it.packageName, homes) }
             .map { info -> Triple(info, pm.getApplicationLabel(info).toString(), SocialTimer.socialByDefault(activity, info.packageName)) }
             .sortedWith(compareBy({ !it.third }, { it.second.lowercase() }))
         return JSONArray(list.map { (info, name, social) ->
