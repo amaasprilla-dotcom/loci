@@ -9,7 +9,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { exportBackup, importBackup } from '../../store/backup'
 import { createElement, createLocus, db, deleteLocus } from '../../store/db'
 import type { LocusElement, Todo, When } from '../../types'
-import { completeTodo, createTodo, deleteTodo, itHappened, skipTodo } from './store'
+import { completeTodo, createTodo, deleteTodo, itHappened, missTodo, recentlyFinished, reopenTodo, rescheduleTodo, skipTodo } from './store'
 import { todosType } from './type'
 import { dayStartOf, makeRepeat, nextRollover, occurrencesBetween, parseClock, parseTyped, resolveRepeat, todoState } from './when'
 
@@ -235,6 +235,68 @@ describe('to-dos', () => {
     await deleteTodo(paint.id, at(10, 21, 9))
     expect((await db.todos.get(wall.id))!.when).toEqual({ kind: 'at', at: at(10, 21, 9), hasTime: true })
     expect(await db.links.count()).toBe(0)
+  })
+
+  it('Done can be undone: the to-do, its history and what it set off go back', async () => {
+    const paint = await createTodo(listId, draft('Buy paint', { kind: 'someday' }))
+    const wall = await createTodo(listId, draft('Paint the wall', { kind: 'after' }), { type: 'todo', id: paint.id })
+    const undo = await completeTodo(paint.id, at(10, 21, 9))
+    expect((await db.todos.get(wall.id))!.when.kind).toBe('at')
+    await undo()
+    expect(await db.todos.get(paint.id)).toMatchObject({ status: 'open', when: { kind: 'someday' } })
+    expect((await db.todos.get(paint.id))!.doneAt).toBeUndefined()
+    expect(await db.todoCompletions.count()).toBe(0)
+    expect((await db.todos.get(wall.id))!.when).toEqual({ kind: 'after' })
+  })
+
+  it('undoing a repeating to-do’s Done puts it back on the same occurrence', async () => {
+    const t = await createTodo(listId, draft('Run', makeRepeat({ freq: RRule.DAILY }, at(10, 21, 6), '07:30')))
+    const before = (await db.todos.get(t.id))!.when
+    const undo = await completeTodo(t.id, at(10, 21, 9))
+    expect((await db.todos.get(t.id))!.when).not.toEqual(before)
+    await undo()
+    expect((await db.todos.get(t.id))!.when).toEqual(before)
+    expect(await db.todoCompletions.count()).toBe(0)
+  })
+
+  it('Didn’t do it ends a to-do as missed, without setting off what waits on it', async () => {
+    const paint = await createTodo(listId, draft('Buy paint', { kind: 'someday' }))
+    const wall = await createTodo(listId, draft('Paint the wall', { kind: 'after' }), { type: 'todo', id: paint.id })
+    const undo = await missTodo(paint.id, at(10, 21, 9))
+    expect(await db.todos.get(paint.id)).toMatchObject({ status: 'done', missed: true, doneAt: at(10, 21, 9) })
+    expect(await db.todoCompletions.toArray()).toMatchObject([{ todoId: paint.id, outcome: 'missed' }])
+    expect((await db.todos.get(wall.id))!.when).toEqual({ kind: 'after' })
+    await undo()
+    expect((await db.todos.get(paint.id))!.status).toBe('open')
+    expect((await db.todos.get(paint.id))!.missed).toBeUndefined()
+    expect(await db.todoCompletions.count()).toBe(0)
+  })
+
+  it('reopening a finished to-do takes its finish out of the history', async () => {
+    const t = await createTodo(listId, draft('Call', { kind: 'someday' }))
+    await completeTodo(t.id, at(10, 21, 9))
+    await reopenTodo(t.id)
+    expect((await db.todos.get(t.id))!.status).toBe('open')
+    expect(await db.todoCompletions.count()).toBe(0)
+  })
+
+  it('a finished to-do can be done again at a new time', async () => {
+    const t = await createTodo(listId, draft('Call', { kind: 'someday' }))
+    await missTodo(t.id, at(10, 21, 9))
+    await rescheduleTodo(t.id, { kind: 'at', at: at(10, 23), hasTime: false })
+    expect(await db.todos.get(t.id)).toMatchObject({ status: 'open', when: { kind: 'at', at: at(10, 23) } })
+    expect(await db.todoCompletions.count()).toBe(0)
+  })
+
+  it('lists to-dos finished lately, newest first', async () => {
+    const a = await createTodo(listId, draft('A', { kind: 'someday' }))
+    const b = await createTodo(listId, draft('B', { kind: 'someday' }))
+    const c = await createTodo(listId, draft('C', { kind: 'someday' }))
+    await completeTodo(a.id, at(10, 10))
+    await completeTodo(b.id, at(10, 20))
+    await missTodo(c.id, at(10, 21))
+    expect((await recentlyFinished(at(10, 14))).map((t) => t.title)).toEqual(['C', 'B'])
+    expect((await recentlyFinished(at(10, 14), 'elsewhere')).length).toBe(0)
   })
 
   it('deleting the locus deletes its to-dos and their history', async () => {

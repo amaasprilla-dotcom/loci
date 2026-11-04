@@ -83,8 +83,10 @@ async function setWaitsFor(todoId: string, waitsFor: WaitsFor) {
   if (!waitsFor || !todo || (todo.when.kind !== 'after' && todo.when.kind !== 'goal')) return
   const now = Date.now()
   await db.links.add({ id: crypto.randomUUID(), from: waitsFor, to: ref(todoId), kind: 'after', createdAt: now, updatedAt: now })
-  // Waiting on a to-do that's already done: nothing to wait for.
-  if (waitsFor.type === 'todo' && (await db.todos.get(waitsFor.id))?.status === 'done') await fire(todoId, now)
+  // Waiting on a to-do that's already done: nothing to wait for. (One that ended
+  // undone, "Didn't do it", doesn't count.)
+  const other = waitsFor.type === 'todo' ? await db.todos.get(waitsFor.id) : undefined
+  if (other?.status === 'done' && !other.missed) await fire(todoId, now)
 }
 
 export async function waitsForOf(todoId: string): Promise<WaitsFor> {
@@ -93,10 +95,12 @@ export async function waitsForOf(todoId: string): Promise<WaitsFor> {
 }
 
 // A waiting to-do whose trigger happened: due now, and dated from here on (SPEC-v2.md).
-async function fire(todoId: string, now: number) {
+// Returns the to-do as it was, if it fired.
+async function fire(todoId: string, now: number): Promise<Todo | undefined> {
   const todo = await db.todos.get(todoId)
-  if (!todo || todo.status !== 'open' || (todo.when.kind !== 'after' && todo.when.kind !== 'goal')) return
+  if (!todo || todo.status !== 'open' || (todo.when.kind !== 'after' && todo.when.kind !== 'goal')) return undefined
   await db.todos.update(todoId, { when: { kind: 'at', at: now, hasTime: true }, updatedAt: now })
+  return todo
 }
 
 // To-dos waiting for this one to be done.
@@ -107,22 +111,76 @@ async function dependents(todoId: string): Promise<string[]> {
 
 const TABLES = () => [db.todos, db.todoCompletions, db.links, db.attachments, db.blobs]
 
+// Puts back what a Done (or a Didn't do it) changed: the to-do as it was, the history
+// it logged, and the to-dos it set off (if nothing has moved them since).
+export type Undo = () => Promise<void>
+
+interface Changed {
+  before?: Todo
+  logged: string[] // completion ids added
+  fired: Todo[] // to-dos that were waiting on it, as they were
+}
+
+function undoOf(c: Changed): Undo {
+  return async () => {
+    const now = Date.now()
+    await db.transaction('rw', TABLES(), async () => {
+      const b = c.before
+      // Dexie drops a field set to undefined: doneAt and missed go if they weren't there.
+      if (b) await db.todos.update(b.id, { status: b.status, when: b.when, doneAt: b.doneAt, missed: b.missed, updatedAt: now })
+      await db.todoCompletions.bulkDelete(c.logged)
+      for (const w of c.fired) {
+        const current = await db.todos.get(w.id)
+        if (current?.status === 'open' && current.when.kind === 'at') await db.todos.update(w.id, { when: w.when, updatedAt: now })
+      }
+    })
+  }
+}
+
+// Ids of a to-do's completions, to see which ones a change added.
+const completionIds = async (todoId: string) => new Set((await db.todoCompletions.where('todoId').equals(todoId).primaryKeys()) as string[])
+
 // Done: a one-off to-do is finished; a repeating one logs this occurrence (older
 // missed ones too) and moves to its next. Either way, to-dos waiting on it fire.
-export async function completeTodo(id: string, now = Date.now()): Promise<void> {
+// Returns how to take it back.
+export async function completeTodo(id: string, now = Date.now()): Promise<Undo> {
+  const changed: Changed = { logged: [], fired: [] }
   await db.transaction('rw', TABLES(), async () => {
     const todo = await db.todos.get(id)
     if (!todo || todo.status !== 'open') return
+    changed.before = todo
+    const had = await completionIds(id)
     if (todo.when.kind === 'repeat') {
       await applyRepeat(todo, resolveRepeat(todo.when, 'done', now), now)
     } else {
       await db.todoCompletions.add(completion(id, dueOf(todo.when, now) ?? now, 'done', now))
       await db.todos.update(id, { status: 'done', doneAt: now, updatedAt: now })
     }
-    for (const waiting of await dependents(id)) await fire(waiting, now)
+    changed.logged = [...(await completionIds(id))].filter((c) => !had.has(c))
+    for (const waiting of await dependents(id)) {
+      const was = await fire(waiting, now)
+      if (was) changed.fired.push(was)
+    }
   })
   // It may have pushed a goal past a percentage another to-do waits for.
   for (const goal of await goalsCountingTodo(id)) await fireGoalTriggers(goal.id, now)
+  return undoOf(changed)
+}
+
+// "Didn't do it": a one-off to-do ends without being done. It's logged as missed, so
+// a goal counting it doesn't move, and to-dos waiting on it keep waiting.
+export async function missTodo(id: string, now = Date.now()): Promise<Undo> {
+  const changed: Changed = { logged: [], fired: [] }
+  await db.transaction('rw', TABLES(), async () => {
+    const todo = await db.todos.get(id)
+    if (!todo || todo.status !== 'open' || todo.when.kind === 'repeat') return
+    changed.before = todo
+    const c = completion(id, dueOf(todo.when, now) ?? now, 'missed', now)
+    await db.todoCompletions.add(c)
+    await db.todos.update(id, { status: 'done', missed: true, doneAt: now, updatedAt: now })
+    changed.logged = [c.id]
+  })
+  return undoOf(changed)
 }
 
 // Skip this occurrence of a repeating to-do.
@@ -145,9 +203,34 @@ function completion(todoId: string, occurrenceAt: number, outcome: TodoCompletio
   return { id: crypto.randomUUID(), todoId, occurrenceAt, outcome, ...(outcome === 'done' && { doneAt: now }), updatedAt: now }
 }
 
-// Undo a one-off Done.
+// Undo a finished one-off to-do, done or not: open again, and its finish taken out of
+// its history (so a goal counting it goes back down).
 export async function reopenTodo(id: string): Promise<void> {
-  await db.todos.update(id, { status: 'open', doneAt: undefined, updatedAt: Date.now() })
+  await db.transaction('rw', TABLES(), async () => {
+    const todo = await db.todos.get(id)
+    if (!todo || todo.status !== 'done') return
+    if (todo.when.kind !== 'repeat' && todo.doneAt != null) {
+      await db.todoCompletions.where('todoId').equals(id).filter((c) => (c.doneAt ?? c.updatedAt) === todo.doneAt).delete()
+    }
+    await db.todos.update(id, { status: 'open', doneAt: undefined, missed: undefined, updatedAt: Date.now() })
+  })
+}
+
+// Do a finished one-off again, at a new time: reopened, with its new when.
+export async function rescheduleTodo(id: string, when: When, waitsFor: WaitsFor = null): Promise<void> {
+  await reopenTodo(id)
+  await db.transaction('rw', db.todos, db.links, async () => {
+    await db.todos.update(id, { when, updatedAt: Date.now() })
+    await setWaitsFor(id, waitsFor)
+  })
+  if (waitsFor?.type === 'goal') await fireGoalTriggers(waitsFor.id)
+}
+
+// To-dos finished lately (done or not), newest first, for the "Done lately" lists
+// where they can be undone. `elementId` limits it to one list ('' = loose to-dos).
+export async function recentlyFinished(since: number, elementId?: string): Promise<Todo[]> {
+  const rows = await (elementId == null ? db.todos.toArray() : db.todos.where('elementId').equals(elementId).toArray())
+  return rows.filter((t) => t.status === 'done' && (t.doneAt ?? 0) >= since).sort((a, b) => (b.doneAt ?? 0) - (a.doneAt ?? 0))
 }
 
 export async function archiveTodo(id: string): Promise<void> {

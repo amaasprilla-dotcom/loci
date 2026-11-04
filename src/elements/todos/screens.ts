@@ -4,7 +4,7 @@
 // Planned / Someday / Done, and the sheets to pick a when and to edit a to-do.
 
 import { buzz, showAdded } from '../../feedback'
-import { toast } from '../../toast'
+import { toast, undoToast } from '../../toast'
 import { type Options, RRule } from 'rrule'
 import { attachmentStrip } from '../../attachmentStrip'
 import { textColorOn } from '../../colors'
@@ -16,12 +16,13 @@ import { count, firstDayOfWeek, formatNumber } from '../../locale'
 import { back, elementHash } from '../../router'
 import { button, deleteConfirmation, openSheet, type SheetApi, sheetActions, submitButton } from '../../sheet'
 import { deleteAttachmentsOf, db, listLoci } from '../../store/db'
-import { NO_LOCUS, taskRow } from '../../tasks/view'
+import { finishedRow, NO_LOCUS, taskRow } from '../../tasks/view'
+import { onChange } from '../../changes'
 import { sections } from '../../tasks/tasks'
 import type { Level, LocusElement, Todo, TodoPlan, When } from '../../types'
 import { openGoals } from '../goals/type'
 import { checkPlan, type PlanInput, type PlanProblem } from './plan'
-import { archiveTodo, completeTodo, countDependents, createTodo, deleteTodo, goalsCountingTodo, itHappened, listTodos, LOOSE, moveTodo, reopenTodo, skipTodo, todoListFor, type TodoDraft, updateTodo, type WaitsFor, waitsForOf } from './store'
+import { archiveTodo, completeTodo, countDependents, createTodo, deleteTodo, goalsCountingTodo, itHappened, listTodos, LOOSE, missTodo, moveTodo, reopenTodo, rescheduleTodo, skipTodo, todoListFor, type TodoDraft, updateTodo, type WaitsFor, waitsForOf } from './store'
 import { todoTask } from './type'
 import { rememberTime, timeField } from './timeField'
 import { dayStartOf, formatDay, makeRepeat, parseTyped, repeatText, whenText } from './when'
@@ -70,12 +71,14 @@ export async function renderTodoList(el: LocusElement, openId?: string): Promise
           collapsible(
             `Done (${formatNumber(done.length)})`,
             done.map((t) =>
-              h(
-                'div',
-                { class: 'task-row done-row' },
-                h('span', { class: 'task-main' }, h('span', { class: 'task-text' }, h('span', { class: 'task-title' }, t.title), h('span', { class: 'task-details' }, t.doneAt ? `Done ${inSentence(formatDay(t.doneAt, now))}` : 'Done'))),
-                h('button', { type: 'button', class: 'btn btn-small task-secondary', onclick: async () => { await reopenTodo(t.id); await render() } }, 'Undo'),
-              ),
+              finishedRow(t, locus ?? NO_LOCUS, {
+                showLocus: false,
+                open: async () => {
+                  await openTodoSheet(t)
+                  await render()
+                },
+                onChanged: render,
+              }),
             ),
           ),
       ].filter((x): x is HTMLElement => x !== false),
@@ -83,6 +86,9 @@ export async function renderTodoList(el: LocusElement, openId?: string): Promise
   }
 
   const addForm = createAddForm(el.id, render)
+  // Undone from a toast, or changed in a sheet opened over this screen: redraw.
+  const stopListening = onChange(() => void render())
+  window.addEventListener('hashchange', stopListening, { once: true })
   const screen = h(
     'div',
     { class: 'deck-screen', style: { '--c': color, '--fg': textColorOn(color) } },
@@ -875,7 +881,18 @@ export async function openTodoSheet(todo: Todo): Promise<void> {
         isOpen && todo.when.kind === 'when' && !todo.when.firedAt && button('It happened', async () => { await save(); await itHappened(todo.id); api.close(true) }),
         isOpen && todo.when.kind === 'repeat' && button('Skip this time', async () => { await save(); await skipTodo(todo.id); api.close(true) }),
         isOpen && todo.when.kind !== 'repeat' && button('Archive', async () => { await save(); await archiveTodo(todo.id); api.close(true) }),
-        isOpen ? button('Done', async () => { buzz(); await save(); await completeTodo(todo.id); api.close(true); toast(`Done: ${todo.title}`) }) : button('Reopen', async () => { await reopenTodo(todo.id); api.close(true) }),
+        // Ends it without counting it done (a goal counting it doesn't move).
+        isOpen && todo.when.kind !== 'repeat' && button('Didn’t do it', async () => { await save(); const undo = await missTodo(todo.id); api.close(true); undoToast(`Not done: ${todo.title}`, undo) }),
+        // Finished: do it again at a new time, or just open it again as it was.
+        !isOpen && todo.status === 'done' && button('Do again…', async () => {
+          const picked = await pickWhen(null, todo.id)
+          if (!picked) return
+          await save()
+          await rescheduleTodo(todo.id, picked.when, picked.waitsFor)
+          api.close(true)
+          toast(`Back on the list: ${todo.title}`)
+        }),
+        isOpen ? button('Done', async () => { buzz(); await save(); const undo = await completeTodo(todo.id); api.close(true); undoToast(`Done: ${todo.title}`, undo) }) : button('Reopen', async () => { await reopenTodo(todo.id); api.close(true) }),
       ),
       sheetActions(button('Delete', () => void askDelete(), 'danger-text'), button('Cancel', () => api.close(null)), saveButton),
     ]

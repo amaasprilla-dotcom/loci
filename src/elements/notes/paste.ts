@@ -70,10 +70,33 @@ export function tidyPastedHtml(html: string): string {
   return doc.body.innerHTML
 }
 
-// Plain text that's really Markdown: headings, lists, quotes, code, tables, bold, links.
+// Plain text that's really Markdown: headings, lists (numbered, lettered, roman),
+// quotes, code, tables, bold, italic, strikethrough, underline (++x++), links.
 export function looksLikeMarkdown(text: string): boolean {
   return (
     /^(#{1,6} |\s*[-*+] |\s*\d+[.)] |> |```|\|.*\|\s*$)/m.test(text) ||
-    /\*\*[^*\n]+\*\*|__[^_\n]+__|`[^`\n]+`|\[[^\]\n]+\]\([^)\s]+\)/.test(text)
+    // Two lines lettered or numbered in roman ("a. ", "b. "; "i) ", "ii) "): one could be a sentence.
+    (text.match(/^\s*(?:[a-zA-Z]|[ivxlcdmIVXLCDM]+)[.)] /gm)?.length ?? 0) >= 2 ||
+    /\*\*[^*\n]+\*\*|__[^_\n]+__|`[^`\n]+`|\[[^\]\n]+\]\([^)\s]+\)/.test(text) ||
+    // One marker each side, hugging the words: *italic*, _italic_, ~struck~, ++underlined++.
+    /(?:^|[^*\w])\*(?![\s*])[^*\n]*[^\s*]\*(?!\*)|(?:^|[^*\w])\*[^\s*]\*(?!\*)/.test(text) ||
+    /(?:^|[^\w_])_(?![\s_])[^_\n]*[^\s_]_(?![\w_])|(?:^|[^\w_])_[^\s_]_(?![\w_])/.test(text) ||
+    /(?:^|[^~])~~?(?![\s~])[^~\n]*[^\s~]~~?(?!~)|(?:^|[^~])~[^\s~]~(?!~)/.test(text) ||
+    /\+\+(?!\s)[^+\n]*[^\s+]\+\+/.test(text)
   )
+}
+
+// Formatting tags and styles: HTML that has any is rich text, kept as it is.
+const RICH_TAGS = 'b, strong, i, em, u, s, strike, del, ins, mark, code, pre, kbd, sub, sup, a[href], ul, ol, li, h1, h2, h3, h4, h5, h6, blockquote, table, img, hr'
+const RICH_STYLE = /font-weight\s*:\s*(bold|[6-9]00)|font-style\s*:\s*italic|text-decoration[^;]*(underline|line-through)/i
+
+// Copied HTML that's only text in boxes (a code editor, a chat's message, a text
+// field): no bold, no lists, no links. Its plain text is what was meant, so Markdown
+// in it should become formatting, as if it had been copied as plain text.
+export function isPlainHtml(html: string): boolean {
+  const body = new DOMParser().parseFromString(html, 'text/html').body
+  // Google Docs wraps every copy in <b id="docs-internal-guid-…" style="font-weight:normal">.
+  for (const wrapper of body.querySelectorAll('b[id^="docs-internal-guid"]')) wrapper.replaceWith(...wrapper.childNodes)
+  if (body.querySelector(RICH_TAGS)) return false
+  return ![...body.querySelectorAll<HTMLElement>('[style]')].some((el) => RICH_STYLE.test(el.getAttribute('style') ?? ''))
 }

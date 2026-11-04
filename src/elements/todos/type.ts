@@ -9,6 +9,7 @@ import { db } from '../../store/db'
 import type { LocusElement, Todo } from '../../types'
 import { iconNode } from '../flashcards/type'
 import type { ElementType, Task } from '../registry'
+import { undoToast } from '../../toast'
 import { completeTodo, itHappened, LOOSE } from './store'
 import { dueOf, todoState, whenText } from './when'
 
@@ -51,7 +52,8 @@ export function todoTask(el: LocusElement | null, t: Todo, now: number, waitsFor
     difficulty: t.difficulty,
     dueAt: dueOf(t.when, now) ?? undefined,
     open: () => (el ? go(subHash(el, 'todo', t.id)) : void openLooseTodo(t.id)),
-    complete: () => completeTodo(t.id),
+    // Ticked anywhere (Tasks, a locus, the Now card): a moment to take it back.
+    complete: async () => undoToast(`Done: ${t.title}`, await completeTodo(t.id)),
     ...(t.when.kind === 'when' && !t.when.firedAt && { secondary: { label: 'It happened', run: () => itHappened(t.id) } }),
   }
 }

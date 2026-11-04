@@ -32,7 +32,9 @@ import { toast } from '../../toast'
 import type { LocusElement, Note } from '../../types'
 import { editMath } from './mathSheet'
 import { NoteImage } from './noteImage'
-import { looksLikeMarkdown, tidyPastedHtml } from './paste'
+import { ListJoin } from './listJoin'
+import { isPlainHtml, looksLikeMarkdown, tidyPastedHtml } from './paste'
+import { NoteTyping } from './typing'
 import { practising, setRecall } from './recall'
 import { createNote, deleteNote, firstLine, listNotes, LOOSE, noteTitle, removeUnusedInlineImages, saveNote, searchNotes, setPinned } from './store'
 
@@ -341,7 +343,10 @@ export async function renderNoteEditor(el: LocusElement | null, noteId: string):
       Superscript,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       TableKit.configure({ table: { resizable: false } }),
-      Markdown,
+      // Line breaks in pasted Markdown stay line breaks (plain text is pasted as Markdown too).
+      Markdown.configure({ markedOptions: { gfm: true, breaks: true } }),
+      ListJoin,
+      NoteTyping,
     ],
     editorProps: {
       attributes: { class: 'note-content', 'aria-label': 'Note' },
@@ -354,9 +359,12 @@ export async function renderNoteEditor(el: LocusElement | null, noteId: string):
         const text = event.clipboardData?.getData('text/plain')?.trim()
         if (!text) return false
         if (pasteLink(text)) return true
-        // Formatting copied as Markdown text (e.g. a chat's Copy button) becomes formatting.
-        // Copied rich text (HTML) is left to the editor.
-        if (!event.clipboardData?.types.includes('text/html') && looksLikeMarkdown(text) && editor.markdown) {
+        // Formatting copied as Markdown text (e.g. a chat's Copy button, "*hi*", "- one")
+        // becomes formatting. So does Markdown copied from a page or an app that wraps
+        // plain text in HTML. Copied rich text (bold, lists, links in the HTML) is left
+        // to the editor.
+        const html = event.clipboardData?.getData('text/html') ?? ''
+        if ((!html.trim() || isPlainHtml(html)) && looksLikeMarkdown(text) && editor.markdown) {
           return editor.chain().focus().insertContent(editor.markdown.parse(text).content ?? []).run()
         }
         return false
@@ -392,6 +400,8 @@ export async function renderNoteEditor(el: LocusElement | null, noteId: string):
     { label: 'Subheading', text: 'H2', run: () => editor.chain().focus().toggleHeading({ level: 2 }).run(), active: () => editor.isActive('heading', { level: 2 }) },
     { label: 'Bold', text: 'B', run: () => editor.chain().focus().toggleBold().run(), active: () => editor.isActive('bold') },
     { label: 'Italic', text: 'I', run: () => editor.chain().focus().toggleItalic().run(), active: () => editor.isActive('italic') },
+    { label: 'Underline', text: 'U', run: () => editor.chain().focus().toggleUnderline().run(), active: () => editor.isActive('underline') },
+    { label: 'Strikethrough', text: 'S', run: () => editor.chain().focus().toggleStrike().run(), active: () => editor.isActive('strike') },
     { label: 'Code', text: '</>', run: () => editor.chain().focus().toggleCode().run(), active: () => editor.isActive('code') },
     { label: 'Bulleted list', text: '•', run: () => editor.chain().focus().toggleBulletList().run(), active: () => editor.isActive('bulletList') },
     { label: 'Numbered list', text: '1.', run: () => editor.chain().focus().toggleOrderedList().run(), active: () => editor.isActive('orderedList') },

@@ -71,17 +71,28 @@ export async function renderGoalList(el: LocusElement): Promise<HTMLElement> {
     const now = Date.now()
     const goals = await listGoals(el.id)
     const open = goals.filter((g) => g.status === 'open')
-    const achieved = goals.filter((g) => g.status === 'achieved')
+    // Achieved, not achieved and archived goals stay in reach: open one to reopen it.
+    const finished = goals.filter((g) => g.status !== 'open').sort((a, b) => b.updatedAt - a.updatedAt)
     const cards = await Promise.all(open.map(async (g) => goalCard(el, g, await loadGoalData(g), now, render)))
     list.replaceChildren(
-      ...(open.length === 0 ? [h('p', { class: 'list-empty' }, achieved.length > 0 ? 'No open goals.' : 'No goals yet. Set one with New goal.')] : cards),
-      ...(achieved.length > 0
+      ...(open.length === 0 ? [h('p', { class: 'list-empty' }, finished.length > 0 ? 'No open goals.' : 'No goals yet. Set one with New goal.')] : cards),
+      ...(finished.length > 0
         ? [
             h(
               'details',
               { class: 'task-section muted' },
-              h('summary', { class: 'task-section-title' }, `Achieved (${formatNumber(achieved.length)})`),
-              h('div', { class: 'task-list' }, achieved.map((g) => h('button', { type: 'button', class: 'task-main', onclick: () => go(subHash(el, 'goal', g.id)) }, h('span', { class: 'task-title' }, `✓ ${g.title}`)))),
+              h('summary', { class: 'task-section-title' }, `Finished (${formatNumber(finished.length)})`),
+              h(
+                'div',
+                { class: 'task-list' },
+                finished.map((g) =>
+                  h(
+                    'button',
+                    { type: 'button', class: `task-main goal-finished ${g.status}`, onclick: () => go(subHash(el, 'goal', g.id)) },
+                    h('span', { class: 'task-text' }, h('span', { class: 'task-title' }, g.title), h('span', { class: 'task-details' }, STATUS_TEXT[g.status])),
+                  ),
+                ),
+              ),
             ),
           ]
         : []),
@@ -107,7 +118,9 @@ function goalCard(el: LocusElement, g: Goal, data: GoalData, now: number, refres
   )
 }
 
-// When the deadline has passed: Mark achieved, Extend deadline, Archive.
+const STATUS_TEXT: Record<Goal['status'], string> = { open: '', achieved: '✓ Achieved', missed: 'Not achieved', archived: 'Archived' }
+
+// When the deadline has passed: Mark achieved, Not achieved, Extend deadline, Archive.
 function endedActions(g: Goal, refresh: () => Promise<void>): HTMLElement {
   const stop = (fn: () => Promise<void>) => async (e: Event) => {
     e.stopPropagation()
@@ -118,6 +131,7 @@ function endedActions(g: Goal, refresh: () => Promise<void>): HTMLElement {
     'div',
     { class: 'goal-ended' },
     h('button', { type: 'button', class: 'btn btn-small btn-primary', onclick: stop(() => updateGoal(g.id, { status: 'achieved' })) }, 'Mark achieved'),
+    h('button', { type: 'button', class: 'btn btn-small', onclick: stop(() => updateGoal(g.id, { status: 'missed' })) }, 'Not achieved'),
     h('button', { type: 'button', class: 'btn btn-small', onclick: stop(async () => { const d = await pickDeadline(g.deadline); if (d) await updateGoal(g.id, { deadline: d }) }) }, 'Extend deadline'),
     h('button', { type: 'button', class: 'btn btn-small', onclick: stop(() => updateGoal(g.id, { status: 'archived' })) }, 'Archive'),
   )
@@ -155,7 +169,7 @@ export async function renderGoal(el: LocusElement, goalId: string, openCheckin: 
         h(
           'section',
           { class: 'goal-summary' },
-          h('div', { class: 'goal-card-head' }, h('span', { class: 'goal-big' }, pct(progress)), goal.status === 'achieved' && h('span', { class: 'pill pill-due' }, 'Achieved')),
+          h('div', { class: 'goal-card-head' }, h('span', { class: 'goal-big' }, pct(progress)), goal.status !== 'open' && h('span', { class: `pill ${goal.status === 'achieved' ? 'pill-due' : ''}` }, STATUS_TEXT[goal.status].replace('✓ ', ''))),
           bar(progress),
           h('p', { class: 'goal-meta' }, goalSummary(goal, progress, now).split(' · ').slice(1).join(' · ') || 'No deadline'),
           goal.why && h('p', { class: 'goal-why open' }, goal.why),

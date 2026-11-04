@@ -123,7 +123,7 @@ function locusInfo(locus: Locus): ItemInfo {
   }
 }
 
-const goalKind = (status: Goal['status']) => (status === 'achieved' ? 'Goal (achieved)' : status === 'archived' ? 'Goal (archived)' : 'Goal')
+const goalKind = (status: Goal['status']) => (status === 'achieved' ? 'Goal (achieved)' : status === 'missed' ? 'Goal (not achieved)' : status === 'archived' ? 'Goal (archived)' : 'Goal')
 
 const MAX_RESULTS = 40
 

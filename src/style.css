@@ -722,6 +722,7 @@ h2 {
 /* ---------- Element tiles ---------- */
 
 .tile-grid {
+  position: relative; /* the tiles' offsetParent: drag slots are measured from it */
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 14px;
@@ -766,6 +767,7 @@ h2 {
 
 .tile.dragging {
   z-index: 2;
+  transition: none; /* follows the pointer exactly; an eased transform lagged and jumped */
   border-color: var(--text);
   box-shadow: var(--shadow-md);
   cursor: grabbing;
@@ -2704,6 +2706,15 @@ details.task-section > summary {
   font-family: Georgia, serif;
 }
 
+.tool[aria-label="Underline"] {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.tool[aria-label="Strikethrough"] {
+  text-decoration: line-through;
+}
+
 /* The note itself: a white page on the grey canvas. */
 .note-main {
   width: calc(100% - 24px);
@@ -2738,6 +2749,7 @@ details.task-section > summary {
   outline: none;
   line-height: 1.6;
   overflow-wrap: anywhere;
+  tab-size: 4; /* Tab outside a list types a tab (src/elements/notes/typing.ts) */
 }
 
 .note-content > * + * {
@@ -2823,6 +2835,16 @@ details.task-section > summary {
 .note-content ol {
   margin: 0;
   padding-left: 1.4em;
+}
+
+/* Numbers, then letters, then roman numerals as lists nest, unless a list says
+   otherwise ("a. " or "i. " typed, or pasted that way). */
+.note-content ol ol:not([type]) {
+  list-style-type: lower-alpha;
+}
+
+.note-content ol ol ol:not([type]) {
+  list-style-type: lower-roman;
 }
 
 .note-content blockquote {
@@ -3152,13 +3174,30 @@ details.task-section > summary {
   margin-right: 12px;
 }
 
-.done-row .task-main {
+.done-row span.task-main {
   cursor: default;
 }
 
 .done-row .task-title {
   color: var(--muted);
   text-decoration: line-through;
+}
+
+/* Ended without being done: not crossed out, since it wasn't done. */
+.done-row.missed .task-title {
+  text-decoration: none;
+}
+
+.done-row .dot {
+  opacity: 0.5;
+}
+
+.goal-finished .task-title {
+  color: var(--muted);
+}
+
+.goal-finished.achieved .task-details {
+  color: var(--text);
 }
 
 .pill-overdue {
@@ -4242,6 +4281,9 @@ details.editor-section > summary {
   left: 50%;
   bottom: calc(24px + env(safe-area-inset-bottom));
   z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 14px;
   max-width: calc(100% - 32px);
   padding: 10px 16px;
   border-radius: 999px;
@@ -4251,6 +4293,24 @@ details.editor-section > summary {
   transform: translateX(-50%);
   box-shadow: var(--shadow-md);
   animation: fade-in 0.2s ease-out;
+}
+
+/* Undo, in a toast. */
+.toast-action {
+  flex: none;
+  margin: -6px -8px -6px 0;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.toast-action:hover {
+  background: rgba(255, 255, 255, 0.26);
 }
 
 /* ---------- Feedback: every tap shows it landed (src/feedback.ts) ---------- */

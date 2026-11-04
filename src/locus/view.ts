@@ -7,7 +7,7 @@ import { type ElementType, registry } from '../elements/registry'
 import { iconNode } from '../elements/flashcards/type'
 import { backIcon } from '../icons'
 import { linkedItemsSection } from '../linkedItems'
-import { elementHash, go, studyHash } from '../router'
+import { elementHash, go, studyHash, subHash } from '../router'
 import { button, deleteConfirmation, describeCounts, openSheet, sheetActions, submitButton } from '../sheet'
 import { countElementContents, createElement, db, deleteElement, listElements, reorderElements, updateElement } from '../store/db'
 import { allTasks, sections } from '../tasks/tasks'
@@ -17,7 +17,8 @@ import { isStudyable, studyPool, summarize } from '../study/plan'
 import { minutesText, studyCounts } from '../study/text'
 import { count } from '../locale'
 import { onChange } from '../changes'
-import { taskRow } from '../tasks/view'
+import { finishedRow, RECENT_MS, taskRow } from '../tasks/view'
+import { recentlyFinished } from '../elements/todos/store'
 import type { Locus, LocusElement } from '../types'
 import { makeSortable } from './reorder'
 
@@ -81,6 +82,17 @@ export async function renderLocusView(locus: Locus, options: { onBack(): void })
       }, { showLocus: false, onSecondary: renderTiles })
     const block = (title: string, list: typeof s.now, extra = '') =>
       list.length > 0 && h('section', { class: `task-section ${extra}` }, h('h2', { class: 'task-section-title' }, title), h('div', { class: 'task-list' }, list.map(row)))
+    const finished = (await recentlyFinished(now - RECENT_MS)).filter((t) => titles.has(t.elementId))
+    const finishedRows = finished.map((t) =>
+      finishedRow(t, locus, {
+        showLocus: false,
+        open: () => {
+          const el = elements.find((e) => e.id === t.elementId)
+          if (el) go(subHash(el, 'todo', t.id))
+        },
+        onChanged: renderTiles,
+      }),
+    )
     items.replaceChildren(
       ...[
         block('Now', s.now),
@@ -88,6 +100,8 @@ export async function renderLocusView(locus: Locus, options: { onBack(): void })
         s.someday.length > 0 &&
           h('details', { class: 'task-section muted' }, h('summary', { class: 'task-section-title' }, `Someday (${s.someday.length})`), h('div', { class: 'task-list' }, s.someday.map(row))),
         block('Goals and exams', s.goals), // last, under every task, as on the Tasks screen
+        finishedRows.length > 0 &&
+          h('details', { class: 'task-section muted' }, h('summary', { class: 'task-section-title' }, `Done lately (${finishedRows.length})`), h('div', { class: 'task-list' }, finishedRows)),
       ].filter((x): x is HTMLElement => x !== false),
     )
   }

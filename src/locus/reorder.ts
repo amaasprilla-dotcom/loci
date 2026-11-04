@@ -7,6 +7,7 @@
 
 const LONG_PRESS_MS = 500
 const MOVE_THRESHOLD = 8 // px before a press counts as movement
+const SETTLE_PX = 24 // after a swap, how far the pointer moves before another
 
 interface Press {
   tile: HTMLElement
@@ -20,6 +21,8 @@ interface Press {
   armed: boolean // held long enough: moving drags, letting go opens the menu
   dragging: boolean
   startOrder: string
+  passed: HTMLElement | null // the tile it last swapped with, while the pointer is still over it
+  swappedAt: { x: number; y: number } | null // where the pointer was at the last swap
 }
 
 export function makeSortable(
@@ -32,13 +35,15 @@ export function makeSortable(
   const tiles = () => [...grid.querySelectorAll<HTMLElement>(':scope > .tile')]
   const order = () => tiles().map((t) => t.dataset.id!)
 
-  // The tile's slot, ignoring where the drag has moved it.
-  function slotOf(tile: HTMLElement): DOMRect {
-    const saved = tile.style.transform
-    tile.style.transform = ''
-    const rect = tile.getBoundingClientRect()
-    tile.style.transform = saved
-    return rect
+  // The tile's slot in the grid, from layout alone: transforms (the drag, the slide
+  // of tiles making room, a hover lift) don't move it. Reading the box with the
+  // transform taken off instead caught tiles mid-slide, so a tile could be swapped
+  // back and forth while the others were still moving: the jitter.
+  function slotOf(tile: HTMLElement): { left: number; top: number; right: number; bottom: number } {
+    const g = grid.getBoundingClientRect() // the grid is the tiles' offsetParent (position: relative)
+    const left = g.left + tile.offsetLeft
+    const top = g.top + tile.offsetTop
+    return { left, top, right: left + tile.offsetWidth, bottom: top + tile.offsetHeight }
   }
 
   function follow(e: PointerEvent) {
@@ -48,16 +53,26 @@ export function makeSortable(
   }
 
   // Moves the dragged tile to the slot under the pointer, sliding the others.
+  // Tiles of different heights reshape the rows when they swap, which can leave the
+  // pointer over another tile, or back over the one it just passed: swapping again
+  // straight away traded places on every move (the jitter). So after a swap the
+  // pointer has to move a little first, and the tile just passed waits until the
+  // pointer leaves it.
   function maybeSwap(e: PointerEvent) {
     const p = press!
+    if (p.swappedAt && Math.hypot(e.clientX - p.swappedAt.x, e.clientY - p.swappedAt.y) < SETTLE_PX) return
     const all = tiles()
-    const target = all.find((t) => {
-      if (t === p.tile) return false
+    const under = (t: HTMLElement) => {
       const r = slotOf(t)
       return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom
-    })
+    }
+    if (p.passed && !under(p.passed)) p.passed = null
+    const target = all.find((t) => t !== p.tile && t !== p.passed && under(t))
     if (!target) return
-    const before = new Map(all.map((t) => [t, slotOf(t)]))
+    p.passed = target
+    p.swappedAt = { x: e.clientX, y: e.clientY }
+    // Where each tile is drawn now (mid-slide, maybe), so the next slide starts there.
+    const before = new Map(all.map((t) => [t, t.getBoundingClientRect()]))
     const from = all.indexOf(p.tile)
     const to = all.indexOf(target)
     grid.insertBefore(p.tile, to > from ? target.nextSibling : target)
@@ -111,6 +126,8 @@ export function makeSortable(
       armed: false,
       dragging: false,
       startOrder: order().join(),
+      passed: null,
+      swappedAt: null,
       timer: window.setTimeout(() => {
         if (!press || press.dragging) return
         press.armed = true

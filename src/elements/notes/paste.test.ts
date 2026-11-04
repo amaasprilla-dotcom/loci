@@ -41,8 +41,30 @@ describe('looksLikeMarkdown', () => {
     expect(looksLikeMarkdown('See [the docs](https://example.com)')).toBe(true)
   })
 
+  it('spots single-marker formatting', () => {
+    expect(looksLikeMarkdown('*hi*')).toBe(true)
+    expect(looksLikeMarkdown('say *hi* now')).toBe(true)
+    expect(looksLikeMarkdown('_hi_')).toBe(true)
+    expect(looksLikeMarkdown('~hi~')).toBe(true)
+    expect(looksLikeMarkdown('~~hi there~~')).toBe(true)
+    expect(looksLikeMarkdown('++hi++')).toBe(true)
+    expect(looksLikeMarkdown('*a*')).toBe(true)
+  })
+
+  it('spots lettered and roman lists', () => {
+    expect(looksLikeMarkdown(['a. one', 'b. two'].join('\n'))).toBe(true)
+    expect(looksLikeMarkdown(['i) one', 'ii) two'].join('\n'))).toBe(true)
+    expect(looksLikeMarkdown(['I. Intro', 'II. Method'].join('\n'))).toBe(true)
+    expect(looksLikeMarkdown('- hi')).toBe(true)
+  })
+
   it('leaves ordinary text alone', () => {
     expect(looksLikeMarkdown('Just a sentence, with a * in it.')).toBe(false)
     expect(looksLikeMarkdown('#hashtag and 3.5 apples')).toBe(false)
+    expect(looksLikeMarkdown('5 * 3 * 2 = 30')).toBe(false)
+    expect(looksLikeMarkdown('about ~5 minutes, ~10 at most')).toBe(false)
+    expect(looksLikeMarkdown('my_file_name.txt')).toBe(false)
+    expect(looksLikeMarkdown('I. am fine')).toBe(false)
+    expect(looksLikeMarkdown('C++ and C++ again')).toBe(false)
   })
 })

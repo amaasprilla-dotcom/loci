@@ -18,6 +18,9 @@ import { nextUpcoming, type Section, sections } from './tasks'
 import { count } from '../locale'
 import { daysLate } from '../now/candidates'
 import { logEvent } from '../now/events'
+import { recentlyFinished, reopenTodo } from '../elements/todos/store'
+import { formatDay } from '../elements/todos/when'
+import type { Todo } from '../types'
 
 export interface TasksScreen {
   el: HTMLElement
@@ -32,12 +35,16 @@ export const NO_LOCUS: Pick<Locus, 'name' | 'color'> = { name: '', color: '#9aa5
 
 const SECTION_TITLES: Record<Section, string> = { now: 'Due', goals: 'Goals and exams', planned: 'Planned', someday: 'Someday' }
 
+// How far back "Done lately" goes.
+export const RECENT_MS = 7 * 86_400_000
+
 export function createTasksScreen(onChanged: () => void): TasksScreen {
   const filterNote = h('div', { class: 'tasks-filter' })
   const body = h('div', { class: 'tasks-body' })
   let addForm: HTMLElement = h('div')
   let last: Task[] = []
   let somedayOpen = false
+  let finishedOpen = false
 
   async function update(tasks: Task[]) {
     last = tasks
@@ -82,6 +89,25 @@ export function createTasksScreen(onChanged: () => void): TasksScreen {
       onChanged()
     })
 
+    // To-dos finished this past week, in the loci shown (and loose ones): undo, or open to do again.
+    const elementById = new Map(elements.map((e) => [e.id, e]))
+    const finished = (await recentlyFinished(now - RECENT_MS)).filter((t) => {
+      if (t.elementId === '') return true
+      const locusId = elementById.get(t.elementId)?.locusId
+      return locusId != null && locusById.has(locusId) && (!inFilter || inFilter.has(locusId))
+    })
+    const finishedRows = finished.map((t) => {
+      const el = elementById.get(t.elementId)
+      return finishedRow(t, (el && locusById.get(el.locusId)) ?? NO_LOCUS, {
+        open: async () => {
+          const { go, subHash } = await import('../router')
+          if (el) go(subHash(el, 'todo', t.id))
+          else await (await import('../elements/todos/type')).openLooseTodo(t.id)
+        },
+        onChanged,
+      })
+    })
+
     const nowList = s.now.length > 0 ? taskList(s.now.map(row)) : await emptyNow(now, inFilter, tag?.name)
     // Goals and exams go last, under every task, so they're always in the same place.
     const parts: (HTMLElement | false)[] = [
@@ -99,6 +125,13 @@ export function createTasksScreen(onChanged: () => void): TasksScreen {
           taskList(s.someday.map(row)),
         ),
       s.goals.length > 0 && section('goals', taskList(s.goals.map(row))),
+      finishedRows.length > 0 &&
+        h(
+          'details',
+          { class: 'task-section muted', open: finishedOpen, ontoggle: (e: Event) => (finishedOpen = (e.target as HTMLDetailsElement).open) },
+          h('summary', { class: 'task-section-title' }, `Done lately (${finishedRows.length})`),
+          taskList(finishedRows),
+        ),
     ]
     body.replaceChildren(...parts.filter((p): p is HTMLElement => p !== false))
   }
@@ -140,6 +173,39 @@ async function emptyNow(now: number, inFilter: Set<string> | undefined, tagName?
     { class: 'tasks-empty' },
     h('p', { class: 'tasks-empty-title' }, tagName ? `Nothing to do now in ${tagName}.` : 'Nothing to do now.'),
     h('p', {}, next ? `Next: ${next.title} ${formatIn(next.at - now)}.` : 'Nothing is scheduled yet.'),
+  )
+}
+
+// A finished to-do: done, or ended undone ("Didn't do it"), and when. Undo opens it
+// again as it was; tapping opens it, to do it again at a new time.
+export function finishedRow(
+  t: Todo,
+  locus: Pick<Locus, 'name' | 'color'>,
+  { showLocus = true, open, onChanged }: { showLocus?: boolean; open?: () => void | Promise<void>; onChanged: () => void | Promise<void> },
+): HTMLElement {
+  const day = t.doneAt ? formatDay(t.doneAt, Date.now()) : ''
+  const said = `${t.missed ? 'Not done' : 'Done'}${day ? ` ${['Today', 'Tomorrow', 'Yesterday'].includes(day) ? day.toLowerCase() : day}` : ''}`
+  const details = [showLocus && locus.name, said].filter(Boolean).join(' · ')
+  const text = h('span', { class: 'task-text' }, h('span', { class: 'task-title' }, t.title), h('span', { class: 'task-details' }, details))
+  return h(
+    'div',
+    { class: `task-row done-row${t.missed ? ' missed' : ''}`, style: { '--c': locus.color } },
+    open
+      ? h('button', { type: 'button', class: 'task-main', onclick: () => void open() }, h('span', { class: 'dot' }), text, chevronIcon())
+      : h('span', { class: 'task-main' }, text),
+    h(
+      'button',
+      {
+        type: 'button',
+        class: 'btn btn-small task-secondary',
+        'aria-label': `Undo: ${t.title}`,
+        onclick: async () => {
+          await reopenTodo(t.id)
+          await onChanged()
+        },
+      },
+      'Undo',
+    ),
   )
 }
 

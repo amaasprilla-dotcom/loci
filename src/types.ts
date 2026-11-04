@@ -199,6 +199,7 @@ export interface Todo {
   when: When;
   status: 'open' | 'done' | 'archived';
   doneAt?: number;
+  missed?: boolean; // finished without being done ("Didn't do it"); status is 'done'
   createdAt: number;
   updatedAt: number;
 }
@@ -224,7 +225,7 @@ export interface Goal {
   why?: string;
   deadline?: number; // end of that day; none = open-ended
   startAt: number; // to-do completions count from here; pace measures from here
-  status: 'open' | 'achieved' | 'archived'; // "Ended" is an open goal past its deadline
+  status: 'open' | 'achieved' | 'missed' | 'archived'; // "Ended" is an open goal past its deadline; missed: "Not achieved"
   notifyCheckins: boolean; // opt-in, used once notifications exist (A3)
   createdAt: number;
   updatedAt: number;
