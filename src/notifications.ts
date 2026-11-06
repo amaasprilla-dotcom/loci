@@ -11,10 +11,12 @@ import { liveQuery } from 'dexie'
 import { inAndroidApp, onAppResume, phonePrefs, sendSchedule, takePhoneActions, type Reminder } from './android'
 import { announceChange } from './changes'
 import { openLooseTodo } from './elements/todos/type'
+import { blockText } from './elements/todos/block'
 import { completeTodo, LOOSE } from './elements/todos/store'
 import { dueOf, occurrencesBetween } from './elements/todos/when'
 import { nowCandidates } from './now/candidates'
-import { go, subHash } from './router'
+import { focusHash, go, subHash } from './router'
+import { weekKey, weeklyOf } from './elements/weekly/model'
 import { db, getElement } from './store/db'
 import { allTasks } from './tasks/tasks'
 import type { Task } from './elements/registry'
@@ -57,7 +59,7 @@ export async function todoReminders(now: number, until: number): Promise<{ remin
     else if (when.kind === 'repeat' && when.time) times = occurrencesBetween(when, Math.max(now + 1, when.next), until)
     else continue // no time of day: the daily summary covers it
     pending[t.id] = dueOf(when, now)!
-    const body = [await place(t), t.plan?.firstStep && `Start: ${t.plan.firstStep}`].filter(Boolean).join(' · ')
+    const body = [await place(t), blockText(t.block), t.plan?.firstStep && `Start: ${t.plan.firstStep}`].filter(Boolean).join(' · ')
     for (const at of times) {
       if (at > now && at <= until) reminders.push({ key: `todo:${t.id}:${at}`, at, kind: 'todo', title: t.title, body, todoId: t.id, occurrenceAt: at })
     }
@@ -98,8 +100,25 @@ export async function buildSchedule(prefs: ReminderPrefs, now = Date.now()): Pro
   const until = now + AHEAD_DAYS * DAY
   const todos = prefs.todoReminders ? await todoReminders(now, until) : { reminders: [], pending: {} }
   const summaries = prefs.summaryAt ? await Promise.all(summaryTimes(prefs.summaryAt, now).map(summaryAt)) : []
-  const reminders = [...todos.reminders, ...summaries.filter((s): s is Reminder => s != null)].sort((a, b) => a.at - b.at).slice(0, MAX_REMINDERS)
+  const reviews = prefs.todoReminders ? await reviewReminders(now, until) : []
+  const reminders = [...todos.reminders, ...reviews, ...summaries.filter((s): s is Reminder => s != null)].sort((a, b) => a.at - b.at).slice(0, MAX_REMINDERS)
   return { reminders, pending: todos.pending }
+}
+
+// Each experimental locus's weekly review (SPEC-v8-experimental.md), at its time on its day.
+export async function reviewReminders(now: number, until: number): Promise<Reminder[]> {
+  const out: Reminder[] = []
+  for (const el of await db.elements.filter((e) => e.type === 'weekly').toArray()) {
+    const data = weeklyOf(el.data)
+    if (!data.reviewAt || data.targets.length === 0) continue
+    const locus = await db.loci.get(el.locusId)
+    if (!locus) continue
+    for (const at of summaryTimes(data.reviewAt, now)) {
+      if (at > until || new Date(at).getDay() !== data.reviewDay || data.reviewed.includes(weekKey(at))) continue
+      out.push({ key: `review:${el.id}:${at}`, at, kind: 'summary', title: `Weekly review · ${locus.name}`, body: data.reviewSteps.join(' · ') })
+    }
+  }
+  return out
 }
 
 // Changes come in bursts (a sheet saving several things): send once they settle.
@@ -122,6 +141,8 @@ export function watchReminders(): void {
   if (!inAndroidApp) return
   void applyPhoneActions().finally(() => scheduleReminders(0))
   liveQuery(() => db.todos.where('status').equals('open').toArray()).subscribe(() => scheduleReminders())
+  // An experimental locus's review day or time changed.
+  liveQuery(() => db.elements.filter((e) => e.type === 'weekly').toArray()).subscribe(() => scheduleReminders())
   onAppResume(() => void applyPhoneActions().finally(() => scheduleReminders(0)))
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') scheduleReminders(0)
@@ -153,6 +174,8 @@ export async function applyPhoneActions(): Promise<void> {
 async function openFromNotification(todoId?: string) {
   const todo = todoId ? await db.todos.get(todoId) : undefined
   if (!todo) return go('#/')
+  // A work block opens straight on its timer, so the phone goes into the block.
+  if (todo.block && todo.status === 'open') return go(focusHash(todo.id))
   if (todo.elementId === LOOSE) return openLooseTodo(todo.id)
   const el = await getElement(todo.elementId)
   if (el) go(subHash(el, 'todo', todo.id))

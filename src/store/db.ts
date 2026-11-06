@@ -170,6 +170,7 @@ export async function createLocus(input: {
   studyImportance?: Level
   studyDifficulty?: Level
   retention?: number
+  mode?: Locus['mode']
   x: number
   y: number
 }): Promise<Locus> {
@@ -185,6 +186,7 @@ export async function createLocus(input: {
     ...(input.studyImportance && { studyImportance: input.studyImportance }),
     ...(input.studyDifficulty && { studyDifficulty: input.studyDifficulty }),
     ...(input.retention && { retention: input.retention }),
+    ...(input.mode && { mode: input.mode }),
     createdAt: now,
     updatedAt: now,
   }

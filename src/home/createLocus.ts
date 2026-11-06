@@ -19,6 +19,7 @@ export interface LocusDraft {
   studyImportance: Level
   studyDifficulty: Level
   retention: number
+  experimental: boolean // new loci only: an experimental locus stays one
 }
 
 export type LocusSheetResult = { action: 'save'; draft: LocusDraft } | { action: 'delete' }
@@ -37,6 +38,12 @@ export function openLocusSheet(options: { locus?: Locus; tags: Tag[]; suggestedC
     const importance = levelPicker('importance', locus?.studyImportance ?? DEFAULT_STUDY_IMPORTANCE)
     const difficulty = levelPicker('difficulty', locus?.studyDifficulty ?? DEFAULT_STUDY_DIFFICULTY)
     const retention = retentionSlider(locus?.retention ?? DEFAULT_RETENTION)
+    const experimental = locus?.mode === 'experimental'
+    let makeExperimental = false
+    const xpSwitch = h('button', { type: 'button', class: 'switch', role: 'switch', 'aria-checked': 'false', 'aria-label': 'Experimental mode', onclick: () => {
+      makeExperimental = !makeExperimental
+      xpSwitch.setAttribute('aria-checked', String(makeExperimental))
+    } }, h('span', { class: 'switch-knob' }))
 
     const nameInput = h('input', {
       class: 'input',
@@ -144,9 +151,19 @@ export function openLocusSheet(options: { locus?: Locus; tags: Tag[]; suggestedC
       h('label', { class: 'field-label' }, 'Name', nameInput),
       h('div', { class: 'field-label' }, 'Color', h('div', { class: 'swatches' }, swatches, custom)),
       h('div', { class: 'field-label' }, 'Tags', chips, tagInput),
+      // Experimental mode (SPEC-v8-experimental.md): chosen when it's made, for good.
+      !editing &&
+        h(
+          'div',
+          { class: 'field-label xp-mode' },
+          h('div', { class: 'xp-mode-row' }, h('span', {}, 'Experimental mode'), xpSwitch),
+          h('span', { class: 'field-hint' }, 'Weekly targets, timed work blocks and a weekly review, instead of decks, notes and study. It can’t be switched back later.'),
+        ),
+      experimental && h('p', { class: 'field-hint' }, 'An experimental locus: weekly targets, work blocks and a weekly review.'),
       // A locus isn't only for studying, so a new one takes the study defaults
       // without asking; they're adjustable later from Edit.
       editing &&
+        !experimental &&
         h(
           'div',
           { class: 'field-label' },
@@ -155,7 +172,7 @@ export function openLocusSheet(options: { locus?: Locus; tags: Tag[]; suggestedC
           h('div', { class: 'level-row' }, h('span', { class: 'level-name' }, 'Importance'), importance.el),
           h('div', { class: 'level-row' }, h('span', { class: 'level-name' }, 'Difficulty'), difficulty.el),
         ),
-      editing && retention.el,
+      editing && !experimental && retention.el,
       editing && linkedItemsSection({ type: 'locus', id: locus.id }, () => api.close(null)),
       sheetActions(
         editing && button('Delete', () => void askDelete(), 'danger-text'),
@@ -195,7 +212,7 @@ export function openLocusSheet(options: { locus?: Locus; tags: Tag[]; suggestedC
         const name = nameInput.value.trim()
         if (!name) return
         addTag(tagInput.value) // a tag typed but not yet added with Enter still counts
-        api.close({ action: 'save', draft: { name, color, tagIds: [...selected], newTags: [...newTags], studyImportance: importance.value(), studyDifficulty: difficulty.value(), retention: retention.value() } })
+        api.close({ action: 'save', draft: { name, color, tagIds: [...selected], newTags: [...newTags], studyImportance: importance.value(), studyDifficulty: difficulty.value(), retention: retention.value(), experimental: makeExperimental } })
       },
       // Editing: don't pop the phone keyboard over the sheet.
       focus: editing ? undefined : nameInput,

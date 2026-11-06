@@ -240,7 +240,10 @@ async function show(route: Route, quiet = false): Promise<void> {
     return
   }
   shown = route
-  const view = await renderLocusView(locus, { onBack: () => back() })
+  const view =
+    locus.mode === 'experimental'
+      ? await (await import('./locus/experiment')).renderExperimentView(locus, { onBack: () => back() })
+      : await renderLocusView(locus, { onBack: () => back() })
   const bubble = from?.name === 'home' ? home.field.bubble(locus.id) : undefined
   let cover: HTMLElement | null = null
   if (bubble && motionAllowed()) {

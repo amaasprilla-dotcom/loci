@@ -14,6 +14,7 @@ import { describeSync } from '../settings/sync'
 import { createLocus, deleteLocus, findOrCreateTag, listLoci, listTags, moveLocus, updateLocus } from '../store/db'
 import { onSyncStatus } from '../sync/engine'
 import type { Locus, Tag } from '../types'
+import { experimentParts } from '../elements/weekly/store'
 import { type LocusDraft, openLocusSheet } from './createLocus'
 import { createField, type Field, spiralPoint } from './field'
 import { createTagFilter } from './filter'
@@ -93,6 +94,7 @@ export function createHome(options: { onOpen(locus: Locus): void; onTasks(): voi
     const tagId = filter.selected()
     const outside = new Set(tagId ? loci.filter((l) => !l.tagIds.includes(tagId)).map((l) => l.id) : [])
     field.setDimmed(outside)
+    field.setTagFocus(tagId)
     const active = tasks.filter(isActive)
     field.setActive(new Set(active.map((t) => t.locusId)))
     // A dot says something is waiting; it never says how much (SPEC-v5-now.md, "Signals").
@@ -133,15 +135,17 @@ export function createHome(options: { onOpen(locus: Locus): void; onTasks(): voi
     if (result?.action !== 'save') return
     const { draft } = result
     const { width, height } = field.el.getBoundingClientRect()
-    await createLocus({
+    const locus = await createLocus({
       name: draft.name,
       color: draft.color,
       tagIds: await resolveTagIds(draft),
-      studyImportance: draft.studyImportance,
-      studyDifficulty: draft.studyDifficulty,
-      retention: draft.retention,
+      ...(draft.experimental
+        ? { mode: 'experimental' as const }
+        : { studyImportance: draft.studyImportance, studyDifficulty: draft.studyDifficulty, retention: draft.retention }),
       ...spiralPoint(count, width, height),
     })
+    // An experimental locus comes with its targets and its list of blocks.
+    if (locus.mode === 'experimental') await experimentParts(locus.id)
     await refresh()
   }
 

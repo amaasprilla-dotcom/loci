@@ -25,6 +25,9 @@ export interface Locus {
   studyDifficulty?: Level;
   // FSRS desired retention for cards here: 0.8–0.95, default 0.9.
   retention?: number;
+  // An experimental locus (SPEC-v8-experimental.md): weekly targets, work blocks and a
+  // weekly review instead of tiles and study. Set when it's made; it can't change.
+  mode?: 'experimental';
   createdAt: number;
   updatedAt: number;
 }
@@ -200,6 +203,9 @@ export interface Todo {
   status: 'open' | 'done' | 'archived';
   doneAt?: number;
   missed?: boolean; // finished without being done ("Didn't do it"); status is 'done'
+  // A work block (SPEC-v8-experimental.md): the focus timer runs this long, and with
+  // noDistractions the phone's distracting apps are blocked while it does (Android app).
+  block?: { minutes: number; noDistractions: boolean };
   createdAt: number;
   updatedAt: number;
 }

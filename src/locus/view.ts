@@ -205,7 +205,7 @@ function openAddSheet(): Promise<{ type: ElementType; title: string } | 'exam' |
         h(
           'div',
           { class: 'type-options' },
-          [...registry.values()].map((type) =>
+          [...registry.values()].filter((type) => !type.hidden).map((type) =>
             h(
               'button',
               { type: 'button', class: 'type-option', onclick: () => nameStep(type) },

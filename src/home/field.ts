@@ -6,6 +6,7 @@ import { textColorOn } from '../colors'
 import { h } from '../dom'
 import type { Locus } from '../types'
 import { type Body, clamp, clampInside, step, wobble } from './physics'
+import { groupOf, tagEdges, type Thread } from './threads'
 
 // Where the n-th new locus goes when it has no saved position: a loose
 // sunflower spiral out from the center, spaced so default-size bubbles don't touch.
@@ -45,6 +46,9 @@ export interface Field {
   bubble(id: string): HTMLElement | undefined
   // Greys out these bubbles (the tag filter). They keep their place and motion.
   setDimmed(ids: Set<string>): void
+  // The tag selected in the filter: its threads show a little more, the others less,
+  // and a drag moves one locus alone.
+  setTagFocus(tagId: string | null): void
   // Bubbles whose locus has work due pulse.
   setActive(ids: Set<string>): void
   // The one locus that sends out waves: the one behind the Now card (null: none).
@@ -65,10 +69,20 @@ interface Drag {
   longPressTimer: number
   longPressed: boolean // the long-press fired, so letting go is neither a tap nor a drop
   trail: { t: number; x: number; y: number }[] // recent bubble positions, to measure a throw
+  // The loci sharing a tag with this one move with it, keeping their distance.
+  followers: { b: Body; dx: number; dy: number }[]
 }
+
+const SVG = 'http://www.w3.org/2000/svg'
 
 export function createField(options: FieldOptions): Field {
   const el = h('div', { class: 'field' })
+  const threadLayer = document.createElementNS(SVG, 'svg')
+  threadLayer.classList.add('field-threads')
+  threadLayer.setAttribute('aria-hidden', 'true')
+  el.append(threadLayer)
+  let threads: { thread: Thread; line: SVGLineElement }[] = []
+  let tagFocus: string | null = null
   const loci = new Map<string, Locus>()
   const bodies = new Map<string, Body>()
   const nodes = new Map<string, HTMLElement>()
@@ -107,7 +121,7 @@ export function createField(options: FieldOptions): Field {
   }
 
   function createBubble(locus: Locus): HTMLElement {
-    const node = h('div', { class: 'bubble', 'data-id': locus.id }, h('span', { class: 'bubble-name' }))
+    const node = h('div', { class: 'bubble', 'data-id': locus.id }, h('span', { class: 'bubble-ring', 'aria-hidden': 'true' }), h('span', { class: 'bubble-name' }))
     let drag: Drag | null = null
 
     node.addEventListener('pointerdown', (e) => {
@@ -124,6 +138,7 @@ export function createField(options: FieldOptions): Field {
         moved: false,
         longPressed: false,
         trail: [],
+        followers: [],
         longPressTimer: window.setTimeout(() => {
           if (!drag || drag.moved) return
           drag.longPressed = true
@@ -146,12 +161,28 @@ export function createField(options: FieldOptions): Field {
         drag.moved = true
         clearTimeout(drag.longPressTimer)
         node.classList.add('dragging')
+        const lead = bodies.get(locus.id)!
+        drag.followers = groupOf(locus.id, [...loci.values()], tagFocus)
+          .map((id) => bodies.get(id))
+          .filter((f): f is Body => f != null)
+          .map((f) => {
+            f.held = true
+            f.gliding = false
+            gliding.delete(f)
+            f.vx = f.vy = 0
+            return { b: f, dx: f.x - lead.x, dy: f.y - lead.y }
+          })
       }
       const b = bodies.get(locus.id)!
       const p = toField(e)
       b.x = p.x + drag.offsetX
       b.y = p.y + drag.offsetY
       clampInside(b, width, height)
+      for (const f of drag.followers) {
+        f.b.x = b.x + f.dx
+        f.b.y = b.y + f.dy
+        clampInside(f.b, width, height)
+      }
       const t = e.timeStamp
       drag.trail.push({ t, x: b.x, y: b.y })
       while (drag.trail.length > 2 && t - drag.trail[0].t > THROW_WINDOW_MS) drag.trail.shift()
@@ -160,27 +191,37 @@ export function createField(options: FieldOptions): Field {
     // pointerup ends a tap or a drop; pointercancel (the browser took the gesture) only drops.
     const release = (e: PointerEvent, isTap: boolean) => {
       if (!drag || e.pointerId !== drag.pointerId) return
-      const { moved, longPressed, trail } = drag
+      const { moved, longPressed, trail, followers } = drag
       clearTimeout(drag.longPressTimer)
       drag = null
       node.classList.remove('dragging')
       const b = bodies.get(locus.id)
+      for (const f of followers) f.b.held = false
       if (!b) return
       b.held = false
       const current = loci.get(locus.id)!
       const throwV = isTap && moved ? throwVelocity(trail, e.timeStamp) : null
       if (throwV) {
-        b.vx = throwV.vx
-        b.vy = throwV.vy
-        b.gliding = true
-        gliding.add(b)
+        // The group flies together; each is saved where it comes to rest.
+        for (const g of [b, ...followers.map((f) => f.b)]) {
+          if (!bodies.has(g.id)) continue
+          g.vx = throwV.vx
+          g.vy = throwV.vy
+          g.gliding = true
+          gliding.add(g)
+        }
       } else if (moved) {
-        b.hx = b.x
-        b.hy = b.y
-        const x = b.x / width
-        const y = b.y / height
-        loci.set(current.id, { ...current, x, y })
-        options.onMove(current, x, y)
+        for (const g of [b, ...followers.map((f) => f.b)]) {
+          const l = loci.get(g.id)
+          if (!l || !bodies.has(g.id)) continue
+          g.hx = g.x
+          g.hy = g.y
+          const x = g.x / width
+          const y = g.y / height
+          loci.set(l.id, { ...l, x, y })
+          options.onMove(l, x, y)
+        }
+        rebuildThreads()
       } else if (isTap && !longPressed) {
         options.onTap(current)
       }
@@ -211,6 +252,28 @@ export function createField(options: FieldOptions): Field {
       loci.set(current.id, { ...current, x, y })
       options.onMove(current, x, y)
     }
+    if (gliding.size === 0) rebuildThreads()
+  }
+
+  // Which loci the lines join, worked out from where they are now. Kept until the next
+  // render or drop, so lines don't swap partners while bubbles drift.
+  function rebuildThreads() {
+    const next = tagEdges(list.map((b) => ({ id: b.id, tagIds: loci.get(b.id)?.tagIds ?? [], x: b.x, y: b.y })))
+    for (const t of threads) t.line.remove()
+    threads = next.map((thread) => {
+      const line = document.createElementNS(SVG, 'line')
+      line.classList.add('thread')
+      threadLayer.append(line)
+      return { thread, line }
+    })
+    focusThreads()
+  }
+
+  function focusThreads() {
+    for (const { thread, line } of threads) {
+      line.classList.toggle('strong', tagFocus != null && thread.tagIds.includes(tagFocus))
+      line.classList.toggle('faint', tagFocus != null && !thread.tagIds.includes(tagFocus))
+    }
   }
 
   function updateBubble(node: HTMLElement, locus: Locus) {
@@ -218,6 +281,7 @@ export function createField(options: FieldOptions): Field {
     node.style.setProperty('--c', locus.color)
     node.style.setProperty('--fg', textColorOn(locus.color))
     node.style.width = node.style.height = `${locus.radius * 2}px`
+    node.classList.toggle('experimental', locus.mode === 'experimental')
     node.querySelector('.bubble-name')!.textContent = locus.name
   }
 
@@ -257,6 +321,7 @@ export function createField(options: FieldOptions): Field {
     }
     list = [...bodies.values()]
     rendered = true
+    rebuildThreads()
     draw(performance.now())
   }
 
@@ -265,6 +330,15 @@ export function createField(options: FieldOptions): Field {
     for (const b of list) {
       const s = still ? 0 : wobble(b, t) // keeps wobbling while held, so pressing doesn't snap it round
       nodes.get(b.id)!.style.transform = `translate(${b.x - b.r}px, ${b.y - b.r}px) scale(${1 + s}, ${1 - s})`
+    }
+    for (const { thread, line } of threads) {
+      const a = bodies.get(thread.a)
+      const c = bodies.get(thread.b)
+      if (!a || !c) continue
+      line.setAttribute('x1', a.x.toFixed(1))
+      line.setAttribute('y1', a.y.toFixed(1))
+      line.setAttribute('x2', c.x.toFixed(1))
+      line.setAttribute('y2', c.y.toFixed(1))
     }
   }
 
@@ -312,6 +386,10 @@ export function createField(options: FieldOptions): Field {
     bubble: (id) => nodes.get(id),
     setDimmed(ids) {
       for (const [id, node] of nodes) node.classList.toggle('dimmed', ids.has(id))
+    },
+    setTagFocus(tagId) {
+      tagFocus = tagId
+      focusThreads()
     },
     setActive(ids) {
       for (const [id, node] of nodes) node.classList.toggle('active', ids.has(id))

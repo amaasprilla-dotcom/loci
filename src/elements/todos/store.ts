@@ -12,6 +12,7 @@ export interface TodoDraft {
   difficulty: Level
   when: When
   plan?: TodoPlan // left out: unchanged when editing
+  block?: Todo['block'] // a work block; undefined with the key present: none
 }
 
 // What an "after" or "goal" when waits for. Stored as an "after" link (SPEC-v2.md, "Links").
@@ -51,7 +52,7 @@ export async function createTodo(elementId: string, draft: TodoDraft, waitsFor: 
 export async function updateTodo(id: string, draft: TodoDraft, waitsFor: WaitsFor = null): Promise<void> {
   await db.transaction('rw', db.todos, db.links, async () => {
     // Dexie removes a field set to undefined: a plan cleared in the form goes.
-    await db.todos.update(id, { ...cleanDraft(draft), ...('plan' in draft && { plan: cleanPlan(draft.plan) }), updatedAt: Date.now() })
+    await db.todos.update(id, { ...cleanDraft(draft), ...('plan' in draft && { plan: cleanPlan(draft.plan) }), ...('block' in draft && { block: draft.block }), updatedAt: Date.now() })
     await setWaitsFor(id, waitsFor)
   })
   if (waitsFor?.type === 'goal') await fireGoalTriggers(waitsFor.id)
@@ -59,7 +60,7 @@ export async function updateTodo(id: string, draft: TodoDraft, waitsFor: WaitsFo
 
 function cleanDraft(d: TodoDraft): TodoDraft {
   const plan = cleanPlan(d.plan)
-  return { title: d.title.trim(), ...(d.why?.trim() && { why: d.why.trim() }), importance: d.importance, difficulty: d.difficulty, when: d.when, ...(plan && { plan }) }
+  return { title: d.title.trim(), ...(d.why?.trim() && { why: d.why.trim() }), importance: d.importance, difficulty: d.difficulty, when: d.when, ...(plan && { plan }), ...(d.block && { block: { minutes: d.block.minutes, noDistractions: d.block.noDistractions } }) }
 }
 
 // Trimmed, empty parts dropped; nothing left is no plan. A backup needs both halves.

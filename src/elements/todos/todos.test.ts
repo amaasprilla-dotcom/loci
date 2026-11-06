@@ -315,3 +315,20 @@ describe('to-dos', () => {
     expect([await db.todos.count(), await db.todoCompletions.count()]).toEqual([1, 1])
   })
 })
+
+describe('work blocks', () => {
+  beforeEach(async () => {
+    await db.todos.clear()
+  })
+
+  it('keeps a block, and takes it away when set to none', async () => {
+    const { updateTodo } = await import('./store')
+    const draft = { title: 'Edit the video', importance: 3 as const, difficulty: 2 as const, when: { kind: 'someday' as const }, block: { minutes: 90, noDistractions: true } }
+    const t = await createTodo('list', draft)
+    expect((await db.todos.get(t.id))!.block).toEqual({ minutes: 90, noDistractions: true })
+    await updateTodo(t.id, { ...draft, block: undefined })
+    expect((await db.todos.get(t.id))!.block).toBeUndefined()
+    await updateTodo(t.id, { ...draft, block: { minutes: 45, noDistractions: false } })
+    expect((await db.todos.get(t.id))!.block).toEqual({ minutes: 45, noDistractions: false })
+  })
+})

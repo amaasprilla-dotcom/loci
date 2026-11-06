@@ -36,6 +36,7 @@ export interface ElementType<TData = unknown> {
   noun: string // one of them, for "New flashcard deck"
   description: string // one line under the label in the + menu
   icon: string // inline SVG markup, drawn in currentColor
+  hidden?: boolean // not offered in a locus's + menu (e.g. the experimental locus's own parts)
   createDefault(): TData
   // The tile inside the locus view.
   renderCard(el: LocusElement<TData>, now: number): Promise<HTMLElement>

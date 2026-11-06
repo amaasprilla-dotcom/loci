@@ -456,6 +456,46 @@ h2 {
   will-change: transform;
 }
 
+/* Tag threads (SPEC-v8-experimental.md): faint lines, center to center, under the
+   bubbles, between loci that share a tag. A selected tag's show a little more. */
+.field-threads {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.thread {
+  stroke: rgba(11, 15, 20, 0.09);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  transition: stroke 0.25s ease-out;
+}
+
+.thread.strong {
+  stroke: rgba(11, 15, 20, 0.2);
+}
+
+.thread.faint {
+  stroke: rgba(11, 15, 20, 0.04);
+}
+
+/* An experimental locus: a quiet dashed ring inside the bubble. */
+.bubble-ring {
+  display: none;
+}
+
+.bubble.experimental .bubble-ring {
+  display: block;
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  border: 1.5px dashed color-mix(in srgb, var(--fg) 45%, transparent);
+  pointer-events: none;
+}
+
 /* The JS loop owns `transform`; the appear effect uses the separate `scale`
    property so the two combine instead of fighting. */
 .bubble.dragging {
@@ -4658,5 +4698,386 @@ details.editor-section > summary {
   .switch,
   .switch-knob {
     transition: none;
+  }
+}
+
+/* ---------- Work blocks (SPEC-v8-experimental.md) ---------- */
+
+.segments-6 {
+  grid-template-columns: repeat(6, 1fr);
+}
+
+.segments-7 {
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.segments[hidden] {
+  display: none;
+}
+
+.block-distractions,
+.xp-mode-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.block-distractions[hidden] {
+  display: none;
+}
+
+.focus-cue {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.focus-first {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.focus-block-note {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.focus-block-note:empty {
+  display: none;
+}
+
+/* ---------- Experimental locus (SPEC-v8-experimental.md) ---------- */
+
+.xp-card {
+  margin-bottom: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 22px;
+  background: var(--glass);
+  box-shadow: var(--glass-shadow);
+}
+
+.xp-card-title {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+  font-weight: 550;
+  letter-spacing: -0.01em;
+}
+
+.xp-card .wb-row {
+  margin-top: 12px;
+  justify-content: flex-end;
+}
+
+.xp-review-slot:empty {
+  display: none;
+}
+
+.xp-review-slot {
+  margin-bottom: 16px;
+}
+
+.xp-pending {
+  border-color: color-mix(in srgb, var(--warn) 35%, var(--glass-edge));
+}
+
+.xp-quote {
+  margin: 0 0 6px;
+  font-style: italic;
+}
+
+.xp-tally,
+.xp-steps,
+.xp-steps-quiet {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.xp-tally-row {
+  display: grid;
+  grid-template-columns: 1fr auto 90px;
+  gap: 12px;
+  align-items: baseline;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.xp-tally-status {
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-align: right;
+}
+
+.xp-tally-row.win .xp-tally-status,
+.xp-tally-row.good .xp-tally-status {
+  color: var(--ok);
+  font-weight: 600;
+}
+
+.xp-steps {
+  margin-top: 12px;
+}
+
+.xp-step {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 5px 0;
+  cursor: pointer;
+}
+
+.xp-step input:checked + span {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.xp-steps-quiet {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.xp-steps-quiet li::before {
+  content: "· ";
+}
+
+.xp-week-sub {
+  margin: -4px 0 12px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.xp-empty p {
+  margin: 0 0 12px;
+}
+
+.xp-target-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.xp-target-name {
+  font-weight: 600;
+}
+
+.xp-chip {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--ok-soft);
+  color: var(--ok);
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.xp-chip.good {
+  background: var(--ok);
+  color: #fff;
+}
+
+.xp-target-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 10px 0 6px;
+}
+
+.xp-count {
+  min-width: 2ch;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 2.2rem;
+  font-weight: 300;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.xp-count:disabled {
+  cursor: default;
+}
+
+.xp-bar {
+  position: relative;
+  flex: 1;
+  height: 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+
+.xp-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: var(--c);
+  transition: width 0.3s ease-out;
+}
+
+/* Minimum to good: the range the week aims for. */
+.xp-bar-range {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--ok) 14%, transparent);
+}
+
+.xp-tick {
+  position: absolute;
+  top: -5px;
+  bottom: -5px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--text) 45%, transparent);
+}
+
+.xp-tick.good {
+  background: var(--ok);
+}
+
+.xp-plus {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--text);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.xp-plus:active {
+  transform: scale(0.95);
+}
+
+.xp-target-sub {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.xp-history {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.xp-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--text) 10%, transparent);
+}
+
+.xp-dot.win {
+  background: var(--ok);
+}
+
+.xp-dot.good {
+  background: var(--ok);
+  box-shadow: 0 0 0 2px var(--canvas-top), 0 0 0 3.5px var(--ok);
+}
+
+.xp-dot.now {
+  outline: 1.5px dashed color-mix(in srgb, var(--text) 35%, transparent);
+  outline-offset: 2px;
+}
+
+.xp-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.xp-block-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.xp-block-if,
+.xp-block-when {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.xp-add {
+  margin-top: 4px;
+}
+
+.xp-target-edit {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.xp-target-edit-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.xp-range-edit {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.xp-num-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.xp-num {
+  width: 96px;
+}
+
+.xp-counts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.xp-reflect {
+  margin-bottom: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--surface-muted);
+}
+
+.xp-reflect-q {
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+
+@media (max-width: 480px) {
+  .segments-6 {
+    grid-template-columns: repeat(3, 1fr);
   }
 }

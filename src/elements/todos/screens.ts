@@ -21,6 +21,7 @@ import { onChange } from '../../changes'
 import { sections } from '../../tasks/tasks'
 import type { Level, LocusElement, Todo, TodoPlan, When } from '../../types'
 import { openGoals } from '../goals/type'
+import { blockField } from './blockField'
 import { checkPlan, type PlanInput, type PlanProblem } from './plan'
 import { archiveTodo, completeTodo, countDependents, createTodo, deleteTodo, goalsCountingTodo, itHappened, listTodos, LOOSE, missTodo, moveTodo, reopenTodo, rescheduleTodo, skipTodo, todoListFor, type TodoDraft, updateTodo, type WaitsFor, waitsForOf } from './store'
 import { todoTask } from './type'
@@ -769,6 +770,7 @@ export async function openTodoSheet(todo: Todo): Promise<void> {
     const importance = levelPicker('importance', todo.importance)
     const difficulty = levelPicker('difficulty', todo.difficulty, () => sync())
     const backup = backupFields(todo.plan, () => sync())
+    const block = blockField(todo.block)
     let firstStep = todo.plan?.firstStep ?? ''
     const firstStepRow = h('div', { class: 'first-step' })
     const saveButton = submitButton('Save')
@@ -826,7 +828,7 @@ export async function openTodoSheet(todo: Todo): Promise<void> {
     }
     void showWhen()
 
-    const draft = (): TodoDraft => ({ title: title.value.trim() || todo.title, why: why.value, importance: importance.value(), difficulty: difficulty.value(), when, plan: plan() })
+    const draft = (): TodoDraft => ({ title: title.value.trim() || todo.title, why: why.value, importance: importance.value(), difficulty: difficulty.value(), when, plan: plan(), block: block.value() })
     const save = async () => {
       // Keep what it waits for when the when wasn't changed to something else.
       await updateTodo(todo.id, draft(), when.kind === 'after' || when.kind === 'goal' ? waitsFor : null)
@@ -863,6 +865,7 @@ export async function openTodoSheet(todo: Todo): Promise<void> {
       check.el,
       firstStepRow,
       h('div', { class: 'todo-sentence' }, h('span', { class: 'todo-word' }, 'In'), placeChip),
+      block.el,
       h('div', { class: 'field-label' }, 'Backup plan', backup.el),
       h('label', { class: 'field-label' }, 'Details', why),
       h(
